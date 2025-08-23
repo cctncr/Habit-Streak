@@ -1,4 +1,4 @@
-package org.example.habit_streak.presention
+package org.example.habit_streak.presention.ui.state
 
 import org.example.habit_streak.domain.model.HabitStatistics
 

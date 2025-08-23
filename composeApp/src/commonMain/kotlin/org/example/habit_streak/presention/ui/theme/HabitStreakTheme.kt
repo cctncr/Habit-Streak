@@ -1,11 +1,11 @@
-package org.example.habit_streak.presention.components
+package org.example.habit_streak.presention.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import org.example.habit_streak.domain.model.HabitColor
 
 object HabitStreakTheme {
     val backgroundColor = Color(0xFFFAFAFA)
-    val surfaceColor = Color.White
+    val surfaceColor = Color.Companion.White
     val primaryTextColor = Color(0xFF2C3E50)
     val secondaryTextColor = Color(0xFF7F8C8D)
     val dividerColor = Color(0xFFECF0F1)

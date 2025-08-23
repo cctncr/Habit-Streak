@@ -1,4 +1,4 @@
-package org.example.habit_streak.presention.components
+package org.example.habit_streak.presention.ui.components.card
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -30,6 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.example.habit_streak.domain.model.Habit
+import org.example.habit_streak.presention.ui.components.common.HabitIconDisplay
+import org.example.habit_streak.presention.ui.components.common.CompletionCheckbox
+import org.example.habit_streak.presention.ui.components.common.StreakBadge
+import org.example.habit_streak.presention.ui.theme.HabitStreakTheme
 
 @Composable
 fun HabitCard(

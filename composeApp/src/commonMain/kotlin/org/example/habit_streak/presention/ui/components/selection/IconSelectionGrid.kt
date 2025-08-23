@@ -1,4 +1,4 @@
-package org.example.habit_streak.presention.components
+package org.example.habit_streak.presention.ui.components.selection
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import org.example.habit_streak.domain.model.HabitColor
 import org.example.habit_streak.domain.model.HabitIcon
 import org.example.habit_streak.domain.model.IconCategory
+import org.example.habit_streak.presention.ui.components.common.IconItem
+import org.example.habit_streak.presention.ui.theme.HabitStreakTheme
 
 @Composable
 fun IconSelectionGrid(

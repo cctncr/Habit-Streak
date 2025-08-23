@@ -13,7 +13,7 @@ import org.example.habit_streak.domain.model.HabitFrequency
 import org.example.habit_streak.domain.model.HabitIcon
 import org.example.habit_streak.domain.repository.HabitRepository
 import org.example.habit_streak.domain.usecase.CreateHabitUseCase
-import org.example.habit_streak.presention.CreateEditHabitUiState
+import org.example.habit_streak.presention.ui.state.CreateEditHabitUiState
 
 class CreateEditHabitViewModel(
     private val createHabitUseCase: CreateHabitUseCase,

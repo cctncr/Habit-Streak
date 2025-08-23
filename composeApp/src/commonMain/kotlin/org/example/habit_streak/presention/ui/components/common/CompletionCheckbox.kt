@@ -1,4 +1,4 @@
-package org.example.habit_streak.presention.components
+package org.example.habit_streak.presention.ui.components.common
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState

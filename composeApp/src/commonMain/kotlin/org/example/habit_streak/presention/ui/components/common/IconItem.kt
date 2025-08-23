@@ -1,4 +1,4 @@
-package org.example.habit_streak.presention.components
+package org.example.habit_streak.presention.ui.components.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

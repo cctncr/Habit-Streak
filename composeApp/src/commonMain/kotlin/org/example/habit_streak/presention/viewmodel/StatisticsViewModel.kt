@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.example.habit_streak.domain.repository.HabitRepository
 import org.example.habit_streak.domain.repository.StatisticsRepository
-import org.example.habit_streak.presention.StatisticsUiState
+import org.example.habit_streak.presention.ui.state.StatisticsUiState
 
 class StatisticsViewModel(
     private val statisticsRepository: StatisticsRepository,

@@ -1,4 +1,4 @@
-package org.example.habit_streak.presention.components
+package org.example.habit_streak.presention.ui.components.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.habit_streak.domain.model.HabitColor
+import org.example.habit_streak.presention.ui.theme.HabitStreakTheme
 
 @Composable
 fun ColorItem(

@@ -10,8 +10,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.*
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -19,7 +17,7 @@ import org.example.habit_streak.domain.usecase.ArchiveHabitUseCase
 import org.example.habit_streak.domain.usecase.CalculateStreakUseCase
 import org.example.habit_streak.domain.usecase.GetHabitsWithCompletionUseCase
 import org.example.habit_streak.domain.usecase.ToggleHabitCompletionUseCase
-import org.example.habit_streak.presention.HabitsUiState
+import org.example.habit_streak.presention.ui.state.HabitsUiState
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
