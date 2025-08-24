@@ -18,9 +18,14 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.compose_multiplatform
+import org.example.habit_streak.presentation.screen.HabitsScreen
 
 @Composable
-@Preview
 fun App() {
-
+    MaterialTheme {
+        HabitsScreen(
+            onNavigateToCreateHabit = { /* TODO: Navigation */ },
+            onNavigateToHabitDetail = { /* TODO: Navigation */ }
+        )
+    }
 }
