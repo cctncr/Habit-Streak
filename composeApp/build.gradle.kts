@@ -16,7 +16,6 @@ sqldelight {
     databases {
         create("HabitDatabase") {
             packageName.set("org.example.habit_streak.data.local")
-            dialect("app.cash.sqldelight:sqlite:3.24.0")
         }
     }
 }
