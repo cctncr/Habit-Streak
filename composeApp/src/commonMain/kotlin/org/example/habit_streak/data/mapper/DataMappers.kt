@@ -4,14 +4,15 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.example.habit_streak.domain.model.DayOfWeek
 import org.example.habit_streak.domain.model.Habit
-import org.example.habit_streak.data.Habit as DataHabit
-import org.example.habit_streak.data.HabitRecord as DataHabitRecord
 import org.example.habit_streak.domain.model.HabitColor
 import org.example.habit_streak.domain.model.HabitFrequency
 import org.example.habit_streak.domain.model.HabitIcon
 import org.example.habit_streak.domain.model.HabitRecord
 import org.example.habit_streak.domain.model.RepeatUnit
+import org.example.habitstreak.data.local.Habit as DataHabit
+import org.example.habitstreak.data.local.HabitRecord as DataHabitRecord
 
 fun DataHabit.toDomain(): Habit = Habit(
     id = id,

@@ -14,10 +14,8 @@ import org.example.habit_streak.presentation.viewmodel.CreateEditHabitViewModel
 import org.example.habit_streak.presentation.viewmodel.HabitsViewModel
 import org.example.habit_streak.presentation.viewmodel.StatisticsViewModel
 import org.koin.dsl.module
-import org.example.habit_streak.data.local.HabitDatabase
+import org.example.habitstreak.data.local.HabitDatabase
 import org.example.habit_streak.data.repository.StatisticsRepositoryImpl
-import org.example.habit_streak.domain.usecase.*
-import org.example.habit_streak.presentation.viewmodel.*
 
 val appModule = module {
     // Database

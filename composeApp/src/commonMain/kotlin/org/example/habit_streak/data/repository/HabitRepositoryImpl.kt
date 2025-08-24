@@ -6,7 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import org.example.habit_streak.data.local.HabitDatabase
+import org.example.habitstreak.data.local.HabitDatabase
+import org.example.habit_streak.data.mapper.serialize
 import org.example.habit_streak.data.mapper.toData
 import org.example.habit_streak.data.mapper.toDomain
 import org.example.habit_streak.domain.model.Habit

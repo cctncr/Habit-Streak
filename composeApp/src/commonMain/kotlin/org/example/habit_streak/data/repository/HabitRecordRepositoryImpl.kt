@@ -6,16 +6,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.example.habit_streak.data.local.HabitDatabase
+import org.example.habitstreak.data.local.HabitDatabase
 import org.example.habit_streak.data.mapper.toData
 import org.example.habit_streak.data.mapper.toDomain
 import org.example.habit_streak.domain.model.HabitRecord
 import org.example.habit_streak.domain.repository.HabitRecordRepository
 import java.util.UUID
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 class HabitRecordRepositoryImpl(
     private val database: HabitDatabase
@@ -23,6 +24,7 @@ class HabitRecordRepositoryImpl(
 
     private val queries = database.habitRecordQueries
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun markHabitAsComplete(
         habitId: String,
         date: LocalDate,

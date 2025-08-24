@@ -10,12 +10,13 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 sqldelight {
     databases {
         create("HabitDatabase") {
-            packageName.set("org.example.habit_streak.data.local")
+            packageName = "org.example.habitstreak.data.local"
         }
     }
 }
