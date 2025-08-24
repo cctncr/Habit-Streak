@@ -1,4 +1,4 @@
-package org.example.habit_streak.presentation.screen
+package org.example.habit_streak.presentation.screen.habits
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

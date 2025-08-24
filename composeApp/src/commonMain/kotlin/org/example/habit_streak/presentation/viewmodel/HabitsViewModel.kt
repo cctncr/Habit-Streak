@@ -2,6 +2,7 @@ package org.example.habit_streak.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +40,7 @@ class HabitsViewModel(
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val habitsWithCompletion = _selectedDate.flatMapLatest { date ->
         getHabitsWithCompletionUseCase(date)
     }.stateIn(
