@@ -1,0 +1,47 @@
+CREATE TABLE IF NOT EXISTS Habit (
+    id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    iconName TEXT NOT NULL,
+    colorName TEXT NOT NULL,
+    frequencyType TEXT NOT NULL,
+    frequencyData TEXT NOT NULL,
+    reminderTime TEXT,
+    isReminderEnabled INTEGER NOT NULL DEFAULT 0,
+    targetCount INTEGER NOT NULL DEFAULT 1,
+    unit TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    isArchived INTEGER NOT NULL DEFAULT 0,
+    sortOrder INTEGER NOT NULL DEFAULT 0
+);
+
+selectAll:
+SELECT * FROM Habit ORDER BY sortOrder ASC;
+
+selectActive:
+SELECT * FROM Habit WHERE isArchived = 0 ORDER BY sortOrder ASC;
+
+selectById:
+SELECT * FROM Habit WHERE id = ?;
+
+insert:
+INSERT OR REPLACE INTO Habit VALUES ?;
+
+update:
+UPDATE Habit SET
+    title = ?,
+    description = ?,
+    iconName = ?,
+    colorName = ?,
+    frequencyType = ?,
+    frequencyData = ?,
+    reminderTime = ?,
+    isReminderEnabled = ?,
+    targetCount = ?,
+    unit = ?,
+    isArchived = ?,
+    sortOrder = ?
+WHERE id = ?;
+
+delete:
+DELETE FROM Habit WHERE id = ?;
