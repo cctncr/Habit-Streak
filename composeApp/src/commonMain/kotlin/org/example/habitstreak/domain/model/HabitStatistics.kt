@@ -1,0 +1,12 @@
+package org.example.habitstreak.domain.model
+
+import kotlinx.datetime.LocalDate
+
+data class HabitStatistics(
+    val habitId: String,
+    val currentStreak: Int,
+    val longestStreak: Int,
+    val completionRate: Float, // 0.0 to 1.0
+    val totalCompletions: Int,
+    val lastCompletedDate: LocalDate?
+)

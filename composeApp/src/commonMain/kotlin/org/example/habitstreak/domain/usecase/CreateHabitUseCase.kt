@@ -1,0 +1,53 @@
+package org.example.habitstreak.domain.usecase
+
+import kotlinx.datetime.LocalTime
+import org.example.habitstreak.domain.model.Habit
+import org.example.habitstreak.domain.model.HabitColor
+import org.example.habitstreak.domain.model.HabitFrequency
+import org.example.habitstreak.domain.model.HabitIcon
+import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.usecase.util.UseCase
+import org.example.habitstreak.domain.util.DateProvider
+
+class CreateHabitUseCase(
+    private val habitRepository: HabitRepository,
+    private val dateProvider: DateProvider
+) : UseCase<CreateHabitUseCase.Params, Result<Habit>> {
+
+    data class Params(
+        val title: String,
+        val description: String,
+        val icon: HabitIcon,
+        val color: HabitColor,
+        val frequency: HabitFrequency,
+        val reminderTime: LocalTime? = null,
+        val targetCount: Int = 1,
+        val unit: String = ""
+    )
+
+    override suspend fun invoke(params: Params): Result<Habit> {
+        // Validation
+        if (params.title.isBlank()) {
+            return Result.failure(IllegalArgumentException("Habit title cannot be empty"))
+        }
+
+        if (params.targetCount < 1) {
+            return Result.failure(IllegalArgumentException("Target count must be at least 1"))
+        }
+
+        val habit = Habit(
+            title = params.title.trim(),
+            description = params.description.trim(),
+            icon = params.icon,
+            color = params.color,
+            frequency = params.frequency,
+            reminderTime = params.reminderTime,
+            isReminderEnabled = params.reminderTime != null,
+            targetCount = params.targetCount,
+            unit = params.unit,
+            createdAt = dateProvider.today()
+        )
+
+        return habitRepository.createHabit(habit)
+    }
+}
