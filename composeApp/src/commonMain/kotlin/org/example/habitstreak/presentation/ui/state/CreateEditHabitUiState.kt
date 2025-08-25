@@ -15,6 +15,7 @@ data class CreateEditHabitUiState(
     val targetCount: Int = 1,
     val unit: String = "",
     val isEditMode: Boolean = false,
+    val isArchived: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null
 )

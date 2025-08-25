@@ -1,15 +1,11 @@
 package org.example.habitstreak.presentation.ui.components.card
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,115 +20,141 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
-import org.example.habitstreak.presentation.ui.components.common.CompletionCheckbox
-import org.example.habitstreak.presentation.ui.components.common.StreakBadge
+import org.example.habitstreak.presentation.ui.components.habit.HabitGrid
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 
 @Composable
 fun HabitCard(
     habit: Habit,
-    isCompleted: Boolean,
-    completedCount: Int,
+    completionHistory: Map<LocalDate, Float>, // Date -> progress (0-1)
+    todayProgress: Float,
     currentStreak: Int,
-    onToggleCompletion: () -> Unit,
+    today: LocalDate,
+    onUpdateProgress: (LocalDate, Int) -> Unit,
     onCardClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        )
-    )
+    var showProgressDialog by remember { mutableStateOf(false) }
+    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isCompleted) {
-            HabitStreakTheme.habitColorToComposeColor(habit.color).copy(alpha = 0.1f)
-        } else {
-            HabitStreakTheme.surfaceColor
-        },
-        animationSpec = tween(300)
-    )
+    val isCompleted = todayProgress >= 1f
+    val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .scale(scale)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        tryAwaitRelease()
-                        isPressed = false
-                    },
-                    onTap = { onCardClick() }
-                )
-            },
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isCompleted) 0.dp else 2.dp
-        )
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Completion checkbox
-            CompletionCheckbox(
-                isCompleted = isCompleted,
-                color = HabitStreakTheme.habitColorToComposeColor(habit.color),
-                onClick = onToggleCompletion
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Icon
-            HabitIconDisplay(
-                icon = habit.icon,
-                color = HabitStreakTheme.habitColorToComposeColor(habit.color),
-                size = 40.dp
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Title and details
-            Column(
-                modifier = Modifier.weight(1f)
+            // Header Row with icon, title and progress button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = habit.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = HabitStreakTheme.primaryTextColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                // Icon
+                HabitIconDisplay(
+                    icon = habit.icon,
+                    color = habitColor,
+                    size = 32.dp
                 )
 
-                if (habit.targetCount > 1) {
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Title and target
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
-                        text = "$completedCount / ${habit.targetCount} ${habit.unit}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = HabitStreakTheme.secondaryTextColor
+                        text = habit.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+
+                    if (habit.targetCount > 1) {
+                        Text(
+                            text = "${(todayProgress * habit.targetCount).toInt()} / ${habit.targetCount} ${habit.unit}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Progress Button
+                HabitProgressButton(
+                    progress = todayProgress,
+                    isCompleted = isCompleted,
+                    targetCount = habit.targetCount,
+                    unit = habit.unit,
+                    progressColor = habitColor,
+                    buttonSize = 44.dp,
+                    strokeWidth = 3.dp,
+                    onClick = {
+                        selectedDate = today
+                        showProgressDialog = true
+                    }
+                )
             }
 
-            // Streak indicator
-            if (currentStreak > 0) {
-                StreakBadge(streak = currentStreak)
-            }
+            // Always visible Grid
+            HabitGrid(
+                completedDates = completionHistory,
+                startDate = habit.createdAt,
+                today = today,
+                accentColor = habitColor,
+                rows = 3,
+                boxSize = 28.dp,
+                spacing = 3.dp,
+                cornerRadius = 4.dp,
+                maxHistoryDays = 90L, // Show last 90 days for better performance
+                onDateClick = { date ->
+                    selectedDate = date
+                    showProgressDialog = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(112.dp) // Fixed height for 3 rows + header
+            )
         }
     }
+
+    // Progress Dialog
+    HabitProgressDialog(
+        show = showProgressDialog,
+        habitTitle = habit.title,
+        targetCount = habit.targetCount,
+        unit = habit.unit,
+        currentValue = selectedDate?.let { date ->
+            ((completionHistory[date] ?: (0f * habit.targetCount))).toInt()
+        },
+        onDismiss = {
+            showProgressDialog = false
+            selectedDate = null
+        },
+        onConfirm = { value ->
+            selectedDate?.let { date ->
+                onUpdateProgress(date, value)
+            }
+        }
+    )
 }

@@ -13,6 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import org.example.habitstreak.presentation.screen.create_edit_habit.CreateEditHabitScreen
 import org.example.habitstreak.presentation.screen.habits.HabitsScreen
+import org.example.habitstreak.presentation.screen.settings.SettingsScreen
+import org.example.habitstreak.presentation.screen.statistics.StatisticsScreen
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -20,7 +22,6 @@ fun AppNavigation() {
     val navigationState = rememberNavigationState()
     var currentScreen by remember { mutableStateOf(navigationState.currentScreen) }
 
-    // Handle back press
     BackHandler(enabled = currentScreen != Screen.Habits) {
         if (navigationState.navigateBack()) {
             currentScreen = navigationState.currentScreen
@@ -40,6 +41,7 @@ fun AppNavigation() {
                         animationSpec = tween(300)
                     )
                 }
+
                 targetState is Screen.Habits && initialState is Screen.CreateEdit -> {
                     slideInHorizontally(
                         initialOffsetX = { width -> -width / 3 },
@@ -49,6 +51,7 @@ fun AppNavigation() {
                         animationSpec = tween(300)
                     )
                 }
+
                 else -> {
                     slideInHorizontally(animationSpec = tween(300)) togetherWith
                             slideOutHorizontally(animationSpec = tween(300))
@@ -63,12 +66,17 @@ fun AppNavigation() {
                         navigationState.navigateTo(Screen.CreateEdit())
                         currentScreen = navigationState.currentScreen
                     },
-                    onNavigateToHabitDetail = { habitId ->
-                        navigationState.navigateTo(Screen.CreateEdit(habitId))
+                    onNavigateToStatistics = {
+                        navigationState.navigateTo(Screen.Statistics)
+                        currentScreen = navigationState.currentScreen
+                    },
+                    onNavigateToSettings = {
+                        navigationState.navigateTo(Screen.Settings)
                         currentScreen = navigationState.currentScreen
                     }
                 )
             }
+
             is Screen.CreateEdit -> {
                 CreateEditHabitScreen(
                     habitId = screen.habitId,
@@ -79,16 +87,46 @@ fun AppNavigation() {
                     }
                 )
             }
-            is Screen.HabitDetail -> {
-                // Future implementation
-            }
+
             is Screen.Statistics -> {
+                StatisticsScreen(
+                    onNavigateBack = {
+                        if (navigationState.navigateBack()) {
+                            currentScreen = navigationState.currentScreen
+                        }
+                    },
+                    onNavigateToHabit = { habitId ->
+                        navigationState.navigateTo(Screen.CreateEdit(habitId))
+                        currentScreen = navigationState.currentScreen
+                    }
+                )
+            }
+
+            is Screen.Settings -> {
+                SettingsScreen(
+                    onNavigateBack = {
+                        if (navigationState.navigateBack()) {
+                            currentScreen = navigationState.currentScreen
+                        }
+                    },
+                    onNavigateToAbout = {
+                        // Navigate to about screen
+                    },
+                    onNavigateToBackup = {
+                        // Navigate to backup screen
+                    },
+                    onNavigateToArchivedHabits = {
+                        // Navigate to archived habits
+                    }
+                )
+            }
+
+            is Screen.HabitDetail -> {
                 // Future implementation
             }
         }
     }
 }
 
-// BackHandler for multiplatform
 @Composable
 expect fun BackHandler(enabled: Boolean = true, onBack: () -> Unit)

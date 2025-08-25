@@ -9,6 +9,7 @@ sealed class Screen {
     data class CreateEdit(val habitId: String? = null) : Screen()
     data class HabitDetail(val habitId: String) : Screen()
     data object Statistics : Screen()
+    data object Settings : Screen()
 }
 
 @Stable

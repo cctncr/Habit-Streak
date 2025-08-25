@@ -85,6 +85,10 @@ class CreateEditHabitViewModel(
         _uiState.update { it.copy(reminderTime = time) }
     }
 
+    fun updateArchived(isArchived: Boolean) {
+        _uiState.update { it.copy(isArchived = isArchived) }
+    }
+
     fun saveHabit(onSuccess: () -> Unit) {
         val state = _uiState.value
 

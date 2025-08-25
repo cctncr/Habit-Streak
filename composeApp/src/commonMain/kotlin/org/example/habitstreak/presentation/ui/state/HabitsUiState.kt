@@ -1,10 +1,12 @@
 package org.example.habitstreak.presentation.ui.state
 
+import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.usecase.GetHabitsWithCompletionUseCase
 
 data class HabitsUiState(
     val isLoading: Boolean = false,
     val habits: List<GetHabitsWithCompletionUseCase.HabitWithCompletion> = emptyList(),
     val streaks: Map<String, Int> = emptyMap(),
+    val completionHistories: Map<String, Map<LocalDate, Float>> = emptyMap(), // habitId -> date -> progress
     val error: String? = null
 )

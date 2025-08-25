@@ -23,7 +23,7 @@ class CalculateStreakUseCase(
             }
 
             val sortedDates = records.map { it.date }.sorted()
-            var currentStreak = 0
+            var currentStreak: Int
             var longestStreak = 0
             var tempStreak = 1
 
@@ -43,9 +43,9 @@ class CalculateStreakUseCase(
             val lastDate = sortedDates.last()
             val daysSinceLastCompletion = today.toEpochDays() - lastDate.toEpochDays()
 
-            currentStreak = when {
-                daysSinceLastCompletion == 0L -> tempStreak // Completed today
-                daysSinceLastCompletion == 1L -> tempStreak // Last completed yesterday
+            currentStreak = when (daysSinceLastCompletion) {
+                0L -> tempStreak // Completed today
+                1L -> tempStreak // Last completed yesterday
                 else -> 0 // Streak broken
             }
 

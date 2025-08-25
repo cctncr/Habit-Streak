@@ -39,7 +39,7 @@ val appModule = module {
     factory { ArchiveHabitUseCase(get()) }
 
     // ViewModels
-    factory { HabitsViewModel(get(), get(), get(), get(), get()) }
+    factory { HabitsViewModel(get(), get(), get(), get(), get(), get()) }
     factory { (habitId: String?) -> CreateEditHabitViewModel(get(), get(), habitId) }
     factory { StatisticsViewModel(get(), get()) }
 }
