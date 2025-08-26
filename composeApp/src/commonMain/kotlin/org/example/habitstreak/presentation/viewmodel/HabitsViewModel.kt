@@ -37,6 +37,9 @@ class HabitsViewModel(
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
 
+    // Habit-specific loading states
+    private val _habitLoadingStates = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val habitsWithCompletion = _selectedDate.flatMapLatest { date ->
         getHabitsWithCompletionUseCase(date)
@@ -47,10 +50,10 @@ class HabitsViewModel(
     )
 
     init {
-        loadHabits()
+        loadInitialData()
     }
 
-    private fun loadHabits() {
+    private fun loadInitialData() {
         viewModelScope.launch {
             habitsWithCompletion.collect { habits ->
                 _uiState.update { state ->
@@ -60,17 +63,17 @@ class HabitsViewModel(
                     )
                 }
 
-                // Load streaks and completion histories for each habit
+                // Load streaks and histories for all habits (sadece bir kez)
                 habits.forEach { habitWithCompletion ->
-                    loadHabitData(habitWithCompletion.habit.id)
+                    loadHabitDataSilently(habitWithCompletion.habit.id)
                 }
             }
         }
     }
 
-    private fun loadHabitData(habitId: String) {
+    private fun loadHabitDataSilently(habitId: String) {
         viewModelScope.launch {
-            // Load streak
+            // Streak hesaplama
             calculateStreakUseCase(habitId).fold(
                 onSuccess = { streakInfo ->
                     _uiState.update { state ->
@@ -79,14 +82,12 @@ class HabitsViewModel(
                         )
                     }
                 },
-                onFailure = { error ->
-                    println("Failed to calculate streak for habit $habitId: ${error.message}")
-                }
+                onFailure = { /* Sessizce devam et */ }
             )
 
-            // Load completion history (last 350 days)
+            // Completion history yükleme (son 1 yıl)
             val today = dateProvider.today()
-            val startDate = today.minus(DatePeriod(days = 350))
+            val startDate = today.minus(DatePeriod(days = 364))
 
             habitRecordRepository.getRecordsBetweenDates(startDate, today).fold(
                 onSuccess = { records ->
@@ -105,56 +106,82 @@ class HabitsViewModel(
                         )
                     }
                 },
-                onFailure = { error ->
-                    println("Failed to load history for habit $habitId: ${error.message}")
-                }
+                onFailure = { /* Sessizce devam et */ }
             )
         }
     }
 
     fun updateHabitProgress(habitId: String, date: LocalDate, value: Int) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            // GLOBAL loading state KULLANMA - Bu tüm kartları etkiler
 
             if (value == 0) {
-                // Remove completion
                 habitRecordRepository.markHabitAsIncomplete(habitId, date).fold(
-                    onSuccess = {
-                        loadHabitData(habitId)
-                        _uiState.update { it.copy(isLoading = false) }
-                    },
+                    onSuccess = { updateSingleHabitData(habitId) },
                     onFailure = { error ->
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoading = false,
-                                error = error.message ?: "Failed to update progress"
-                            )
-                        }
+                        _uiState.update { it.copy(error = error.message) }
                     }
                 )
             } else {
-                // Add or update completion
                 habitRecordRepository.markHabitAsComplete(habitId, date, value).fold(
-                    onSuccess = {
-                        loadHabitData(habitId)
-                        _uiState.update { it.copy(isLoading = false) }
-                    },
+                    onSuccess = { updateSingleHabitData(habitId) },
                     onFailure = { error ->
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoading = false,
-                                error = error.message ?: "Failed to update progress"
-                            )
-                        }
+                        _uiState.update { it.copy(error = error.message) }
                     }
                 )
             }
         }
     }
 
+    private suspend fun updateSingleHabitData(habitId: String) {
+        // Batch update - Tek seferde tüm değişiklikleri yap
+        val today = dateProvider.today()
+        val startDate = today.minus(DatePeriod(days = 364))
+
+        // Streak ve history'yi paralel olarak al
+        val streakResult = calculateStreakUseCase(habitId)
+        val historyResult = habitRecordRepository.getRecordsBetweenDates(startDate, today)
+
+        // Sonuçları tek update'te uygula
+        _uiState.update { state ->
+            var newStreaks = state.streaks
+            var newHistories = state.completionHistories
+
+            // Streak update
+            streakResult.fold(
+                onSuccess = { streakInfo ->
+                    newStreaks = newStreaks + (habitId to streakInfo.currentStreak)
+                },
+                onFailure = { /* Ignore */ }
+            )
+
+            // History update
+            historyResult.fold(
+                onSuccess = { records ->
+                    val habitRecords = records.filter { it.habitId == habitId }
+                    val habitInfo = habitsWithCompletion.value.find { it.habit.id == habitId }?.habit
+                    val targetCount = habitInfo?.targetCount ?: 1
+
+                    val completionMap = habitRecords.associate { record ->
+                        record.date to (record.completedCount.toFloat() / targetCount.coerceAtLeast(1))
+                    }
+
+                    newHistories = newHistories + (habitId to completionMap)
+                },
+                onFailure = { /* Ignore */ }
+            )
+
+            state.copy(
+                streaks = newStreaks,
+                completionHistories = newHistories
+            )
+        }
+    }
+
     fun toggleHabitCompletion(habitId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            // Sadece bu habit için loading
+            _habitLoadingStates.update { it + (habitId to true) }
 
             toggleHabitCompletionUseCase(
                 ToggleHabitCompletionUseCase.Params(
@@ -163,18 +190,16 @@ class HabitsViewModel(
                 )
             ).fold(
                 onSuccess = {
-                    loadHabitData(habitId)
-                    _uiState.update { it.copy(isLoading = false) }
+                    updateSingleHabitData(habitId)
                 },
                 onFailure = { error ->
                     _uiState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                            error = error.message ?: "An error occurred"
-                        )
+                        state.copy(error = error.message ?: "An error occurred")
                     }
                 }
             )
+
+            _habitLoadingStates.update { it - habitId }
         }
     }
 
@@ -183,7 +208,7 @@ class HabitsViewModel(
             archiveHabitUseCase(
                 ArchiveHabitUseCase.Params(habitId, true)
             ).fold(
-                onSuccess = { /* Handled by flow */ },
+                onSuccess = { /* Flow automatically handles UI update */ },
                 onFailure = { error ->
                     _uiState.update { state ->
                         state.copy(error = error.message ?: "Failed to archive habit")
@@ -199,5 +224,10 @@ class HabitsViewModel(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    // Habit-specific loading durumunu kontrol etmek için
+    fun isHabitLoading(habitId: String): Boolean {
+        return _habitLoadingStates.value[habitId] == true
     }
 }

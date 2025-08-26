@@ -60,6 +60,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -229,7 +230,7 @@ fun HabitsScreen(
                             val todayProgress = habitWithCompletion.completedCount.toFloat() /
                                     habitWithCompletion.habit.targetCount.coerceAtLeast(1)
 
-                            SwipeableHabitCard(
+                            HabitCard(
                                 habit = habitWithCompletion.habit,
                                 completionHistory = completionHistory,
                                 todayProgress = todayProgress,
@@ -238,9 +239,7 @@ fun HabitsScreen(
                                 onUpdateProgress = { date, value ->
                                     viewModel.updateHabitProgress(habitId, date, value)
                                 },
-                                onDelete = {
-                                    showDeleteConfirmation = habitId
-                                },
+                                onCardClick = { },
                                 modifier = Modifier.animateItem()
                             )
                         }

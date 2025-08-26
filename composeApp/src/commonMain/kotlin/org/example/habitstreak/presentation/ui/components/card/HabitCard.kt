@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -24,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.minus
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
@@ -113,24 +116,26 @@ fun HabitCard(
                 )
             }
 
-            // Always visible Grid
+            // Grid - Sabit bir süre geriye git (habit oluşturma tarihinden bağımsız)
+            val gridStartDate = today.minus(DatePeriod(days = 89)) // 90 gün göster (bugün dahil)
+
             HabitGrid(
                 completedDates = completionHistory,
-                startDate = habit.createdAt,
+                startDate = gridStartDate, // Habit oluşturma tarihi yerine sabit bir süre
                 today = today,
                 accentColor = habitColor,
                 rows = 3,
-                boxSize = 26.dp,
+                boxSize = 24.dp, // Biraz küçülttüm
                 spacing = 2.dp,
-                cornerRadius = 4.dp,
-                maxHistoryDays = 365L, // Show last year for better history view
+                cornerRadius = 3.dp,
+                maxHistoryDays = 90L, // 90 gün göster
                 onDateClick = { date ->
                     selectedDate = date
                     showProgressDialog = true
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(100.dp) // Fixed height for 3 rows + header
+                    .height(90.dp) // 3 row + header için yeterli
             )
         }
     }
