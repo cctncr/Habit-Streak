@@ -29,12 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -48,7 +44,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -56,11 +51,11 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,14 +89,21 @@ fun HabitsScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf<String?>(null) }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val listState = rememberLazyListState()
 
     // Calculate stats
     val todayCompleted = habitsWithCompletion.count { it.isCompletedToday }
     val totalHabits = habitsWithCompletion.size
+
+    // Calculate daily goal percentage including partial progress
     val completionPercentage = if (totalHabits > 0) {
-        (todayCompleted.toFloat() / totalHabits * 100).toInt()
+        val totalProgress = habitsWithCompletion.sumOf { habitWithCompletion ->
+            val progress = habitWithCompletion.completedCount.toFloat() /
+                    habitWithCompletion.habit.targetCount.coerceAtLeast(1)
+            progress.coerceAtMost(1f).toDouble()
+        }
+        (totalProgress / totalHabits * 100).toInt()
     } else 0
 
     // Filter habits
@@ -110,31 +112,19 @@ fun HabitsScreen(
             HabitFilter.ALL -> habitsWithCompletion
             HabitFilter.COMPLETED -> habitsWithCompletion.filter { it.isCompletedToday }
             HabitFilter.PENDING -> habitsWithCompletion.filter { !it.isCompletedToday }
-            HabitFilter.HIGH_STREAK -> habitsWithCompletion.filter {
-                (uiState.streaks[it.habit.id] ?: 0) >= 7
-            }
         }
     }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = "Today's Progress",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        AnimatedVisibility(visible = totalHabits > 0) {
-                            Text(
-                                text = "$todayCompleted of $totalHabits habits completed",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Text(
+                        text = "HabitStreak",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateToSettings) {
@@ -179,18 +169,7 @@ fun HabitsScreen(
                             ProgressOverviewCard(
                                 completionPercentage = completionPercentage,
                                 todayCompleted = todayCompleted,
-                                totalHabits = totalHabits,
-                                streakDays = uiState.streaks.values.maxOrNull() ?: 0
-                            )
-                        }
-
-                        item(key = "stats") {
-                            QuickStatsRow(
-                                totalCompleted = uiState.completionHistories.values
-                                    .flatMap { it.entries }
-                                    .count { it.value >= 1f },
-                                activeStreaks = uiState.streaks.count { it.value > 0 },
-                                bestStreak = uiState.streaks.values.maxOrNull() ?: 0
+                                totalHabits = totalHabits
                             )
                         }
 
@@ -201,10 +180,7 @@ fun HabitsScreen(
                                 habitsCount = mapOf(
                                     HabitFilter.ALL to habitsWithCompletion.size,
                                     HabitFilter.COMPLETED to todayCompleted,
-                                    HabitFilter.PENDING to (totalHabits - todayCompleted),
-                                    HabitFilter.HIGH_STREAK to habitsWithCompletion.count {
-                                        (uiState.streaks[it.habit.id] ?: 0) >= 7
-                                    }
+                                    HabitFilter.PENDING to (totalHabits - todayCompleted)
                                 )
                             )
                         }
@@ -215,7 +191,6 @@ fun HabitsScreen(
                                     HabitFilter.ALL -> "All Habits"
                                     HabitFilter.COMPLETED -> "Completed Today"
                                     HabitFilter.PENDING -> "Pending Habits"
-                                    HabitFilter.HIGH_STREAK -> "On Fire 🔥"
                                 },
                                 count = filteredHabits.size
                             )
@@ -305,8 +280,7 @@ fun HabitsScreen(
 private fun ProgressOverviewCard(
     completionPercentage: Int,
     todayCompleted: Int,
-    totalHabits: Int,
-    streakDays: Int
+    totalHabits: Int
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -338,16 +312,16 @@ private fun ProgressOverviewCard(
                     )
                 }
 
-                if (streakDays > 0) {
+                if (totalHabits > 0) {
                     AssistChip(
                         onClick = { },
-                        label = { Text("$streakDays day streak") },
+                        label = { Text("$todayCompleted of $totalHabits habits completed") },
                         leadingIcon = {
                             Icon(
-                                Icons.Default.LocalFireDepartment,
+                                Icons.Default.Check,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = Color(0xFFFF6B35)
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     )
@@ -361,68 +335,6 @@ private fun ProgressOverviewCard(
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
             )
-        }
-    }
-}
-
-@Composable
-private fun QuickStatsRow(
-    totalCompleted: Int,
-    activeStreaks: Int,
-    bestStreak: Int
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        QuickStatCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Outlined.CheckCircle,
-            value = totalCompleted.toString(),
-            label = "Completed",
-            color = MaterialTheme.colorScheme.primary
-        )
-        QuickStatCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Outlined.LocalFireDepartment,
-            value = activeStreaks.toString(),
-            label = "Active",
-            color = Color(0xFFFF6B35)
-        )
-        QuickStatCard(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Outlined.EmojiEvents,
-            value = bestStreak.toString(),
-            label = "Best",
-            color = Color(0xFFFFD700)
-        )
-    }
-}
-
-@Composable
-private fun QuickStatCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    value: String,
-    label: String,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
-            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -581,6 +493,5 @@ private fun DatePickerModal(
 enum class HabitFilter(val label: String) {
     ALL("All"),
     COMPLETED("Done"),
-    PENDING("Todo"),
-    HIGH_STREAK("Streaking")
+    PENDING("Todo")
 }

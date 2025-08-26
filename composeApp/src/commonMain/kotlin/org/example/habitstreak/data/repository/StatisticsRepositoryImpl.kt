@@ -18,8 +18,19 @@ class StatisticsRepositoryImpl(
 
     override suspend fun getHabitStatistics(habitId: String): Result<HabitStatistics> {
         return try {
+            // Get habit info to know target count
+            val habit = habitRepository.observeActiveHabits().first()
+                .find { it.id == habitId }
+                ?: return Result.failure(IllegalArgumentException("Habit not found"))
+
             val records = recordRepository.getRecordsForHabit(habitId).getOrThrow()
-            val stats = calculateStatistics(habitId, records.map { it.date })
+
+            // Only count fully completed days
+            val fullyCompletedDates = records.filter { record ->
+                record.completedCount >= habit.targetCount.coerceAtLeast(1)
+            }.map { it.date }
+
+            val stats = calculateStatistics(habitId, fullyCompletedDates, habit.targetCount)
             Result.success(stats)
         } catch (e: Exception) {
             Result.failure(e)
@@ -30,7 +41,13 @@ class StatisticsRepositoryImpl(
         return try {
             val habits = habitRepository.observeActiveHabits().first()
             val statistics = habits.mapNotNull { habit ->
-                getHabitStatistics(habit.id).getOrNull()
+                val records = recordRepository.getRecordsForHabit(habit.id).getOrNull() ?: emptyList()
+                // Only count fully completed days
+                val fullyCompletedDates = records.filter { record ->
+                    record.completedCount >= habit.targetCount.coerceAtLeast(1)
+                }.map { it.date }
+
+                calculateStatistics(habit.id, fullyCompletedDates, habit.targetCount)
             }
             Result.success(statistics)
         } catch (e: Exception) {
@@ -40,12 +57,22 @@ class StatisticsRepositoryImpl(
 
     override fun observeHabitStatistics(habitId: String): Flow<HabitStatistics> = flow {
         recordRepository.observeRecordsForHabit(habitId).collect { records ->
-            emit(calculateStatistics(habitId, records.map { it.date }))
+            val habit = habitRepository.observeActiveHabits().first()
+                .find { it.id == habitId }
+
+            if (habit != null) {
+                // Only count fully completed days
+                val fullyCompletedDates = records.filter { record ->
+                    record.completedCount >= habit.targetCount.coerceAtLeast(1)
+                }.map { it.date }
+
+                emit(calculateStatistics(habitId, fullyCompletedDates, habit.targetCount))
+            }
         }
     }
 
-    private fun calculateStatistics(habitId: String, dates: List<LocalDate>): HabitStatistics {
-        if (dates.isEmpty()) {
+    private fun calculateStatistics(habitId: String, fullyCompletedDates: List<LocalDate>, targetCount: Int): HabitStatistics {
+        if (fullyCompletedDates.isEmpty()) {
             return HabitStatistics(
                 habitId = habitId,
                 currentStreak = 0,
@@ -56,10 +83,10 @@ class StatisticsRepositoryImpl(
             )
         }
 
-        val sortedDates = dates.sorted()
+        val sortedDates = fullyCompletedDates.sorted()
         val today = dateProvider.today()
 
-        // Calculate streaks
+        // Calculate streaks - only using FULLY completed dates
         val (currentStreak, longestStreak) = calculateStreaks(sortedDates, today)
 
         // Calculate completion rate for last 30 days
@@ -76,7 +103,7 @@ class StatisticsRepositoryImpl(
             currentStreak = currentStreak,
             longestStreak = longestStreak,
             completionRate = completionRate.coerceIn(0f, 1f),
-            totalCompletions = dates.size,
+            totalCompletions = fullyCompletedDates.size, // Only count fully completed days
             lastCompletedDate = sortedDates.lastOrNull()
         )
     }

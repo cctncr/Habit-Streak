@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
+import kotlinx.datetime.LocalDate
 
 @Composable
 fun HabitGrid(
@@ -87,7 +88,7 @@ fun HabitGrid(
                             date = date,
                             progress = completedDates[date] ?: 0f,
                             isToday = date == today,
-                            isFirstOfMonth = date.dayOfMonth == 1,
+                            isFirstOfMonth = date.day == 1,
                             accentColor = accentColor,
                             boxSize = boxSize,
                             cornerRadius = cornerRadius,
@@ -150,29 +151,41 @@ private fun DateCell(
     ) {
         when {
             isFirstOfMonth -> {
+                // Show month abbreviation for first day of month
                 Text(
                     text = getMonthAbbreviation(date.month.number),
-                    fontSize = (boxSize.value * 0.22).sp,
+                    fontSize = (boxSize.value * 0.20).sp,
                     fontWeight = FontWeight.Bold,
                     color = if (progress >= 0.5f) Color.White
                     else MaterialTheme.colorScheme.onSurface
                 )
             }
             progress >= 1f -> {
+                // Show check mark for completed days
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    modifier = Modifier.size(boxSize * 0.5f),
+                    modifier = Modifier.size(boxSize * 0.45f),
                     tint = Color.White
                 )
             }
             progress > 0f -> {
+                // Show percentage for partially completed days
                 Text(
-                    text = "${(progress * 100).toInt()}",
-                    fontSize = (boxSize.value * 0.25).sp,
+                    text = "${(progress * 100).toInt()} %",
+                    fontSize = (boxSize.value * 0.22).sp,
                     fontWeight = FontWeight.Bold,
                     color = if (progress >= 0.5f) Color.White
                     else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            else -> {
+                // Show day number for incomplete days
+                Text(
+                    text = date.day.toString(),
+                    fontSize = (boxSize.value * 0.22).sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

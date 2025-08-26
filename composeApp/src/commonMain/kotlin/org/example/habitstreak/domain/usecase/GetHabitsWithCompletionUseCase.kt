@@ -26,10 +26,13 @@ class GetHabitsWithCompletionUseCase(
         ) { habits, records ->
             habits.map { habit ->
                 val record = records.find { it.habitId == habit.id }
+                val completedCount = record?.completedCount ?: 0
+                val targetCount = habit.targetCount.coerceAtLeast(1)
+
                 HabitWithCompletion(
                     habit = habit,
-                    isCompletedToday = record != null,
-                    completedCount = record?.completedCount ?: 0
+                    isCompletedToday = completedCount >= targetCount,
+                    completedCount = completedCount
                 )
             }
         }

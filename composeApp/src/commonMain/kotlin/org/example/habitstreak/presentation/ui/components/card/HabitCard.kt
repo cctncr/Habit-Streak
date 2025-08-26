@@ -1,5 +1,6 @@
 package org.example.habitstreak.presentation.ui.components.card
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,15 +16,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.minus
@@ -100,6 +103,31 @@ fun HabitCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
+                // Streak Badge
+                if (currentStreak > 0) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFFFE5B4))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "🔥",
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = currentStreak.toString(),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFF6B35)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+
                 // Progress Button
                 HabitProgressButton(
                     progress = todayProgress,
@@ -117,25 +145,25 @@ fun HabitCard(
             }
 
             // Grid - Sabit bir süre geriye git (habit oluşturma tarihinden bağımsız)
-            val gridStartDate = today.minus(DatePeriod(days = 89)) // 90 gün göster (bugün dahil)
+            val gridStartDate = today.minus(DatePeriod(days = 89))
 
             HabitGrid(
                 completedDates = completionHistory,
-                startDate = gridStartDate, // Habit oluşturma tarihi yerine sabit bir süre
+                startDate = gridStartDate,
                 today = today,
                 accentColor = habitColor,
                 rows = 3,
-                boxSize = 24.dp, // Biraz küçülttüm
+                boxSize = 28.dp, // Biraz büyüttüm gün numarası için
                 spacing = 2.dp,
-                cornerRadius = 3.dp,
-                maxHistoryDays = 90L, // 90 gün göster
+                cornerRadius = 4.dp,
+                maxHistoryDays = 90L,
                 onDateClick = { date ->
                     selectedDate = date
                     showProgressDialog = true
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(90.dp) // 3 row + header için yeterli
+                    .height(100.dp) // Biraz yükselttim
             )
         }
     }
