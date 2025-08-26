@@ -10,6 +10,7 @@ sealed class Screen {
     data class HabitDetail(val habitId: String) : Screen()
     data object Statistics : Screen()
     data object Settings : Screen()
+    data object ArchivedHabits : Screen()
 }
 
 @Stable
@@ -24,7 +25,8 @@ class NavigationState {
 
     fun navigateBack(): Boolean {
         if (_backStack.size > 1) {
-            _backStack.removeLast()
+            // removeLast() yerine removeAt kullanıyoruz (API level uyumluluğu için)
+            _backStack.removeAt(_backStack.size - 1)
             return true
         }
         return false

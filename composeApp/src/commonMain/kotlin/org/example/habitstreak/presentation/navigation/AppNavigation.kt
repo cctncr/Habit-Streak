@@ -10,22 +10,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
+import org.example.habitstreak.presentation.screen.archived.ArchivedHabitsScreen
 import org.example.habitstreak.presentation.screen.create_edit_habit.CreateEditHabitScreen
 import org.example.habitstreak.presentation.screen.habits.HabitsScreen
 import org.example.habitstreak.presentation.screen.settings.SettingsScreen
 import org.example.habitstreak.presentation.screen.statistics.StatisticsScreen
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AppNavigation() {
     val navigationState = rememberNavigationState()
     var currentScreen by remember { mutableStateOf(navigationState.currentScreen) }
 
     BackHandler(enabled = currentScreen != Screen.Habits) {
-        if (navigationState.navigateBack()) {
-            currentScreen = navigationState.currentScreen
-        }
+        navigationState.navigateBack()
+        currentScreen = navigationState.currentScreen
     }
 
     AnimatedContent(
@@ -57,7 +55,8 @@ fun AppNavigation() {
                             slideOutHorizontally(animationSpec = tween(300))
                 }
             }
-        }
+        },
+        label = "screen_transition"
     ) { screen ->
         when (screen) {
             is Screen.Habits -> {
@@ -81,9 +80,8 @@ fun AppNavigation() {
                 CreateEditHabitScreen(
                     habitId = screen.habitId,
                     onNavigateBack = {
-                        if (navigationState.navigateBack()) {
-                            currentScreen = navigationState.currentScreen
-                        }
+                        navigationState.navigateBack()
+                        currentScreen = navigationState.currentScreen
                     }
                 )
             }
@@ -91,9 +89,8 @@ fun AppNavigation() {
             is Screen.Statistics -> {
                 StatisticsScreen(
                     onNavigateBack = {
-                        if (navigationState.navigateBack()) {
-                            currentScreen = navigationState.currentScreen
-                        }
+                        navigationState.navigateBack()
+                        currentScreen = navigationState.currentScreen
                     },
                     onNavigateToHabit = { habitId ->
                         navigationState.navigateTo(Screen.CreateEdit(habitId))
@@ -105,24 +102,37 @@ fun AppNavigation() {
             is Screen.Settings -> {
                 SettingsScreen(
                     onNavigateBack = {
-                        if (navigationState.navigateBack()) {
-                            currentScreen = navigationState.currentScreen
-                        }
+                        navigationState.navigateBack()
+                        currentScreen = navigationState.currentScreen
                     },
                     onNavigateToAbout = {
-                        // Navigate to about screen
+                        // TODO: Navigate to about screen
                     },
                     onNavigateToBackup = {
-                        // Navigate to backup screen
+                        // TODO: Navigate to backup screen
                     },
                     onNavigateToArchivedHabits = {
                         // Navigate to archived habits
+                        navigationState.navigateTo(Screen.ArchivedHabits)
+                        currentScreen = navigationState.currentScreen
+                    }
+                )
+            }
+
+            is Screen.ArchivedHabits -> {
+                ArchivedHabitsScreen(
+                    onNavigateBack = {
+                        navigationState.navigateBack()
+                        currentScreen = navigationState.currentScreen
+                    },
+                    onRestoreHabit = { habitId ->
+                        // TODO: Implement restore functionality
                     }
                 )
             }
 
             is Screen.HabitDetail -> {
-                // Future implementation
+                // TODO: Future implementation
             }
         }
     }

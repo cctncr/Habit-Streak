@@ -1,4 +1,4 @@
-package org.example.habitstreak.presentation.ui.components.habit
+package org.example.habitstreak.presentation.ui.components.card
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.datetime.LocalDate
@@ -41,45 +42,61 @@ fun HabitGrid(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
-    // Calculate date range
+    // Grid'i bugünden başlatıp geriye doğru göstereceğiz
+    // En fazla maxHistoryDays kadar geriye gidebiliriz
     val earliestDate = maxOf(
         startDate,
-        today.minus(DatePeriod(days = maxHistoryDays.toInt()))
+        LocalDate.fromEpochDays(today.toEpochDays() - maxHistoryDays.toInt())
     )
 
-    // Calculate columns needed
-    val totalDays = earliestDate.until(today, DateTimeUnit.DAY) + 1
-    val columnsNeeded = ((totalDays + rows - 1) / rows).coerceAtLeast(1)
+    // Toplam gün sayısını hesapla
+    val totalDays = (today.toEpochDays() - earliestDate.toEpochDays() + 1).toInt()
+    val totalColumns = ((totalDays + rows - 1) / rows).coerceAtLeast(1)
 
-    // Scroll to today (rightmost) on first composition
+    // İlk açılışta en sağa (bugüne) scroll et
     LaunchedEffect(Unit) {
-        listState.scrollToItem(0)
+        coroutineScope.launch {
+            // Biraz bekle ve sonra scroll et
+            delay(100)
+            if (totalColumns > 0) {
+                listState.animateScrollToItem(totalColumns - 1)
+            }
+        }
     }
 
     LazyRow(
         state = listState,
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(spacing),
-        reverseLayout = true // Today on the right
+        reverseLayout = false // Soldan sağa düzen
     ) {
-        items(count = 1555) { columnIndex ->
+        items(count = totalColumns) { columnIndex ->
             Column(
                 verticalArrangement = Arrangement.spacedBy(spacing)
             ) {
-                // Calculate dates for this column (top to bottom)
-                val topDate = today.minus(DatePeriod(days = columnIndex * rows))
+                // Bu kolondaki günleri hesapla (yukarıdan aşağıya)
+                val firstDateInColumn = LocalDate.fromEpochDays(
+                    earliestDate.toEpochDays() + (columnIndex * rows)
+                )
 
-                // Month header (only if first day of month is in column)
-                val columnDates = (0 until rows).map { rowIndex ->
-                    topDate.minus(DatePeriod(days = rows - 1 - rowIndex))
+                // Ay başlığı kontrolü
+                var showMonthHeader = false
+                var monthDate: LocalDate? = null
+
+                // Bu kolondaki tüm tarihleri kontrol et
+                for (rowIndex in 0 until rows) {
+                    val date = LocalDate.fromEpochDays(
+                        firstDateInColumn.toEpochDays() + rowIndex
+                    )
+                    if (date <= today && date >= earliestDate && date.day == 1) {
+                        showMonthHeader = true
+                        monthDate = date
+                        break
+                    }
                 }
 
-                val showMonthHeader = columnDates.any {
-                    it.day == 1 && it >= earliestDate && it <= today
-                }
-
-                if (showMonthHeader) {
-                    val monthDate = columnDates.first { it.day == 1 }
+                // Ay başlığı veya boşluk
+                if (showMonthHeader && monthDate != null) {
                     Text(
                         text = getMonthAbbreviation(monthDate.month.number),
                         fontSize = 9.sp,
@@ -93,21 +110,37 @@ fun HabitGrid(
                     Spacer(modifier = Modifier.height(14.dp))
                 }
 
-                // Date cells (top to bottom)
-                columnDates.forEach { date ->
-                    if (date in earliestDate..today) {
-                        DateCell(
-                            date = date,
-                            progress = completedDates[date] ?: 0f,
-                            isToday = date == today,
-                            accentColor = accentColor,
-                            boxSize = boxSize,
-                            cornerRadius = cornerRadius,
-                            onClick = { onDateClick(date) }
-                        )
-                    } else {
-                        // Empty spacer for dates outside range
-                        Spacer(modifier = Modifier.size(boxSize))
+                // Tarih hücreleri (yukarıdan aşağıya)
+                for (rowIndex in 0 until rows) {
+                    val date = LocalDate.fromEpochDays(
+                        firstDateInColumn.toEpochDays() + rowIndex
+                    )
+
+                    when {
+                        date > today -> {
+                            // Gelecek tarihler için boş hücre
+                            FutureDateCell(
+                                boxSize = boxSize,
+                                cornerRadius = cornerRadius
+                            )
+                        }
+                        date >= earliestDate -> {
+                            // Normal tarih hücresi
+                            DateCell(
+                                date = date,
+                                progress = completedDates[date] ?: 0f,
+                                isToday = date == today,
+                                isFuture = false,
+                                accentColor = accentColor,
+                                boxSize = boxSize,
+                                cornerRadius = cornerRadius,
+                                onClick = { onDateClick(date) }
+                            )
+                        }
+                        else -> {
+                            // Tarih aralığı dışındaki hücreler için boşluk
+                            Spacer(modifier = Modifier.size(boxSize))
+                        }
                     }
                 }
             }
@@ -120,6 +153,7 @@ private fun DateCell(
     date: LocalDate,
     progress: Float,
     isToday: Boolean,
+    isFuture: Boolean,
     accentColor: Color,
     boxSize: Dp,
     cornerRadius: Dp,
@@ -127,6 +161,7 @@ private fun DateCell(
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = when {
+            isFuture -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             progress >= 1f -> accentColor
             progress >= 0.75f -> accentColor.copy(alpha = 0.8f)
             progress >= 0.5f -> accentColor.copy(alpha = 0.6f)
@@ -145,7 +180,7 @@ private fun DateCell(
             .then(
                 if (isToday) {
                     Modifier.border(
-                        width = 1.5.dp,
+                        width = 2.dp,
                         color = MaterialTheme.colorScheme.primary,
                         shape = RoundedCornerShape(cornerRadius)
                     )
@@ -153,14 +188,17 @@ private fun DateCell(
                     Modifier
                 }
             )
-            .clickable { onClick() }
+            .clickable(enabled = !isFuture) { onClick() }
     ) {
         when {
+            isFuture -> {
+                // Gelecek günler için hiçbir şey gösterme
+            }
             progress >= 1f -> {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    modifier = Modifier.size(boxSize * 0.6f),
+                    modifier = Modifier.size(boxSize * 0.5f),
                     tint = Color.White
                 )
             }
@@ -169,18 +207,33 @@ private fun DateCell(
                     text = "${(progress * 100).toInt()}",
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = if (progress >= 0.5f) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             else -> {
-                Text(
+                // Tamamlanmamış günler için sadece arka plan rengi göster
+                // İsteğe bağlı: Tarih numarasını gösterebilirsiniz
+                /*Text(
                     text = date.dayOfMonth.toString(),
-                    fontSize = 9.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+                    fontSize = 8.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                )*/
             }
         }
     }
+}
+
+@Composable
+private fun FutureDateCell(
+    boxSize: Dp,
+    cornerRadius: Dp
+) {
+    Box(
+        modifier = Modifier
+            .size(boxSize)
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+    )
 }
 
 private fun getMonthAbbreviation(month: Int): String {

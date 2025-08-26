@@ -72,28 +72,52 @@ fun HabitFrequency.serialize(): Pair<String, String> = when (this) {
     is HabitFrequency.Weekly -> "WEEKLY" to Json.encodeToString(daysOfWeek.map { it.name })
     is HabitFrequency.Monthly -> "MONTHLY" to Json.encodeToString(daysOfMonth)
     is HabitFrequency.Custom -> "CUSTOM" to Json.encodeToString(
-        mapOf("interval" to repeatInterval, "unit" to repeatUnit.name)
+        mapOf("interval" to repeatInterval.toString(), "unit" to repeatUnit.name)
     )
 }
 
 fun parseFrequency(type: String, data: String): HabitFrequency = when (type) {
     "DAILY" -> HabitFrequency.Daily
     "WEEKLY" -> {
-        val days = Json.decodeFromString<List<String>>(data)
-            .map { DayOfWeek.valueOf(it) }
-            .toSet()
-        HabitFrequency.Weekly(days)
+        if (data.isBlank()) {
+            HabitFrequency.Daily // Fallback
+        } else {
+            try {
+                val days = Json.decodeFromString<List<String>>(data)
+                    .map { DayOfWeek.valueOf(it) }
+                    .toSet()
+                HabitFrequency.Weekly(days)
+            } catch (e: Exception) {
+                HabitFrequency.Daily // Fallback on error
+            }
+        }
     }
     "MONTHLY" -> {
-        val days = Json.decodeFromString<Set<Int>>(data)
-        HabitFrequency.Monthly(days)
+        if (data.isBlank()) {
+            HabitFrequency.Daily // Fallback
+        } else {
+            try {
+                val days = Json.decodeFromString<Set<Int>>(data)
+                HabitFrequency.Monthly(days)
+            } catch (e: Exception) {
+                HabitFrequency.Daily // Fallback on error
+            }
+        }
     }
     "CUSTOM" -> {
-        val customData = Json.decodeFromString<Map<String, String>>(data)
-        HabitFrequency.Custom(
-            customData["interval"]?.toInt() ?: 1,
-            RepeatUnit.valueOf(customData["unit"] ?: "DAYS")
-        )
+        if (data.isBlank()) {
+            HabitFrequency.Daily // Fallback
+        } else {
+            try {
+                val customData = Json.decodeFromString<Map<String, String>>(data)
+                HabitFrequency.Custom(
+                    customData["interval"]?.toIntOrNull() ?: 1,
+                    RepeatUnit.valueOf(customData["unit"] ?: "DAYS")
+                )
+            } catch (e: Exception) {
+                HabitFrequency.Daily // Fallback on error
+            }
+        }
     }
     else -> HabitFrequency.Daily
 }

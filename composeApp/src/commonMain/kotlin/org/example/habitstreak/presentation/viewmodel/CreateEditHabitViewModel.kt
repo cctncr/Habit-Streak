@@ -101,61 +101,77 @@ class CreateEditHabitViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            if (state.isEditMode && habitId != null) {
-                // Update existing habit
-                habitRepository.getHabitById(habitId).fold(
-                    onSuccess = { existingHabit ->
-                        existingHabit?.let { habit ->
-                            habitRepository.updateHabit(
-                                habit.copy(
-                                    title = state.title,
-                                    description = state.description,
-                                    icon = state.selectedIcon,
-                                    color = state.selectedColor,
-                                    frequency = state.frequency,
-                                    reminderTime = state.reminderTime,
-                                    isReminderEnabled = state.reminderTime != null,
-                                    targetCount = state.targetCount,
-                                    unit = state.unit
+            try {
+                if (state.isEditMode && habitId != null) {
+                    // Update existing habit
+                    habitRepository.getHabitById(habitId).fold(
+                        onSuccess = { existingHabit ->
+                            existingHabit?.let { habit ->
+                                habitRepository.updateHabit(
+                                    habit.copy(
+                                        title = state.title,
+                                        description = state.description,
+                                        icon = state.selectedIcon,
+                                        color = state.selectedColor,
+                                        frequency = state.frequency,
+                                        reminderTime = state.reminderTime,
+                                        isReminderEnabled = state.reminderTime != null,
+                                        targetCount = state.targetCount,
+                                        unit = state.unit
+                                    )
+                                ).fold(
+                                    onSuccess = {
+                                        _uiState.update { it.copy(isLoading = false) }
+                                        onSuccess()
+                                    },
+                                    onFailure = { error ->
+                                        _uiState.update { it.copy(
+                                            isLoading = false,
+                                            error = error.message
+                                        )}
+                                    }
                                 )
-                            ).fold(
-                                onSuccess = { onSuccess() },
-                                onFailure = { error ->
-                                    _uiState.update { it.copy(
-                                        isLoading = false,
-                                        error = error.message
-                                    )}
-                                }
-                            )
+                            }
+                        },
+                        onFailure = { error ->
+                            _uiState.update { it.copy(
+                                isLoading = false,
+                                error = error.message
+                            )}
                         }
-                    },
-                    onFailure = { /* Handle error */ }
-                )
-            } else {
-                // Create new habit
-                createHabitUseCase(
-                    CreateHabitUseCase.Params(
-                        title = state.title,
-                        description = state.description,
-                        icon = state.selectedIcon,
-                        color = state.selectedColor,
-                        frequency = state.frequency,
-                        reminderTime = state.reminderTime,
-                        targetCount = state.targetCount,
-                        unit = state.unit
                     )
-                ).fold(
-                    onSuccess = { onSuccess() },
-                    onFailure = { error ->
-                        _uiState.update { it.copy(
-                            isLoading = false,
-                            error = error.message
-                        )}
-                    }
-                )
+                } else {
+                    // Create new habit
+                    createHabitUseCase(
+                        CreateHabitUseCase.Params(
+                            title = state.title,
+                            description = state.description,
+                            icon = state.selectedIcon,
+                            color = state.selectedColor,
+                            frequency = state.frequency,
+                            reminderTime = state.reminderTime,
+                            targetCount = state.targetCount,
+                            unit = state.unit
+                        )
+                    ).fold(
+                        onSuccess = {
+                            _uiState.update { it.copy(isLoading = false) }
+                            onSuccess()
+                        },
+                        onFailure = { error ->
+                            _uiState.update { it.copy(
+                                isLoading = false,
+                                error = error.message
+                            )}
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = e.message ?: "An error occurred"
+                )}
             }
-
-            _uiState.update { it.copy(isLoading = false) }
         }
     }
 

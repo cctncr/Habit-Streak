@@ -20,15 +20,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
-import org.example.habitstreak.presentation.ui.components.habit.HabitGrid
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 
 @Composable
@@ -123,17 +120,17 @@ fun HabitCard(
                 today = today,
                 accentColor = habitColor,
                 rows = 3,
-                boxSize = 28.dp,
-                spacing = 3.dp,
+                boxSize = 26.dp,
+                spacing = 2.dp,
                 cornerRadius = 4.dp,
-                maxHistoryDays = 90L, // Show last 90 days for better performance
+                maxHistoryDays = 365L, // Show last year for better history view
                 onDateClick = { date ->
                     selectedDate = date
                     showProgressDialog = true
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(112.dp) // Fixed height for 3 rows + header
+                    .height(100.dp) // Fixed height for 3 rows + header
             )
         }
     }
@@ -145,7 +142,8 @@ fun HabitCard(
         targetCount = habit.targetCount,
         unit = habit.unit,
         currentValue = selectedDate?.let { date ->
-            ((completionHistory[date] ?: (0f * habit.targetCount))).toInt()
+            val progress = completionHistory[date] ?: 0f
+            (progress * habit.targetCount).toInt()
         },
         onDismiss = {
             showProgressDialog = false
