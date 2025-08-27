@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import org.example.habitstreak.presentation.screen.archived.ArchivedHabitsScreen
 import org.example.habitstreak.presentation.screen.create_edit_habit.CreateEditHabitScreen
+import org.example.habitstreak.presentation.screen.habit_detail.HabitDetailScreen
 import org.example.habitstreak.presentation.screen.habits.HabitsScreen
 import org.example.habitstreak.presentation.screen.settings.SettingsScreen
 import org.example.habitstreak.presentation.screen.statistics.StatisticsScreen
@@ -71,6 +72,10 @@ fun AppNavigation() {
                     },
                     onNavigateToSettings = {
                         navigationState.navigateTo(Screen.Settings)
+                        currentScreen = navigationState.currentScreen
+                    },
+                    onNavigateToHabitDetail = { habitId ->
+                        navigationState.navigateTo(Screen.HabitDetail(habitId))
                         currentScreen = navigationState.currentScreen
                     }
                 )
@@ -132,7 +137,17 @@ fun AppNavigation() {
             }
 
             is Screen.HabitDetail -> {
-                // TODO: Future implementation
+                HabitDetailScreen(
+                    habitId = screen.habitId,
+                    onNavigateBack = {
+                        navigationState.navigateBack()
+                        currentScreen = navigationState.currentScreen
+                    },
+                    onNavigateToEdit = {
+                        navigationState.navigateTo(Screen.CreateEdit(screen.habitId))
+                        currentScreen = navigationState.currentScreen
+                    }
+                )
             }
         }
     }

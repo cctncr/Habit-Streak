@@ -15,6 +15,7 @@ import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.core.util.UuidGenerator
+import org.example.habitstreak.data.local.HabitRecord as DataHabitRecord
 
 class HabitRecordRepositoryImpl(
     private val database: HabitDatabase,
@@ -26,21 +27,34 @@ class HabitRecordRepositoryImpl(
     override suspend fun markHabitAsComplete(
         habitId: String,
         date: LocalDate,
-        count: Int
+        count: Int,
+        note: String  // Note parametresi eklendi
     ): Result<HabitRecord> = withContext(Dispatchers.IO) {
         try {
             val existing = queries.selectByHabitAndDate(habitId, date.toString())
                 .executeAsOneOrNull()
 
-            val record = existing?.toDomain()?.copy(completedCount = count)
-                ?: HabitRecord(
+            val record = if (existing != null) {
+                // Mevcut record'u güncelle, note'u koru veya güncelle
+                HabitRecord(
+                    id = existing.id,
+                    habitId = habitId,
+                    date = date,
+                    completedCount = count,
+                    note = note.ifEmpty { existing.note }, // Note'u koru veya güncelle
+                    completedAt = dateProvider.today()
+                )
+            } else {
+                // Yeni record oluştur
+                HabitRecord(
                     id = UuidGenerator.generateUUID(),
                     habitId = habitId,
                     date = date,
                     completedCount = count,
-                    note = "",
+                    note = note,
                     completedAt = dateProvider.today()
                 )
+            }
 
             queries.transaction {
                 queries.insert(record.toData())
@@ -117,5 +131,50 @@ class HabitRecordRepositoryImpl(
             .asFlow()
             .mapToList(Dispatchers.IO)
             .map { list -> list.map { it.toDomain() } }
+    }
+
+    override suspend fun updateRecordNote(
+        habitId: String,
+        date: LocalDate,
+        note: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val existing = queries.selectByHabitAndDate(habitId, date.toString())
+                .executeAsOneOrNull()
+
+            if (existing != null) {
+                // Mevcut record'u note ile güncelle
+                val updatedRecord = DataHabitRecord(
+                    id = existing.id,
+                    habitId = existing.habitId,
+                    date = existing.date,
+                    completedCount = existing.completedCount,
+                    note = note, // Update note
+                    completedAt = existing.completedAt
+                )
+                queries.transaction {
+                    queries.insert(updatedRecord) // INSERT OR REPLACE
+                }
+                Result.success(Unit)
+            } else if (note.isNotBlank()) {
+                // Eğer record yoksa ve not boş değilse, yeni record oluştur (0 progress ile)
+                val newRecord = DataHabitRecord(
+                    id = UuidGenerator.generateUUID(),
+                    habitId = habitId,
+                    date = date.toString(),
+                    completedCount = 0L,
+                    note = note,
+                    completedAt = dateProvider.today().toString()
+                )
+                queries.transaction {
+                    queries.insert(newRecord)
+                }
+                Result.success(Unit)
+            } else {
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

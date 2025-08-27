@@ -13,7 +13,7 @@ import org.example.habitstreak.domain.util.DateProvider
  */
 object DateFormatter {
     fun formatMonthShort(date: LocalDate): String {
-        return when(date.month.number) {
+        return when (date.month.number) {
             1 -> "Jan"
             2 -> "Feb"
             3 -> "Mar"
@@ -82,7 +82,7 @@ fun DateProvider.daysFromNow(days: Int): LocalDate {
 }
 
 /**
- * Extension functions for LocalDate
+ * Extension function to check if a date is in current week
  */
 fun LocalDate.isInCurrentWeek(today: LocalDate): Boolean {
     val startOfWeek = today.minus(DatePeriod(days = today.dayOfWeek.ordinal))

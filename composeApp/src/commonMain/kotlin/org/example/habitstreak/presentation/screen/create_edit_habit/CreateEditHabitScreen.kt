@@ -69,9 +69,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -89,12 +87,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.datetime.LocalTime
 import org.example.habitstreak.domain.model.DayOfWeek
 import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
 import org.example.habitstreak.domain.model.RepeatUnit
+import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
@@ -1149,44 +1147,6 @@ private fun FrequencySelectionContent(
             Text("Set Custom Interval")
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ReminderTimeDialog(
-    currentTime: LocalTime?,
-    onTimeSelected: (LocalTime) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val timePickerState = rememberTimePickerState(
-        initialHour = currentTime?.hour ?: 9,
-        initialMinute = currentTime?.minute ?: 0,
-        is24Hour = false
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Set Reminder Time") },
-        text = {
-            TimePicker(state = timePickerState)
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onTimeSelected(
-                        LocalTime(timePickerState.hour, timePickerState.minute)
-                    )
-                }
-            ) {
-                Text("Set")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }
 
 private fun getFrequencyDescription(frequency: HabitFrequency): String {

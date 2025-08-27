@@ -18,6 +18,7 @@ import org.example.habitstreak.data.local.HabitDatabase
 import org.example.habitstreak.data.repository.StatisticsRepositoryImpl
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.domain.util.DateProviderImpl
+import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 
 val appModule = module {
     // Core utilities
@@ -42,4 +43,13 @@ val appModule = module {
     factory { HabitsViewModel(get(), get(), get(), get(), get(), get()) }
     factory { (habitId: String?) -> CreateEditHabitViewModel(get(), get(), habitId) }
     factory { StatisticsViewModel(get(), get()) }
+    factory { (habitId: String) ->
+        HabitDetailViewModel(
+            habitId = habitId,
+            habitRepository = get(),
+            habitRecordRepository = get(),
+            calculateStreakUseCase = get(),
+            dateProvider = get()
+        )
+    }
 }

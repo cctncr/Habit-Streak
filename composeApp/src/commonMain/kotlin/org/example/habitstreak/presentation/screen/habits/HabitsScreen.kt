@@ -79,6 +79,7 @@ fun HabitsScreen(
     onNavigateToCreateHabit: () -> Unit,
     onNavigateToStatistics: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToHabitDetail: (String) -> Unit,
     viewModel: HabitsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -187,7 +188,7 @@ fun HabitsScreen(
 
                         stickyHeader(key = "header") {
                             SectionHeader(
-                                title = when(selectedFilter) {
+                                title = when (selectedFilter) {
                                     HabitFilter.ALL -> "All Habits"
                                     HabitFilter.COMPLETED -> "Completed Today"
                                     HabitFilter.PENDING -> "Pending Habits"
@@ -201,7 +202,8 @@ fun HabitsScreen(
                             key = { it.habit.id }
                         ) { habitWithCompletion ->
                             val habitId = habitWithCompletion.habit.id
-                            val completionHistory = uiState.completionHistories[habitId] ?: emptyMap()
+                            val completionHistory =
+                                uiState.completionHistories[habitId] ?: emptyMap()
                             val todayProgress = habitWithCompletion.completedCount.toFloat() /
                                     habitWithCompletion.habit.targetCount.coerceAtLeast(1)
 
@@ -214,7 +216,9 @@ fun HabitsScreen(
                                 onUpdateProgress = { date, value ->
                                     viewModel.updateHabitProgress(habitId, date, value)
                                 },
-                                onCardClick = { },
+                                onCardClick = {
+                                    onNavigateToHabitDetail(habitId)
+                                },
                                 modifier = Modifier.animateItem()
                             )
                         }
@@ -355,7 +359,13 @@ private fun FilterChipsRow(
                 onClick = { onFilterSelected(filter) },
                 label = { Text("${filter.label} (${habitsCount[filter] ?: 0})") },
                 leadingIcon = if (selectedFilter == filter) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 } else null
             )
         }
@@ -374,8 +384,16 @@ private fun SectionHeader(title: String, count: Int) {
                 .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text("$count habits", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                "$count habits",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

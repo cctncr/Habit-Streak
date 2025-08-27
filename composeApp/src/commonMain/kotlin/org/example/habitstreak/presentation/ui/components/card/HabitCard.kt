@@ -37,7 +37,7 @@ import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 @Composable
 fun HabitCard(
     habit: Habit,
-    completionHistory: Map<LocalDate, Float>, // Date -> progress (0-1)
+    completionHistory: Map<LocalDate, Float>,
     todayProgress: Float,
     currentStreak: Int,
     today: LocalDate,
@@ -52,6 +52,7 @@ fun HabitCard(
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
 
     Card(
+        onClick = onCardClick,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -153,7 +154,7 @@ fun HabitCard(
                 today = today,
                 accentColor = habitColor,
                 rows = 3,
-                boxSize = 28.dp, // Biraz büyüttüm gün numarası için
+                boxSize = 28.dp,
                 spacing = 2.dp,
                 cornerRadius = 4.dp,
                 maxHistoryDays = 90L,
@@ -163,7 +164,7 @@ fun HabitCard(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(100.dp) // Biraz yükselttim
+                    .height(100.dp)
             )
         }
     }
