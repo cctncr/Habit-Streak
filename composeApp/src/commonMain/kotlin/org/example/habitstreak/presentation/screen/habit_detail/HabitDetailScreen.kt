@@ -56,6 +56,7 @@ import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import org.example.habitstreak.domain.util.DateProvider
+import org.example.habitstreak.presentation.ui.components.common.StreakBadge
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,6 +90,7 @@ fun HabitDetailScreen(
             topBar = {
                 HabitDetailTopBar(
                     habit = habit,
+                    statistics = uiState.statistics,
                     onNavigateBack = onNavigateBack,
                     onEdit = onNavigateToEdit,
                     onDelete = { showDeleteDialog = true }
@@ -101,12 +103,12 @@ fun HabitDetailScreen(
                     .padding(paddingValues)
                     .verticalScroll(scrollState)
             ) {
-                // Header with stats
-                HabitHeader(
-                    habit = habit,
-                    statistics = uiState.statistics,
-                    modifier = Modifier.padding(16.dp)
-                )
+                if (habit.description.isNotBlank()) {
+                    HabitDescriptionStrip(
+                        description = habit.description,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
 
                 // Calendar View - Güncellenmiş version
                 CalendarView(
@@ -308,6 +310,7 @@ fun HabitDetailScreen(
 @Composable
 private fun HabitDetailTopBar(
     habit: Habit,
+    statistics: HabitDetailViewModel.HabitStats?,
     onNavigateBack: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -325,8 +328,18 @@ private fun HabitDetailTopBar(
                 Text(
                     text = habit.title,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
+                // Kompakt streak badge ekle
+                statistics?.let { stats ->
+                    if (stats.currentStreak > 0) {
+                        StreakBadge(
+                            streak = stats.currentStreak,
+                            modifier = Modifier
+                        )
+                    }
+                }
             }
         },
         navigationIcon = {
@@ -343,6 +356,27 @@ private fun HabitDetailTopBar(
             }
         }
     )
+}
+
+@Composable
+private fun HabitDescriptionStrip(
+    description: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }
 
 @Composable
