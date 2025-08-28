@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.datetime.LocalDate
+import org.example.habitstreak.domain.model.HabitRecord
 
 @Composable
 fun HabitGrid(
@@ -37,6 +39,7 @@ fun HabitGrid(
     cornerRadius: Dp = 3.dp,
     maxHistoryDays: Long = 365L,
     accentColor: Color = MaterialTheme.colorScheme.primary,
+    habitRecords: List<HabitRecord> = emptyList(), // Note bilgisi için eklendi
     onDateClick: (LocalDate) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
@@ -84,9 +87,12 @@ fun HabitGrid(
                     )
 
                     if (date <= today && date >= gridStartDate) {
+                        val hasNote = habitRecords.any { it.date == date && it.note.isNotBlank() }
+
                         DateCell(
                             date = date,
                             progress = completedDates[date] ?: 0f,
+                            hasNote = hasNote, // Eklendi
                             isToday = date == today,
                             isFirstOfMonth = date.day == 1,
                             accentColor = accentColor,
@@ -112,6 +118,7 @@ fun HabitGrid(
 private fun DateCell(
     date: LocalDate,
     progress: Float,
+    hasNote: Boolean = false, // Eklendi
     isToday: Boolean,
     isFirstOfMonth: Boolean,
     accentColor: Color,
@@ -125,6 +132,7 @@ private fun DateCell(
             progress >= 0.75f -> accentColor.copy(alpha = 0.8f)
             progress >= 0.5f -> accentColor.copy(alpha = 0.6f)
             progress > 0f -> accentColor.copy(alpha = 0.4f)
+            hasNote -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f) // Note indicator
             else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         },
         label = "bg_color"
@@ -151,7 +159,6 @@ private fun DateCell(
     ) {
         when {
             isFirstOfMonth -> {
-                // Show month abbreviation for first day of month
                 Text(
                     text = getMonthAbbreviation(date.month.number),
                     fontSize = (boxSize.value * 0.20).sp,
@@ -161,7 +168,6 @@ private fun DateCell(
                 )
             }
             progress >= 1f -> {
-                // Show check mark for completed days
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
@@ -170,17 +176,24 @@ private fun DateCell(
                 )
             }
             progress > 0f -> {
-                // Show percentage for partially completed days
                 Text(
-                    text = "${(progress * 100).toInt()} %",
+                    text = "${(progress * 100).toInt()}%",
                     fontSize = (boxSize.value * 0.22).sp,
                     fontWeight = FontWeight.Bold,
                     color = if (progress >= 0.5f) Color.White
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            hasNote -> {
+                // Note indicator
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.StickyNote2,
+                    contentDescription = null,
+                    modifier = Modifier.size(boxSize * 0.35f),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
             else -> {
-                // Show day number for incomplete days
                 Text(
                     text = date.day.toString(),
                     fontSize = (boxSize.value * 0.22).sp,

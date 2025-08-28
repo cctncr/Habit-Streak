@@ -119,6 +119,13 @@ class HabitRecordRepositoryImpl(
         }
     }
 
+    override fun observeAllRecords(): Flow<List<HabitRecord>> {
+        return queries.selectAll()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { list -> list.map { it.toDomain() } }
+    }
+
     override fun observeRecordsForHabit(habitId: String): Flow<List<HabitRecord>> {
         return queries.selectByHabit(habitId)
             .asFlow()

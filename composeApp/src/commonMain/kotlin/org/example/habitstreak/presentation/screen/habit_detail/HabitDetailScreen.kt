@@ -72,12 +72,11 @@ fun HabitDetailScreen(
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
 
-    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf(ActivityTab.HISTORY) }
-    var statsFilter by remember { mutableStateOf(StatsTimeFilter.ALL_TIME) }
+    var selectedDate by remember(habitId) { mutableStateOf<LocalDate?>(null) }
+    var showDeleteDialog by remember(habitId) { mutableStateOf(false) }
+    var selectedTab by remember(habitId) { mutableStateOf(ActivityTab.HISTORY) }
+    var statsFilter by remember(habitId) { mutableStateOf(StatsTimeFilter.ALL_TIME) }
 
-    // habitId değiştiğinde state'i sıfırla
     LaunchedEffect(habitId) {
         selectedDate = null
         selectedTab = ActivityTab.HISTORY
@@ -109,7 +108,7 @@ fun HabitDetailScreen(
                     modifier = Modifier.padding(16.dp)
                 )
 
-                // Calendar View
+                // Calendar View - Güncellenmiş version
                 CalendarView(
                     currentMonth = uiState.currentMonth,
                     records = uiState.records,
@@ -150,7 +149,7 @@ fun HabitDetailScreen(
                         }
                     }
 
-                    // Stats Cards (without This Month)
+                    // Stats Cards
                     StatsCards(
                         statistics = uiState.filteredStatistics,
                         habit = habit
@@ -257,7 +256,6 @@ fun HabitDetailScreen(
                     viewModel.updateNote(selectedDate!!, note)
                 },
                 onSetReminder = { time ->
-                    // Future: implement reminder
                     viewModel.setFutureReminder(selectedDate!!, time)
                 }
             )
@@ -415,44 +413,107 @@ private fun CalendarView(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Month Navigation - İleri gidebilir
+            // Month Navigation - Sınırsız navigasyon
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = {
-                    val prevMonth = currentMonth.month.number - 1
-                    onMonthChange(
-                        HabitDetailViewModel.YearMonth(
-                            currentMonth.year,
-                            if (prevMonth < 1) 12 else prevMonth
-                        )
-                    )
+                    onMonthChange(currentMonth.previousMonth())
                 }) {
                     Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Previous month")
                 }
 
-                Text(
-                    text = "${DateFormatter.formatMonthShort(monthDate)} ${currentMonth.year}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // İleri gidebilir - kısıtlama kaldırıldı
-                IconButton(
-                    onClick = {
-                        val nextMonth = currentMonth.month.number + 1
-                        val nextMonthYear = if (nextMonth > 12) currentMonth.year + 1 else currentMonth.year
-                        val nextMonthNumber = if (nextMonth > 12) 1 else nextMonth
-                        onMonthChange(HabitDetailViewModel.YearMonth(nextMonthYear, nextMonthNumber))
-                    }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Text(
+                        text = "${DateFormatter.formatMonthShort(monthDate)} ${currentMonth.year}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    // Hangi yıl olduğunu daha belirgin göster
+                    if (currentMonth.year != today.year) {
+                        Text(
+                            text = if (currentMonth.year > today.year) {
+                                "${currentMonth.year - today.year} years from now"
+                            } else {
+                                "${today.year - currentMonth.year} years ago"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                IconButton(onClick = {
+                    onMonthChange(currentMonth.nextMonth())
+                }) {
                     Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "Next month")
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Quick navigation buttons
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                item {
+                    AssistChip(
+                        onClick = {
+                            onMonthChange(HabitDetailViewModel.YearMonth(today.year, today.month.number))
+                        },
+                        label = { Text("Today") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Outlined.Today,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+                }
+
+                // Habit creation date'e git
+                if (habit.createdAt != today) {
+                    item {
+                        AssistChip(
+                            onClick = {
+                                onMonthChange(
+                                    HabitDetailViewModel.YearMonth(
+                                        habit.createdAt.year,
+                                        habit.createdAt.month.number
+                                    )
+                                )
+                            },
+                            label = { Text("Created") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+
+                // Year navigation shortcuts
+                val currentYear = currentMonth.year
+                val yearsToShow = listOf(currentYear - 1, currentYear + 1).filter { it != today.year && it != currentYear }
+
+                items(yearsToShow) { year ->
+                    AssistChip(
+                        onClick = {
+                            onMonthChange(HabitDetailViewModel.YearMonth(year, today.month.number))
+                        },
+                        label = { Text(year.toString()) }
+                    )
+                }
+            }
 
             // Week days header
             Row(
@@ -519,7 +580,6 @@ private fun CalendarGrid(
             Spacer(modifier = Modifier.size(40.dp))
         }
 
-        // Days of month
         items(daysInMonth) { dayIndex ->
             val date = LocalDate(yearMonth.year, yearMonth.month, dayIndex + 1)
             val record = records.find { it.date == date }
@@ -535,9 +595,106 @@ private fun CalendarGrid(
                 isSelected = date == selectedDate,
                 isToday = date == today,
                 isFuture = date > today,
+                isPast = date < today,
                 habitColor = habitColor,
-                onClick = { onDateClick(date) } // İleri tarihler de tıklanabilir
+                onClick = { onDateClick(date) } // Tüm tarihler tıklanabilir
             )
+        }
+    }
+}
+
+@Composable
+private fun DayCell(
+    date: LocalDate,
+    progress: Float,
+    hasNote: Boolean,
+    isSelected: Boolean,
+    isToday: Boolean,
+    isFuture: Boolean,
+    isPast: Boolean,
+    habitColor: Color,
+    onClick: () -> Unit
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            progress >= 1f -> habitColor
+            progress > 0f -> habitColor.copy(alpha = 0.3f + (0.5f * progress))
+            hasNote && isFuture -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f) // Future note
+            hasNote && isPast -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f) // Past note
+            hasNote -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) // Today note
+            isFuture -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) // Future days
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        },
+        label = "bg"
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.1f else 1f,
+        animationSpec = spring(),
+        label = "scale"
+    )
+
+    val borderColor = when {
+        isToday -> MaterialTheme.colorScheme.primary
+        isSelected -> habitColor
+        else -> Color.Transparent
+    }
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .scale(scale)
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .border(
+                width = if (isToday || isSelected) 2.dp else 0.dp,
+                color = borderColor,
+                shape = CircleShape
+            )
+            .clickable { onClick() }, // Tüm günler tıklanabilir
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            progress >= 1f -> {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            progress > 0f -> {
+                Text(
+                    text = "${(progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (progress >= 0.5f) Color.White else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            hasNote -> {
+                Icon(
+                    Icons.AutoMirrored.Outlined.StickyNote2,
+                    contentDescription = "Has note",
+                    modifier = Modifier.size(16.dp),
+                    tint = when {
+                        isFuture -> MaterialTheme.colorScheme.onTertiaryContainer
+                        isPast -> MaterialTheme.colorScheme.onSecondaryContainer
+                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                    }
+                )
+            }
+            else -> {
+                Text(
+                    text = date.day.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when {
+                        isToday -> MaterialTheme.colorScheme.primary
+                        isFuture -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                )
+            }
         }
     }
 }
@@ -714,7 +871,7 @@ private fun ActivityHistory(
         Column(
             modifier = Modifier.heightIn(max = 400.dp)
         ) {
-            records.forEach { record ->
+            records.sortedByDescending { it.date }.forEach { record ->
                 ActivityItem(
                     record = record,
                     habit = habit,
@@ -744,12 +901,15 @@ private fun NotesHistory(
         Column(
             modifier = Modifier.heightIn(max = 400.dp)
         ) {
-            records.forEach { record ->
+            records.sortedByDescending { it.date }.forEach { record ->
                 NoteItem(
                     record = record,
                     today = today,
                     onClick = { onNoteClick(record) }
                 )
+                if (record != records.last()) {
+                    HorizontalDivider()
+                }
             }
         }
     }
@@ -764,6 +924,7 @@ private fun ActivityItem(
 ) {
     val progress = record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
+    val isFuture = record.date > today
 
     Row(
         modifier = Modifier
@@ -783,36 +944,74 @@ private fun ActivityItem(
                     .size(32.dp)
                     .clip(CircleShape)
                     .background(
-                        if (progress >= 1f) habitColor
-                        else habitColor.copy(alpha = 0.3f)
+                        when {
+                            progress >= 1f -> habitColor
+                            progress > 0f -> habitColor.copy(alpha = 0.3f)
+                            isFuture && record.note.isNotBlank() -> MaterialTheme.colorScheme.tertiaryContainer
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        }
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (progress >= 1f) {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                } else {
-                    Text(
-                        text = "${(progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                when {
+                    progress >= 1f -> {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    progress > 0f -> {
+                        Text(
+                            text = "${(progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    isFuture && record.note.isNotBlank() -> {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.StickyNote2,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    else -> {
+                        Icon(
+                            Icons.Outlined.Circle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = DateFormatter.formatRelativeDate(record.date, today),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = DateFormatter.formatRelativeDate(record.date, today),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isFuture) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
+                    )
+
+                    // Future indicator
+                    if (isFuture) {
+                        Text(
+                            text = "📅",
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (habit.targetCount > 1) {
+                    if (habit.targetCount > 1 && progress > 0) {
                         Text(
                             text = "${record.completedCount} ${habit.unit}",
                             style = MaterialTheme.typography.bodySmall,
@@ -838,7 +1037,7 @@ private fun ActivityItem(
                 Icons.AutoMirrored.Outlined.StickyNote2,
                 contentDescription = "Has note",
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = if (isFuture) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -850,13 +1049,18 @@ private fun NoteItem(
     today: LocalDate,
     onClick: () -> Unit
 ) {
+    val isFuture = record.date > today
+
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            containerColor = when {
+                isFuture -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            }
         )
     ) {
         Column(
@@ -866,15 +1070,31 @@ private fun NoteItem(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = DateFormatter.formatRelativeDate(record.date, today),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isFuture) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+
+                    // Future indicator
+                    if (isFuture) {
+                        Text(
+                            text = "📅",
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+
                 Text(
-                    text = DateFormatter.formatRelativeDate(record.date, today),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "${record.date.day} ${DateFormatter.formatMonthShort(record.date)}",
+                    text = DateFormatter.formatDateShort(record.date),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -909,13 +1129,22 @@ private fun SelectedDateBottomSheet(
     var note by remember(record) {
         mutableStateOf(record?.note ?: "")
     }
+    var originalNote by remember(record) {
+        mutableStateOf(record?.note ?: "")
+    }
     var isEditingNote by remember { mutableStateOf(false) }
     var showReminderTime by remember { mutableStateOf(false) }
     var reminderTime by remember { mutableStateOf<LocalTime?>(null) }
+    var hasChanges by remember { mutableStateOf(false) }
 
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
     val isToday = date == today
     val isFuture = date > today
+
+    // Changes kontrolü
+    LaunchedEffect(note, progress) {
+        hasChanges = note != originalNote || progress != (record?.completedCount ?: 0)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -995,10 +1224,7 @@ private fun SelectedDateBottomSheet(
                             listOf(0, habit.targetCount / 2, habit.targetCount).distinct().forEach { value ->
                                 FilterChip(
                                     selected = progress == value,
-                                    onClick = {
-                                        progress = value
-                                        onUpdateProgress(value)
-                                    },
+                                    onClick = { progress = value },
                                     label = {
                                         Text(
                                             text = when(value) {
@@ -1022,7 +1248,6 @@ private fun SelectedDateBottomSheet(
                             Slider(
                                 value = progress.toFloat(),
                                 onValueChange = { progress = it.toInt() },
-                                onValueChangeFinished = { onUpdateProgress(progress) },
                                 valueRange = 0f..habit.targetCount.toFloat(),
                                 steps = habit.targetCount - 1,
                                 colors = SliderDefaults.colors(
@@ -1063,7 +1288,13 @@ private fun SelectedDateBottomSheet(
                         }
 
                         IconButton(
-                            onClick = { isEditingNote = !isEditingNote }
+                            onClick = {
+                                isEditingNote = !isEditingNote
+                                if (isEditingNote) {
+                                    // Editing başladığında original note'u kaydet
+                                    originalNote = note
+                                }
+                            }
                         ) {
                             Icon(
                                 if (isEditingNote) Icons.Default.Check else Icons.Outlined.Edit,
@@ -1178,7 +1409,6 @@ private fun SelectedDateBottomSheet(
                                         horizontalArrangement = Arrangement.Center
                                     ) {
                                         TextButton(onClick = {
-                                            // Future: Show time picker dialog
                                             reminderTime = LocalTime(9, 0)
                                             onSetReminder(reminderTime)
                                             showReminderTime = false
@@ -1193,23 +1423,36 @@ private fun SelectedDateBottomSheet(
                 }
             }
 
-            // Save Button
+            // Save Button - Sadece değişiklik varsa aktif
             Button(
                 onClick = {
-                    if (isEditingNote) {
+                    // Progress değiştiğinde kaydet
+                    if (progress != (record?.completedCount ?: 0)) {
+                        onUpdateProgress(progress)
+                    }
+
+                    // Note değiştiğinde kaydet
+                    if (note != originalNote) {
                         onUpdateNote(note)
                     }
+
+                    // Reminder varsa kaydet
                     if (reminderTime != null) {
                         onSetReminder(reminderTime)
                     }
+
                     onDismiss()
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = habitColor
-                )
+                ),
+                enabled = hasChanges || reminderTime != null
             ) {
-                Text("Save Changes")
+                Text(
+                    text = if (hasChanges) "Save Changes" else "Close",
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

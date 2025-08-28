@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.Habit
+import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.util.FlowUseCase
@@ -16,7 +17,8 @@ class GetHabitsWithCompletionUseCase(
     data class HabitWithCompletion(
         val habit: Habit,
         val isCompletedToday: Boolean,
-        val completedCount: Int = 0
+        val completedCount: Int = 0,
+        val todayRecord: HabitRecord? = null
     )
 
     override fun invoke(params: LocalDate): Flow<List<HabitWithCompletion>> {
@@ -32,7 +34,8 @@ class GetHabitsWithCompletionUseCase(
                 HabitWithCompletion(
                     habit = habit,
                     isCompletedToday = completedCount >= targetCount,
-                    completedCount = completedCount
+                    completedCount = completedCount,
+                    todayRecord = record // Record bilgisi eklendi
                 )
             }
         }

@@ -45,15 +45,57 @@ object DateFormatter {
     }
 
     fun formatRelativeDate(date: LocalDate, today: LocalDate): String {
-        val daysDiff = today.toEpochDays() - date.toEpochDays()
-        return when (daysDiff) {
-            0L -> "Today"
-            1L -> "Yesterday"
-            in 2..6 -> "$daysDiff days ago"
-            in 7..13 -> "Last week"
-            in 14..30 -> "${daysDiff / 7} weeks ago"
-            in 31..365 -> "${daysDiff / 30} months ago"
-            else -> "More than a year ago"
+        val daysDiff = date.toEpochDays() - today.toEpochDays() // Sıralamayı değiştirdik
+
+        return when {
+            daysDiff == 0L -> "Today"
+
+            // Gelecek tarihler (pozitif daysDiff)
+            daysDiff == 1L -> "Tomorrow"
+            daysDiff in 2..6 -> "In $daysDiff days"
+            daysDiff in 7..13 -> "Next week"
+            daysDiff in 14..30 -> "In ${daysDiff / 7} weeks"
+            daysDiff in 31..365 -> "In ${daysDiff / 30} months"
+            daysDiff > 365 -> {
+                val years = daysDiff / 365
+                if (years == 1L) "Next year" else "In $years years"
+            }
+
+            // Geçmiş tarihler (negatif daysDiff)
+            daysDiff == -1L -> "Yesterday"
+            daysDiff in -6..-2 -> "${-daysDiff} days ago"
+            daysDiff in -13..-7 -> "Last week"
+            daysDiff in -30..-14 -> "${-daysDiff / 7} weeks ago"
+            daysDiff in -365..-31 -> "${-daysDiff / 30} months ago"
+            daysDiff < -365 -> {
+                val years = -daysDiff / 365
+                if (years == 1L) "Last year" else "$years years ago"
+            }
+
+            else -> formatFullDate(date) // Fallback
+        }
+    }
+
+    fun formatFullDate(date: LocalDate): String {
+        return "${date.day} ${formatMonthShort(date)} ${date.year}"
+    }
+
+    fun formatDateShort(date: LocalDate): String {
+        return "${date.day} ${formatMonthShort(date)}"
+    }
+
+    fun formatRelativeDateShort(date: LocalDate, today: LocalDate): String {
+        val daysDiff = date.toEpochDays() - today.toEpochDays()
+
+        return when {
+            daysDiff == 0L -> "Today"
+            daysDiff == 1L -> "Tomorrow"
+            daysDiff == -1L -> "Yesterday"
+            daysDiff in 2..6 -> "+$daysDiff days"
+            daysDiff in -6..-2 -> "${-daysDiff} days ago"
+            daysDiff > 6 -> formatDateShort(date)
+            daysDiff < -6 -> formatDateShort(date)
+            else -> formatDateShort(date)
         }
     }
 }

@@ -8,10 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +35,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.minus
 import org.example.habitstreak.domain.model.Habit
+import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 
@@ -41,6 +46,8 @@ fun HabitCard(
     todayProgress: Float,
     currentStreak: Int,
     today: LocalDate,
+    todayRecord: HabitRecord?, // Note bilgisi için record eklendi
+    habitRecords: List<HabitRecord> = emptyList(), // Grid için record'lar
     onUpdateProgress: (LocalDate, Int) -> Unit,
     onCardClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -50,6 +57,7 @@ fun HabitCard(
 
     val isCompleted = todayProgress >= 1f
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
+    val hasNote = todayRecord?.note?.isNotBlank() == true
 
     Card(
         onClick = onCardClick,
@@ -93,12 +101,39 @@ fun HabitCard(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    if (habit.targetCount > 1) {
-                        Text(
-                            text = "${(todayProgress * habit.targetCount).toInt()} / ${habit.targetCount} ${habit.unit}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (habit.targetCount > 1) {
+                            Text(
+                                text = "${(todayProgress * habit.targetCount).toInt()} / ${habit.targetCount} ${habit.unit}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Note indicator
+                        if (hasNote) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.StickyNote2,
+                                    contentDescription = "Has note",
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = todayRecord.note.take(20) + if (todayRecord.note.length > 20) "..." else "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -158,6 +193,9 @@ fun HabitCard(
                 spacing = 2.dp,
                 cornerRadius = 4.dp,
                 maxHistoryDays = 90L,
+                habitRecords = habitRecords.filter {
+                    it.date >= gridStartDate && it.date <= today
+                }, // Grid için filtrelenmiş records
                 onDateClick = { date ->
                     selectedDate = date
                     showProgressDialog = true

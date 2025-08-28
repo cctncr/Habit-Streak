@@ -202,8 +202,7 @@ fun HabitsScreen(
                             key = { it.habit.id }
                         ) { habitWithCompletion ->
                             val habitId = habitWithCompletion.habit.id
-                            val completionHistory =
-                                uiState.completionHistories[habitId] ?: emptyMap()
+                            val completionHistory = uiState.completionHistories[habitId] ?: emptyMap()
                             val todayProgress = habitWithCompletion.completedCount.toFloat() /
                                     habitWithCompletion.habit.targetCount.coerceAtLeast(1)
 
@@ -213,6 +212,8 @@ fun HabitsScreen(
                                 todayProgress = todayProgress,
                                 currentStreak = uiState.streaks[habitId] ?: 0,
                                 today = today,
+                                todayRecord = habitWithCompletion.todayRecord, // Eklendi
+                                habitRecords = uiState.allRecords.filter { it.habitId == habitId }, // Bu habit'ın tüm records'ları
                                 onUpdateProgress = { date, value ->
                                     viewModel.updateHabitProgress(habitId, date, value)
                                 },
@@ -395,73 +396,6 @@ private fun SectionHeader(title: String, count: Int) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SwipeableHabitCard(
-    habit: org.example.habitstreak.domain.model.Habit,
-    completionHistory: Map<LocalDate, Float>,
-    todayProgress: Float,
-    currentStreak: Int,
-    today: LocalDate,
-    onUpdateProgress: (LocalDate, Int) -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var showSwipeAction by remember { mutableStateOf(false) }
-
-    Box(modifier = modifier.fillMaxWidth()) {
-        // Background delete action
-        AnimatedVisibility(
-            visible = showSwipeAction,
-            enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
-            exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End)
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .matchParentSize(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-        }
-
-        // Main card with swipe gesture
-        HabitCard(
-            habit = habit,
-            completionHistory = completionHistory,
-            todayProgress = todayProgress,
-            currentStreak = currentStreak,
-            today = today,
-            onUpdateProgress = onUpdateProgress,
-            onCardClick = { },
-            modifier = Modifier
-                .fillMaxWidth()
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        if (delta < -50) showSwipeAction = true
-                        if (delta > 50) showSwipeAction = false
-                    }
-                )
-        )
     }
 }
 
