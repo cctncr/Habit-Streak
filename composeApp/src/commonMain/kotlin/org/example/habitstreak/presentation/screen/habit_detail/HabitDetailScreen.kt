@@ -17,8 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -143,7 +143,13 @@ fun HabitDetailScreen(
                                 },
                                 label = { Text(filter.label) },
                                 leadingIcon = if (statsFilter == filter) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                    {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 } else null
                             )
                         }
@@ -204,7 +210,7 @@ fun HabitDetailScreen(
                         when (tab) {
                             ActivityTab.HISTORY -> {
                                 ActivityHistory(
-                                    records = uiState.recentRecords,
+                                    records = uiState.records,
                                     habit = habit,
                                     today = dateProvider.today(),
                                     onRecordClick = { record ->
@@ -217,7 +223,7 @@ fun HabitDetailScreen(
                             }
                             ActivityTab.NOTES -> {
                                 NotesHistory(
-                                    records = uiState.recentRecords.filter { it.note.isNotBlank() },
+                                    records = uiState.records,
                                     today = dateProvider.today(),
                                     onNoteClick = { record ->
                                         selectedDate = record.date
@@ -413,7 +419,7 @@ private fun CalendarView(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Month Navigation - Sınırsız navigasyon
+            // Month Navigation
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -422,7 +428,10 @@ private fun CalendarView(
                 IconButton(onClick = {
                     onMonthChange(currentMonth.previousMonth())
                 }) {
-                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Previous month")
+                    Icon(
+                        Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                        contentDescription = "Previous month"
+                    )
                 }
 
                 Column(
@@ -450,70 +459,14 @@ private fun CalendarView(
                 IconButton(onClick = {
                     onMonthChange(currentMonth.nextMonth())
                 }) {
-                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "Next month")
+                    Icon(
+                        Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                        contentDescription = "Next month"
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Quick navigation buttons
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 12.dp)
-            ) {
-                item {
-                    AssistChip(
-                        onClick = {
-                            onMonthChange(HabitDetailViewModel.YearMonth(today.year, today.month.number))
-                        },
-                        label = { Text("Today") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Outlined.Today,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    )
-                }
-
-                // Habit creation date'e git
-                if (habit.createdAt != today) {
-                    item {
-                        AssistChip(
-                            onClick = {
-                                onMonthChange(
-                                    HabitDetailViewModel.YearMonth(
-                                        habit.createdAt.year,
-                                        habit.createdAt.month.number
-                                    )
-                                )
-                            },
-                            label = { Text("Created") },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Outlined.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        )
-                    }
-                }
-
-                // Year navigation shortcuts
-                val currentYear = currentMonth.year
-                val yearsToShow = listOf(currentYear - 1, currentYear + 1).filter { it != today.year && it != currentYear }
-
-                items(yearsToShow) { year ->
-                    AssistChip(
-                        onClick = {
-                            onMonthChange(HabitDetailViewModel.YearMonth(year, today.month.number))
-                        },
-                        label = { Text(year.toString()) }
-                    )
-                }
-            }
 
             // Week days header
             Row(
@@ -543,6 +496,59 @@ private fun CalendarView(
                 habitColor = habitColor,
                 today = today
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        AssistChip(
+                            onClick = {
+                                onMonthChange(
+                                    HabitDetailViewModel.YearMonth(
+                                        habit.createdAt.year,
+                                        habit.createdAt.month.number
+                                    )
+                                )
+                            },
+                            label = { Text("Created") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+
+                    item {
+                        AssistChip(
+                            onClick = {
+                                onMonthChange(
+                                    HabitDetailViewModel.YearMonth(
+                                        today.year,
+                                        today.month.number
+                                    )
+                                )
+                            },
+                            label = { Text("Today") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Outlined.Today,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+
+                    }
+                }
+            }
+
         }
     }
 }
@@ -558,12 +564,13 @@ private fun CalendarGrid(
     today: LocalDate
 ) {
     val firstDayOfMonth = LocalDate(yearMonth.year, yearMonth.month, 1)
-    val lastDayOfMonth = firstDayOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+    val lastDayOfMonth =
+        firstDayOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
     val firstDayOfWeek = firstDayOfMonth.dayOfWeek
     val daysInMonth = lastDayOfMonth.day
 
     // Calculate offset for Monday start (ISO-8601 week)
-    val offset = (firstDayOfWeek.ordinal + 6) % 7 // Sunday = 0
+    val offset = firstDayOfWeek.ordinal + 1
     val totalCells = offset + daysInMonth
     val rows = (totalCells + 6) / 7
 
@@ -619,7 +626,9 @@ private fun DayCell(
         targetValue = when {
             progress >= 1f -> habitColor
             progress > 0f -> habitColor.copy(alpha = 0.3f + (0.5f * progress))
-            hasNote && isFuture -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f) // Future note
+            hasNote && isFuture -> MaterialTheme.colorScheme.tertiaryContainer.copy(
+                alpha = 0.7f
+            ) // Future note
             hasNote && isPast -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f) // Past note
             hasNote -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) // Today note
             isFuture -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) // Future days
@@ -663,6 +672,7 @@ private fun DayCell(
                     modifier = Modifier.size(16.dp)
                 )
             }
+
             progress > 0f -> {
                 Text(
                     text = "${(progress * 100).toInt()}%",
@@ -671,6 +681,7 @@ private fun DayCell(
                     color = if (progress >= 0.5f) Color.White else MaterialTheme.colorScheme.onSurface
                 )
             }
+
             hasNote -> {
                 Icon(
                     Icons.AutoMirrored.Outlined.StickyNote2,
@@ -683,92 +694,17 @@ private fun DayCell(
                     }
                 )
             }
+
             else -> {
                 Text(
                     text = date.day.toString(),
                     style = MaterialTheme.typography.bodySmall,
                     color = when {
                         isToday -> MaterialTheme.colorScheme.primary
-                        isFuture -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
-                )
-            }
-        }
-    }
-}
+                        isFuture -> MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = 0.7f
+                        )
 
-@Composable
-private fun DayCell(
-    date: LocalDate,
-    progress: Float,
-    hasNote: Boolean,
-    isSelected: Boolean,
-    isToday: Boolean,
-    isFuture: Boolean,
-    habitColor: Color,
-    onClick: () -> Unit
-) {
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            isFuture && !hasNote -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            progress >= 1f -> habitColor
-            progress > 0f -> habitColor.copy(alpha = 0.3f + (0.5f * progress))
-            hasNote -> MaterialTheme.colorScheme.secondaryContainer
-            else -> MaterialTheme.colorScheme.surfaceVariant
-        },
-        label = "bg"
-    )
-
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.1f else 1f,
-        animationSpec = spring(),
-        label = "scale"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .scale(scale)
-            .clip(CircleShape)
-            .background(backgroundColor)
-            .then(
-                if (isToday) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = CircleShape
-                    )
-                } else Modifier
-            )
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            progress >= 1f -> {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            hasNote && progress == 0f -> {
-                Icon(
-                    Icons.AutoMirrored.Outlined.StickyNote2,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            else -> {
-                Text(
-                    text = date.day.toString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = when {
-                        isFuture && !hasNote -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        progress > 0f -> MaterialTheme.colorScheme.onSurface
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
@@ -867,18 +803,22 @@ private fun ActivityHistory(
         return
     }
 
+    val sortedRecords = records.sortedByDescending { it.date }
+
     Card {
-        Column(
-            modifier = Modifier.heightIn(max = 400.dp)
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth()
+                .heightIn(min = 200.dp, max = 600.dp), // Minimum ve maksimum yükseklik
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            records.sortedByDescending { it.date }.forEach { record ->
+            itemsIndexed(sortedRecords) { index, record ->
                 ActivityItem(
                     record = record,
                     habit = habit,
                     today = today,
                     onClick = { onRecordClick(record) }
                 )
-                if (record != records.last()) {
+                if (index < sortedRecords.size - 1) {
                     HorizontalDivider()
                 }
             }
@@ -892,22 +832,28 @@ private fun NotesHistory(
     today: LocalDate,
     onNoteClick: (HabitRecord) -> Unit
 ) {
-    if (records.isEmpty()) {
+    val recordsWithNotes = records.filter { it.note.isNotBlank() }
+
+    if (recordsWithNotes.isEmpty()) {
         EmptyStateMessage("No notes yet")
         return
     }
 
+    val sortedRecordsWithNotes = recordsWithNotes.sortedByDescending { it.date }
+
     Card {
-        Column(
-            modifier = Modifier.heightIn(max = 400.dp)
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth()
+                .heightIn(min = 200.dp, max = 600.dp), // Minimum ve maksimum yükseklik
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            records.sortedByDescending { it.date }.forEach { record ->
+            itemsIndexed(sortedRecordsWithNotes) { index, record ->
                 NoteItem(
                     record = record,
                     today = today,
                     onClick = { onNoteClick(record) }
                 )
-                if (record != records.last()) {
+                if (index < sortedRecordsWithNotes.size - 1) {
                     HorizontalDivider()
                 }
             }
@@ -962,6 +908,7 @@ private fun ActivityItem(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+
                     progress > 0f -> {
                         Text(
                             text = "${(progress * 100).toInt()}%",
@@ -969,6 +916,7 @@ private fun ActivityItem(
                             fontWeight = FontWeight.Bold
                         )
                     }
+
                     isFuture && record.note.isNotBlank() -> {
                         Icon(
                             Icons.AutoMirrored.Outlined.StickyNote2,
@@ -977,6 +925,7 @@ private fun ActivityItem(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+
                     else -> {
                         Icon(
                             Icons.Outlined.Circle,
@@ -1221,13 +1170,17 @@ private fun SelectedDateBottomSheet(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf(0, habit.targetCount / 2, habit.targetCount).distinct().forEach { value ->
+                            listOf(
+                                0,
+                                habit.targetCount / 2,
+                                habit.targetCount
+                            ).distinct().forEach { value ->
                                 FilterChip(
                                     selected = progress == value,
                                     onClick = { progress = value },
                                     label = {
                                         Text(
-                                            text = when(value) {
+                                            text = when (value) {
                                                 0 -> "None"
                                                 habit.targetCount -> "Complete"
                                                 else -> "$value"
@@ -1235,7 +1188,13 @@ private fun SelectedDateBottomSheet(
                                         )
                                     },
                                     leadingIcon = if (progress == value) {
-                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                        {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
                                     } else null,
                                     modifier = Modifier.weight(1f)
                                 )
@@ -1350,7 +1309,9 @@ private fun SelectedDateBottomSheet(
                         Spacer(modifier = Modifier.height(12.dp))
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(
+                                    alpha = 0.3f
+                                )
                             )
                         ) {
                             Column(
@@ -1379,7 +1340,11 @@ private fun SelectedDateBottomSheet(
                                             )
                                             if (reminderTime != null) {
                                                 Text(
-                                                    text = "At ${DateFormatter.formatTime(reminderTime!!)}",
+                                                    text = "At ${
+                                                        DateFormatter.formatTime(
+                                                            reminderTime!!
+                                                        )
+                                                    }",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
@@ -1391,7 +1356,8 @@ private fun SelectedDateBottomSheet(
                                         onCheckedChange = { enabled ->
                                             if (enabled) {
                                                 showReminderTime = true
-                                                reminderTime = LocalTime(9, 0) // Default time
+                                                reminderTime =
+                                                    LocalTime(9, 0) // Default time
                                             } else {
                                                 reminderTime = null
                                                 onSetReminder(null)
@@ -1413,7 +1379,14 @@ private fun SelectedDateBottomSheet(
                                             onSetReminder(reminderTime)
                                             showReminderTime = false
                                         }) {
-                                            Text("Set Time: ${reminderTime?.let { DateFormatter.formatTime(it) } ?: "Not set"}")
+                                            Text(
+                                                "Set Time: ${
+                                                    reminderTime?.let {
+                                                        DateFormatter.formatTime(
+                                                            it
+                                                        )
+                                                    } ?: "Not set"
+                                                }")
                                         }
                                     }
                                 }
