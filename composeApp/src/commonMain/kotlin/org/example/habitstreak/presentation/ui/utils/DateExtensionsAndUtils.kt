@@ -194,3 +194,22 @@ fun DateProvider.lastYear(): DateRange {
     val start = end.minus(DatePeriod(days = 364))
     return DateRange(start, end)
 }
+
+fun LocalDate.isInCurrentWeekFromMonday(today: LocalDate): Boolean {
+    val startOfWeek = today.startOfWeekFromMonday()
+    val endOfWeek = startOfWeek.plus(DatePeriod(days = 6))
+    return this in startOfWeek..endOfWeek
+}
+
+fun LocalDate.startOfWeekFromMonday(): LocalDate {
+    val mondayBasedDayOfWeek = when (this.dayOfWeek) {
+        kotlinx.datetime.DayOfWeek.MONDAY -> 1
+        kotlinx.datetime.DayOfWeek.TUESDAY -> 2
+        kotlinx.datetime.DayOfWeek.WEDNESDAY -> 3
+        kotlinx.datetime.DayOfWeek.THURSDAY -> 4
+        kotlinx.datetime.DayOfWeek.FRIDAY -> 5
+        kotlinx.datetime.DayOfWeek.SATURDAY -> 6
+        kotlinx.datetime.DayOfWeek.SUNDAY -> 7
+    }
+    return this.minus(DatePeriod(days = mondayBasedDayOfWeek - 1))
+}

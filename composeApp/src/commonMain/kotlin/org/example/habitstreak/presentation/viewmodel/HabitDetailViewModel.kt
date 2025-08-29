@@ -18,8 +18,8 @@ import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.ui.utils.isInCurrentMonth
 import org.example.habitstreak.presentation.ui.utils.isInCurrentWeek
 import org.example.habitstreak.presentation.screen.habit_detail.StatsTimeFilter
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
+import org.example.habitstreak.presentation.ui.utils.isInCurrentWeekFromMonday
+import org.example.habitstreak.presentation.ui.utils.startOfWeekFromMonday
 
 class HabitDetailViewModel(
     private val habitId: String,
@@ -192,17 +192,18 @@ class HabitDetailViewModel(
         viewModelScope.launch {
             val habit = _uiState.value.habit ?: return@launch
             val records = _uiState.value.records
-            val today = dateProvider.today() // DateProvider kullanımı
+            val today = dateProvider.today()
+            val currentMonth = _uiState.value.currentMonth
 
             val filteredRecords = when (filter) {
                 StatsTimeFilter.ALL_TIME -> {
                     records.filter { it.date >= habit.createdAt }
                 }
                 StatsTimeFilter.THIS_MONTH -> {
-                    records.filter { it.date.isInCurrentMonth(today) }
+                    records.filter { it.date.year == currentMonth.year && it.date.monthNumber == currentMonth.month.number }
                 }
                 StatsTimeFilter.THIS_WEEK -> {
-                    records.filter { it.date.isInCurrentWeek(today) }
+                    records.filter { it.date.isInCurrentWeekFromMonday(today) }
                 }
             }
 
@@ -215,10 +216,21 @@ class HabitDetailViewModel(
                     (today.toEpochDays() - habit.createdAt.toEpochDays() + 1).toInt()
                 }
                 StatsTimeFilter.THIS_MONTH -> {
-                    today.day
+                    val daysInMonth = when (currentMonth.month.number) {
+                        1, 3, 5, 7, 8, 10, 12 -> 31
+                        4, 6, 9, 11 -> 30
+                        2 -> if (currentMonth.isLeapYear) 29 else 28
+                        else -> 30
+                    }
+                    if (currentMonth.year == today.year && currentMonth.month.number == today.month.number) {
+                        today.day
+                    } else {
+                        daysInMonth
+                    }
                 }
                 StatsTimeFilter.THIS_WEEK -> {
-                    today.dayOfWeek.ordinal + 1
+                    val startOfWeek = today.startOfWeekFromMonday()
+                    (today.toEpochDays() - startOfWeek.toEpochDays() + 1).toInt()
                 }
             }
 
@@ -261,6 +273,9 @@ class HabitDetailViewModel(
 
     fun changeMonth(yearMonth: YearMonth) {
         _uiState.update { it.copy(currentMonth = yearMonth) }
+        if (currentFilter == StatsTimeFilter.THIS_MONTH) {
+            updateStatsFilter(StatsTimeFilter.THIS_MONTH)
+        }
     }
 
     fun deleteHabit(onSuccess: () -> Unit) {

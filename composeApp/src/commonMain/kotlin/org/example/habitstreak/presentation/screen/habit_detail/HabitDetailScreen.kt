@@ -1498,7 +1498,7 @@ enum class ActivityTab(val label: String) {
 }
 
 enum class StatsTimeFilter(val label: String) {
-    ALL_TIME("All Time"),
-    THIS_MONTH("This Month"),
+    ALL_TIME("Since Created"),
+    THIS_MONTH("Selected Month"),
     THIS_WEEK("This Week")
 }
