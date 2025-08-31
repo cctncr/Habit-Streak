@@ -10,36 +10,42 @@ import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.RepeatUnit
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 import org.example.habitstreak.data.local.Habit as DataHabit
 import org.example.habitstreak.data.local.HabitRecord as DataHabitRecord
 
-fun DataHabit.toDomain(): Habit = Habit(
-    id = id,
-    title = title,
-    description = description,
-    icon = HabitIcon.valueOf(iconName),
-    color = HabitColor.valueOf(colorName),
-    frequency = parseFrequency(frequencyType, frequencyData),
-    reminderTime = reminderTime?.let { LocalTime.parse(it) },
-    isReminderEnabled = isReminderEnabled == 1L,
-    targetCount = targetCount.toInt(),
-    unit = unit,
-    createdAt = LocalDate.parse(createdAt),
-    isArchived = isArchived == 1L,
-    sortOrder = sortOrder.toInt()
-)
+@OptIn(ExperimentalTime::class)
+fun DataHabit.toDomain(): Habit {
+    return Habit(
+        id = id,
+        title = title,
+        description = description,
+        icon = HabitIcon.valueOf(iconName),
+        color = HabitColor.valueOf(colorName),
+        frequency = deserializeFrequency(frequencyType, frequencyData),
+        reminderTime = reminderTime,
+        isReminderEnabled = isReminderEnabled == 1L,
+        targetCount = targetCount.toInt(),
+        unit = unit,
+        createdAt = Instant.parse(createdAt),
+        isArchived = isArchived == 1L,
+        sortOrder = sortOrder.toInt()
+    )
+}
 
+@OptIn(ExperimentalTime::class)
 fun Habit.toData(): DataHabit {
-    val (freqType, freqData) = frequency.serialize()
+    val (frequencyType, frequencyData) = frequency.serialize()
     return DataHabit(
         id = id,
         title = title,
         description = description,
         iconName = icon.name,
         colorName = color.name,
-        frequencyType = freqType,
-        frequencyData = freqData,
-        reminderTime = reminderTime?.toString(),
+        frequencyType = frequencyType,
+        frequencyData = frequencyData,
+        reminderTime = reminderTime,
         isReminderEnabled = if (isReminderEnabled) 1L else 0L,
         targetCount = targetCount.toLong(),
         unit = unit,
@@ -49,31 +55,59 @@ fun Habit.toData(): DataHabit {
     )
 }
 
-fun DataHabitRecord.toDomain(): HabitRecord = HabitRecord(
-    id = id,
-    habitId = habitId,
-    date = LocalDate.parse(date),
-    completedCount = completedCount.toInt(),
-    note = note,
-    completedAt = LocalDate.parse(completedAt)
-)
-
-fun HabitRecord.toData(): DataHabitRecord = DataHabitRecord(
-    id = id,
-    habitId = habitId,
-    date = date.toString(),
-    completedCount = completedCount.toLong(),
-    note = note,
-    completedAt = completedAt.toString()
-)
-
-fun HabitFrequency.serialize(): Pair<String, String> = when (this) {
-    is HabitFrequency.Daily -> "DAILY" to ""
-    is HabitFrequency.Weekly -> "WEEKLY" to Json.encodeToString(daysOfWeek.map { it.name })
-    is HabitFrequency.Monthly -> "MONTHLY" to Json.encodeToString(daysOfMonth)
-    is HabitFrequency.Custom -> "CUSTOM" to Json.encodeToString(
-        mapOf("interval" to repeatInterval.toString(), "unit" to repeatUnit.name)
+@OptIn(ExperimentalTime::class)
+fun DataHabitRecord.toDomain(): HabitRecord {
+    return HabitRecord(
+        id = id,
+        habitId = habitId,
+        date = LocalDate.parse(date),
+        completedCount = completedCount.toInt(),
+        note = note,
+        completedAt = Instant.parse(completedAt)
     )
+}
+
+@OptIn(ExperimentalTime::class)
+fun HabitRecord.toData(): DataHabitRecord {
+    return DataHabitRecord(
+        id = id,
+        habitId = habitId,
+        date = date.toString(),
+        completedCount = completedCount.toLong(),
+        note = note,
+        completedAt = completedAt.toString()
+    )
+}
+
+fun HabitFrequency.serialize(): Pair<String, String> {
+    return when (this) {
+        is HabitFrequency.Daily -> "DAILY" to ""
+        is HabitFrequency.Weekly -> "WEEKLY" to days.joinToString(",") { it.name }
+        is HabitFrequency.Custom -> "CUSTOM" to days.joinToString(",")
+    }
+}
+
+fun deserializeFrequency(type: String, data: String): HabitFrequency {
+    return when (type) {
+        "DAILY" -> HabitFrequency.Daily
+        "WEEKLY" -> {
+            val days = if (data.isNotEmpty()) {
+                data.split(",").map { DayOfWeek.valueOf(it) }.toSet()
+            } else {
+                emptySet()
+            }
+            HabitFrequency.Weekly(days)
+        }
+        "CUSTOM" -> {
+            val days = if (data.isNotEmpty()) {
+                data.split(",").map { it.toInt() }.toSet()
+            } else {
+                emptySet()
+            }
+            HabitFrequency.Custom(days)
+        }
+        else -> HabitFrequency.Daily
+    }
 }
 
 fun parseFrequency(type: String, data: String): HabitFrequency = when (type) {
@@ -88,7 +122,7 @@ fun parseFrequency(type: String, data: String): HabitFrequency = when (type) {
                     .toSet()
                 HabitFrequency.Weekly(days)
             } catch (e: Exception) {
-                HabitFrequency.Daily // Fallback on error
+                HabitFrequency.Daily
             }
         }
     }
@@ -100,13 +134,13 @@ fun parseFrequency(type: String, data: String): HabitFrequency = when (type) {
                 val days = Json.decodeFromString<Set<Int>>(data)
                 HabitFrequency.Monthly(days)
             } catch (e: Exception) {
-                HabitFrequency.Daily // Fallback on error
+                HabitFrequency.Daily
             }
         }
     }
     "CUSTOM" -> {
         if (data.isBlank()) {
-            HabitFrequency.Daily // Fallback
+            HabitFrequency.Daily
         } else {
             try {
                 val customData = Json.decodeFromString<Map<String, String>>(data)
@@ -115,7 +149,7 @@ fun parseFrequency(type: String, data: String): HabitFrequency = when (type) {
                     RepeatUnit.valueOf(customData["unit"] ?: "DAYS")
                 )
             } catch (e: Exception) {
-                HabitFrequency.Daily // Fallback on error
+                HabitFrequency.Daily
             }
         }
     }

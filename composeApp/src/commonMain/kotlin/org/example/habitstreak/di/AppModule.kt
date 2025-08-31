@@ -2,23 +2,19 @@ package org.example.habitstreak.di
 
 import org.example.habitstreak.data.repository.HabitRecordRepositoryImpl
 import org.example.habitstreak.data.repository.HabitRepositoryImpl
+import org.example.habitstreak.data.repository.NotificationRepositoryImpl
+import org.example.habitstreak.data.repository.StatisticsRepositoryImpl
 import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.repository.NotificationRepository
 import org.example.habitstreak.domain.repository.StatisticsRepository
-import org.example.habitstreak.domain.usecase.ArchiveHabitUseCase
-import org.example.habitstreak.domain.usecase.CalculateStreakUseCase
-import org.example.habitstreak.domain.usecase.CreateHabitUseCase
-import org.example.habitstreak.domain.usecase.GetHabitsWithCompletionUseCase
-import org.example.habitstreak.domain.usecase.ToggleHabitCompletionUseCase
-import org.example.habitstreak.presentation.viewmodel.CreateEditHabitViewModel
-import org.example.habitstreak.presentation.viewmodel.HabitsViewModel
-import org.example.habitstreak.presentation.viewmodel.StatisticsViewModel
+import org.example.habitstreak.domain.service.NotificationService
+import org.example.habitstreak.domain.usecase.*
+import org.example.habitstreak.presentation.viewmodel.*
 import org.koin.dsl.module
 import org.example.habitstreak.data.local.HabitDatabase
-import org.example.habitstreak.data.repository.StatisticsRepositoryImpl
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.domain.util.DateProviderImpl
-import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 
 val appModule = module {
     // Core utilities
@@ -27,10 +23,21 @@ val appModule = module {
     // Database
     single { HabitDatabase(get()) }
 
-    // Repositories
+    // Repositories - PreferencesRepository is provided by platform modules
     single<HabitRepository> { HabitRepositoryImpl(get()) }
     single<HabitRecordRepository> { HabitRecordRepositoryImpl(get(), get()) }
     single<StatisticsRepository> { StatisticsRepositoryImpl(get(), get(), get()) }
+    single<NotificationRepository> { NotificationRepositoryImpl(get()) }
+
+    // Services - NotificationScheduler and PreferencesRepository from platform modules
+    single {
+        NotificationService(
+            notificationRepository = get(),
+            habitRepository = get(),
+            scheduler = get(), // From platform module
+            preferencesRepository = get() // From platform module
+        )
+    }
 
     // Use Cases
     factory { CreateHabitUseCase(get(), get()) }
@@ -49,7 +56,15 @@ val appModule = module {
             habitRepository = get(),
             habitRecordRepository = get(),
             calculateStreakUseCase = get(),
-            dateProvider = get()
+            dateProvider = get(),
+            notificationService = getOrNull() // Optional
+        )
+    }
+    factory {
+        SettingsViewModel(
+            preferencesRepository = get(),
+            notificationService = getOrNull(),
+            habitRepository = get()
         )
     }
 }

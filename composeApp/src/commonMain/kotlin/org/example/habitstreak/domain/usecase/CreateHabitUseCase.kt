@@ -8,6 +8,7 @@ import org.example.habitstreak.domain.model.HabitIcon
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.util.UseCase
 import org.example.habitstreak.domain.util.DateProvider
+import kotlin.time.ExperimentalTime
 
 class CreateHabitUseCase(
     private val habitRepository: HabitRepository,
@@ -25,8 +26,8 @@ class CreateHabitUseCase(
         val unit: String = ""
     )
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun invoke(params: Params): Result<Habit> {
-        // Validation
         if (params.title.isBlank()) {
             return Result.failure(IllegalArgumentException("Habit title cannot be empty"))
         }
@@ -41,11 +42,11 @@ class CreateHabitUseCase(
             icon = params.icon,
             color = params.color,
             frequency = params.frequency,
-            reminderTime = params.reminderTime,
+            reminderTime = params.reminderTime?.toString(),
             isReminderEnabled = params.reminderTime != null,
             targetCount = params.targetCount,
             unit = params.unit,
-            createdAt = dateProvider.today()
+            createdAt = dateProvider.now()
         )
 
         return habitRepository.createHabit(habit)

@@ -56,8 +56,10 @@ import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import org.example.habitstreak.domain.util.DateProvider
+import org.example.habitstreak.presentation.ui.components.NotificationSettingsCard
 import org.example.habitstreak.presentation.ui.components.common.StreakBadge
 import org.koin.compose.koinInject
+import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,6 +127,20 @@ fun HabitDetailScreen(
                     },
                     onMonthChange = viewModel::changeMonth,
                     modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                NotificationSettingsCard(
+                    isEnabled = uiState.isNotificationEnabled,
+                    notificationTime = uiState.notificationTime,
+                    onToggleEnabled = { enabled ->
+                        viewModel.toggleNotification(enabled)
+                    },
+                    onTimeChanged = { time ->
+                        viewModel.updateNotificationTime(time)
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -430,6 +446,7 @@ private fun HabitHeader(
     }
 }
 
+@OptIn(ExperimentalTime::class)
 @Composable
 private fun CalendarView(
     currentMonth: HabitDetailViewModel.YearMonth,

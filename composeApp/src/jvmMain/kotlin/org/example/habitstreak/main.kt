@@ -2,11 +2,14 @@ package org.example.habitstreak
 
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import org.example.habitstreak.di.desktopModule
-import org.example.habitstreak.di.initKoin
+import org.example.habitstreak.di.appModule
+import org.example.habitstreak.di.platformModule
+import org.koin.core.context.startKoin
 
 fun main() = application {
-    initKoin(desktopModule)
+    startKoin {
+        modules(appModule, platformModule())
+    }
 
     Window(
         onCloseRequest = ::exitApplication,

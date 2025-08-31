@@ -1,19 +1,20 @@
 package org.example.habitstreak
 
 import android.app.Application
-import org.example.habitstreak.di.androidModule
-import org.example.habitstreak.di.initKoin
+import org.example.habitstreak.di.appModule
+import org.example.habitstreak.di.platformModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
-import org.koin.core.logger.Level
+import org.koin.core.context.startKoin
 
 class HabitStreakApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        initKoin(androidModule) {
-            androidLogger(Level.DEBUG)
+        startKoin {
+            androidLogger()
             androidContext(this@HabitStreakApplication)
+            modules(appModule, platformModule())
         }
     }
 }

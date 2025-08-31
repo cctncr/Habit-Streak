@@ -14,6 +14,7 @@ import org.example.habitstreak.domain.model.HabitIcon
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.CreateHabitUseCase
 import org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
+import kotlin.time.ExperimentalTime
 
 class CreateEditHabitViewModel(
     private val createHabitUseCase: CreateHabitUseCase,
@@ -89,6 +90,7 @@ class CreateEditHabitViewModel(
         _uiState.update { it.copy(isArchived = isArchived) }
     }
 
+    @OptIn(ExperimentalTime::class)
     fun saveHabit(onSuccess: () -> Unit) {
         val state = _uiState.value
 

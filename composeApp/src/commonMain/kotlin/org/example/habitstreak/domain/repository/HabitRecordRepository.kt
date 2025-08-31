@@ -19,7 +19,6 @@ interface HabitRecordRepository {
         startDate: LocalDate,
         endDate: LocalDate
     ): Result<List<HabitRecord>>
-
     suspend fun updateRecordNote(habitId: String, date: LocalDate, note: String): Result<Unit>
     fun observeAllRecords(): Flow<List<HabitRecord>>
     fun observeRecordsForHabit(habitId: String): Flow<List<HabitRecord>>

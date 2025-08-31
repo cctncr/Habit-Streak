@@ -14,6 +14,7 @@ import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.repository.HabitRepository
 import kotlinx.coroutines.withContext
 import org.example.habitstreak.core.util.UuidGenerator
+import kotlin.time.ExperimentalTime
 
 class HabitRepositoryImpl(
     private val database: HabitDatabase
@@ -21,6 +22,7 @@ class HabitRepositoryImpl(
 
     private val queries = database.habitQueries
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun createHabit(habit: Habit): Result<Habit> = withContext(Dispatchers.IO) {
         try {
             val habitWithId = if (habit.id.isEmpty()) {
@@ -28,7 +30,6 @@ class HabitRepositoryImpl(
             } else habit
 
             database.transaction {
-                // Check for duplicate titles
                 val existingHabits = queries.selectAll().executeAsList()
                 val hasDuplicate = existingHabits.any {
                     it.title.equals(habitWithId.title, ignoreCase = true) &&
@@ -52,11 +53,9 @@ class HabitRepositoryImpl(
     override suspend fun updateHabit(habit: Habit): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             database.transaction {
-                // Verify habit exists
                 val existing = queries.selectById(habit.id).executeAsOneOrNull()
                     ?: throw IllegalArgumentException("Habit not found")
 
-                // Check for duplicate titles (excluding current habit)
                 val existingHabits = queries.selectAll().executeAsList()
                 val hasDuplicate = existingHabits.any {
                     it.title.equals(habit.title, ignoreCase = true) &&
@@ -68,24 +67,21 @@ class HabitRepositoryImpl(
                     throw IllegalArgumentException("A habit with this title already exists")
                 }
 
-                with(habit) {
-                    val (frequencyType, frequencyData) = frequency.serialize()
-                    queries.update(
-                        title = title,
-                        description = description,
-                        iconName = icon.name,
-                        colorName = color.name,
-                        frequencyType = frequencyType,
-                        frequencyData = frequencyData,
-                        reminderTime = reminderTime?.toString(),
-                        isReminderEnabled = if (isReminderEnabled) 1L else 0L,
-                        targetCount = targetCount.toLong(),
-                        unit = unit,
-                        isArchived = if (isArchived) 1L else 0L,
-                        sortOrder = sortOrder.toLong(),
-                        id = id
-                    )
-                }
+                queries.update(
+                    title = habit.title,
+                    description = habit.description,
+                    iconName = habit.icon.name,
+                    colorName = habit.color.name,
+                    frequencyType = habit.frequency.serialize().first,
+                    frequencyData = habit.frequency.serialize().second,
+                    reminderTime = habit.reminderTime,
+                    isReminderEnabled = if (habit.isReminderEnabled) 1L else 0L,
+                    targetCount = habit.targetCount.toLong(),
+                    unit = habit.unit,
+                    isArchived = if (habit.isArchived) 1L else 0L,
+                    sortOrder = habit.sortOrder.toLong(),
+                    id = habit.id
+                )
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -96,11 +92,8 @@ class HabitRepositoryImpl(
     override suspend fun deleteHabit(habitId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             database.transaction {
-                // Verify habit exists before deletion
                 queries.selectById(habitId).executeAsOneOrNull()
                     ?: throw IllegalArgumentException("Habit not found")
-
-                // Delete habit (cascade will handle records)
                 queries.delete(habitId)
             }
             Result.success(Unit)
