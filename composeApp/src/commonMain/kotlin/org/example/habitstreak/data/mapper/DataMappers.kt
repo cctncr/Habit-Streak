@@ -14,6 +14,7 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import org.example.habitstreak.data.local.Habit as DataHabit
 import org.example.habitstreak.data.local.HabitRecord as DataHabitRecord
+import org.example.habitstreak.domain.model.*
 
 @OptIn(ExperimentalTime::class)
 fun DataHabit.toDomain(): Habit {
@@ -83,9 +84,11 @@ fun HabitFrequency.serialize(): Pair<String, String> {
     return when (this) {
         is HabitFrequency.Daily -> "DAILY" to ""
         is HabitFrequency.Weekly -> "WEEKLY" to days.joinToString(",") { it.name }
-        is HabitFrequency.Custom -> "CUSTOM" to days.joinToString(",")
+        is HabitFrequency.Custom -> "CUSTOM" to daysOfMonth.joinToString(",")
+        is HabitFrequency.Monthly -> "MONTHLY" to "${dayOfMonth},${repeatUnit}"
     }
 }
+
 
 fun deserializeFrequency(type: String, data: String): HabitFrequency {
     return when (type) {
@@ -99,16 +102,28 @@ fun deserializeFrequency(type: String, data: String): HabitFrequency {
             HabitFrequency.Weekly(days)
         }
         "CUSTOM" -> {
-            val days = if (data.isNotEmpty()) {
+            val daysOfMonth = if (data.isNotEmpty()) {
                 data.split(",").map { it.toInt() }.toSet()
             } else {
                 emptySet()
             }
-            HabitFrequency.Custom(days)
+            HabitFrequency.Custom(daysOfMonth)
+        }
+        "MONTHLY" -> {
+            if (data.isNotEmpty()) {
+                val parts = data.split(",")
+                HabitFrequency.Monthly(
+                    dayOfMonth = parts[0].toIntOrNull() ?: 1,
+                    repeatUnit = parts.getOrNull(1) ?: "months"
+                )
+            } else {
+                HabitFrequency.Monthly(1, "months")
+            }
         }
         else -> HabitFrequency.Daily
     }
 }
+
 
 fun parseFrequency(type: String, data: String): HabitFrequency = when (type) {
     "DAILY" -> HabitFrequency.Daily

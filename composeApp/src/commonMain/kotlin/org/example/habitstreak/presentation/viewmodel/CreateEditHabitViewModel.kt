@@ -90,89 +90,51 @@ class CreateEditHabitViewModel(
         _uiState.update { it.copy(isArchived = isArchived) }
     }
 
-    @OptIn(ExperimentalTime::class)
     fun saveHabit(onSuccess: () -> Unit) {
-        val state = _uiState.value
-
-        // Validation
-        if (state.title.isBlank()) {
-            _uiState.update { it.copy(error = "Please enter a habit title") }
-            return
-        }
-
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            val state = _uiState.value
 
-            try {
-                if (state.isEditMode && habitId != null) {
-                    // Update existing habit
-                    habitRepository.getHabitById(habitId).fold(
-                        onSuccess = { existingHabit ->
-                            existingHabit?.let { habit ->
-                                habitRepository.updateHabit(
-                                    habit.copy(
-                                        title = state.title,
-                                        description = state.description,
-                                        icon = state.selectedIcon,
-                                        color = state.selectedColor,
-                                        frequency = state.frequency,
-                                        reminderTime = state.reminderTime,
-                                        isReminderEnabled = state.reminderTime != null,
-                                        targetCount = state.targetCount,
-                                        unit = state.unit
-                                    )
-                                ).fold(
-                                    onSuccess = {
-                                        _uiState.update { it.copy(isLoading = false) }
-                                        onSuccess()
-                                    },
-                                    onFailure = { error ->
-                                        _uiState.update { it.copy(
-                                            isLoading = false,
-                                            error = error.message
-                                        )}
-                                    }
+            if (state.isEditMode && habitId != null) {
+                habitRepository.getHabitById(habitId).fold(
+                    onSuccess = { existingHabit ->
+                        existingHabit?.let { habit ->
+                            habitRepository.updateHabit(
+                                habit.copy(
+                                    title = state.title,
+                                    description = state.description,
+                                    icon = state.selectedIcon,
+                                    color = state.selectedColor,
+                                    frequency = state.frequency,
+                                    reminderTime = state.reminderTime?.toString(),
+                                    isReminderEnabled = state.reminderTime != null,
+                                    targetCount = state.targetCount,
+                                    unit = state.unit
                                 )
-                            }
-                        },
-                        onFailure = { error ->
-                            _uiState.update { it.copy(
-                                isLoading = false,
-                                error = error.message
-                            )}
+                            ).fold(
+                                onSuccess = { onSuccess() },
+                                onFailure = { /* handle error */ }
+                            )
                         }
+                    },
+                    onFailure = { /* handle error */ }
+                )
+            } else {
+                // Create new habit
+                createHabitUseCase(
+                    CreateHabitUseCase.Params(
+                        title = state.title,
+                        description = state.description,
+                        icon = state.selectedIcon,
+                        color = state.selectedColor,
+                        frequency = state.frequency,
+                        reminderTime = state.reminderTime,
+                        targetCount = state.targetCount,
+                        unit = state.unit
                     )
-                } else {
-                    // Create new habit
-                    createHabitUseCase(
-                        CreateHabitUseCase.Params(
-                            title = state.title,
-                            description = state.description,
-                            icon = state.selectedIcon,
-                            color = state.selectedColor,
-                            frequency = state.frequency,
-                            reminderTime = state.reminderTime,
-                            targetCount = state.targetCount,
-                            unit = state.unit
-                        )
-                    ).fold(
-                        onSuccess = {
-                            _uiState.update { it.copy(isLoading = false) }
-                            onSuccess()
-                        },
-                        onFailure = { error ->
-                            _uiState.update { it.copy(
-                                isLoading = false,
-                                error = error.message
-                            )}
-                        }
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(
-                    isLoading = false,
-                    error = e.message ?: "An error occurred"
-                )}
+                ).fold(
+                    onSuccess = { onSuccess() },
+                    onFailure = { /* handle error */ }
+                )
             }
         }
     }

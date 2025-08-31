@@ -2,6 +2,7 @@ package org.example.habitstreak.domain.usecase
 
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.util.UseCase
+import kotlin.time.ExperimentalTime
 
 class ArchiveHabitUseCase(
     private val habitRepository: HabitRepository
@@ -12,6 +13,7 @@ class ArchiveHabitUseCase(
         val archive: Boolean
     )
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun invoke(params: Params): Result<Unit> {
         return habitRepository.getHabitById(params.habitId).fold(
             onSuccess = { habit ->

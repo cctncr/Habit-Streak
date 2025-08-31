@@ -22,6 +22,7 @@ import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.domain.usecase.CalculateStreakUseCase
 import org.example.habitstreak.domain.util.DateProvider
+import kotlin.collections.filter
 
 class HabitDetailViewModel(
     private val habitId: String,
@@ -45,7 +46,10 @@ class HabitDetailViewModel(
 
         _uiState.update {
             it.copy(
-                selectedMonth = YearMonth(today.year, today.month.number),
+                selectedMonth = org.example.habitstreak.presentation.model.YearMonth(
+                    today.year,
+                    today.month.number
+                ),
                 isLoading = true
             )
         }
@@ -134,14 +138,11 @@ class HabitDetailViewModel(
                 enableNotification(time)
             }
 
-            result.fold(
-                onSuccess = {
-                    _uiState.update { it.copy(notificationTime = time, error = null) }
-                },
-                onFailure = { error ->
-                    _uiState.update { it.copy(error = error.message) }
-                }
-            )
+            result.onSuccess {
+                _uiState.update { it.copy(notificationTime = time, error = null) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(error = error.message) }
+            }
         }
     }
 
@@ -156,20 +157,17 @@ class HabitDetailViewModel(
                 habitId = habitId,
                 time = time,
                 message = message
-            ).fold(
-                onSuccess = {
-                    _uiState.update { state ->
-                        state.copy(
-                            isNotificationEnabled = true,
-                            notificationTime = time,
-                            error = null
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update { it.copy(error = error.message) }
+            ).onSuccess {
+                _uiState.update { state ->
+                    state.copy(
+                        isNotificationEnabled = true,
+                        notificationTime = time,
+                        error = null
+                    )
                 }
-            )
+            }.onFailure { error ->
+                _uiState.update { it.copy(error = error.message) }
+            }
         }
     }
 
@@ -225,10 +223,12 @@ class HabitDetailViewModel(
     private fun loadRecords() {
         viewModelScope.launch {
             habitRecordRepository.observeRecordsForHabit(habitId).collect { records ->
-                _uiState.update { it.copy(
-                    records = records,
-                    isLoading = false
-                )}
+                _uiState.update {
+                    it.copy(
+                        records = records,
+                        isLoading = false
+                    )
+                }
                 calculateStatistics()
             }
         }
@@ -252,30 +252,26 @@ class HabitDetailViewModel(
                 return@launch
             }
 
-            // Calculate stats using the streak use case
-            calculateStreakUseCase(habitId).fold(
-                onSuccess = { streakInfo ->
-                    val stats = HabitStats(
-                        currentStreak = streakInfo.currentStreak,
-                        longestStreak = streakInfo.longestStreak,
-                        totalDays = records.count { it.completedCount >= habit.targetCount },
-                        completionRate = calculateCompletionRate(records, habit),
-                        averagePerDay = calculateAveragePerDay(records),
-                        thisWeekCount = calculateThisWeekCount(records),
-                        thisMonthCount = calculateThisMonthCount(records),
-                        lastCompleted = streakInfo.lastCompletedDate
+            calculateStreakUseCase(habitId).onSuccess { streakInfo ->
+                val stats = HabitStats(
+                    currentStreak = streakInfo.currentStreak,
+                    longestStreak = streakInfo.longestStreak,
+                    totalDays = records.count { it.completedCount >= habit.targetCount },
+                    completionRate = calculateCompletionRate(records, habit),
+                    averagePerDay = calculateAveragePerDay(records),
+                    thisWeekCount = calculateThisWeekCount(records),
+                    thisMonthCount = calculateThisMonthCount(records),
+                    lastCompleted = streakInfo.lastCompletedDate
+                )
+                _uiState.update {
+                    it.copy(
+                        statistics = stats,
+                        filteredStatistics = stats
                     )
-                    _uiState.update {
-                        it.copy(
-                            statistics = stats,
-                            filteredStatistics = stats
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(error = "Failed to calculate statistics") }
                 }
-            )
+            }.onFailure {
+                _uiState.update { it.copy(error = "Failed to calculate statistics") }
+            }
         }
     }
 
@@ -283,7 +279,8 @@ class HabitDetailViewModel(
     private fun calculateCompletionRate(records: List<HabitRecord>, habit: Habit): Double {
         val completedDays = records.count { it.completedCount >= habit.targetCount }
         val createdDate = habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        val daysSinceCreation = (dateProvider.today().toEpochDays() - createdDate.toEpochDays()).toInt() + 1
+        val today = dateProvider.today()
+        val daysSinceCreation = (today.toEpochDays() - createdDate.toEpochDays()).toInt() + 1
         return if (daysSinceCreation > 0) {
             (completedDays.toDouble() / daysSinceCreation) * 100
         } else 0.0
@@ -316,7 +313,7 @@ class HabitDetailViewModel(
             val habit = _uiState.value.habit ?: return@launch
             val records = _uiState.value.records
             val today = dateProvider.today()
-            val currentMonth = _uiState.value.currentMonth
+            val currentMonth = _uiState.value.selectedMonth
 
             val filteredRecords = when (filter) {
                 StatsTimeFilter.ALL_TIME -> {
@@ -369,7 +366,7 @@ class HabitDetailViewModel(
 
             _uiState.update { state ->
                 state.copy(
-                    filteredStatistics = FilteredStats(
+                    filteredStatistics = HabitStats(
                         totalCompletions = totalCompletions,
                         completionRate = completionRate.coerceIn(0, 100),
                         bestStreak = bestStreak
