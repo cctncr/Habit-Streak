@@ -50,7 +50,10 @@ fun FrequencySelectionDialog(
                     text = "Custom",
                     isSelected = selectedFrequency is HabitFrequency.Custom,
                     onClick = {
-                        selectedFrequency = HabitFrequency.Custom(2, RepeatUnit.DAYS)
+                        selectedFrequency = HabitFrequency.Custom(
+                            repeatInterval = 2,
+                            repeatUnit = RepeatUnit.DAYS
+                        )
                     }
                 )
             }

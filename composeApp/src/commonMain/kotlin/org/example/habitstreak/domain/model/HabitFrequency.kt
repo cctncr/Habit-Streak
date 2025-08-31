@@ -8,14 +8,14 @@ sealed class HabitFrequency {
     object Daily : HabitFrequency()
 
     @Serializable
-    data class Weekly(val days: Set<DayOfWeek>) : HabitFrequency()
+    data class Weekly(val daysOfWeek: Set<DayOfWeek>) : HabitFrequency()
 
     @Serializable
-    data class Custom(val daysOfMonth: Set<Int>) : HabitFrequency()
+    data class Monthly(val daysOfMonth: Set<Int>) : HabitFrequency()
 
     @Serializable
-    data class Monthly(
-        val dayOfMonth: Int,
-        val repeatUnit: String = "months"
+    data class Custom(
+        val repeatInterval: Int,
+        val repeatUnit: RepeatUnit
     ) : HabitFrequency()
 }

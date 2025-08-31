@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Warning
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,6 +72,7 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -89,6 +92,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -97,7 +101,9 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.minus
 import kotlinx.datetime.number
+import kotlinx.datetime.plus
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.util.DateProvider
@@ -134,7 +140,7 @@ fun HabitDetailScreen(
         selectedDate = null
         selectedTab = ActivityTab.HISTORY
         statsFilter = StatsTimeFilter.ALL_TIME
-        viewModel.loadData() // ViewModel'e reload metodu eklenecek
+        viewModel.loadData()
     }
 
     uiState.habit?.let { habit ->
@@ -162,7 +168,6 @@ fun HabitDetailScreen(
                     )
                 }
 
-                // Calendar View - Güncellenmiş version
                 CalendarView(
                     currentMonth = uiState.selectedMonth,
                     records = uiState.records,
@@ -656,7 +661,7 @@ private fun CalendarView(
 
 @Composable
 private fun CalendarGrid(
-    yearMonth: HabitDetailViewModel.YearMonth,
+    yearMonth: org.example.habitstreak.presentation.model.YearMonth,
     records: List<HabitRecord>,
     habit: Habit,
     selectedDate: LocalDate?,
@@ -664,14 +669,13 @@ private fun CalendarGrid(
     habitColor: Color,
     today: LocalDate
 ) {
-    val firstDayOfMonth = LocalDate(yearMonth.year, yearMonth.month, 1)
-    val lastDayOfMonth =
-        firstDayOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+    val firstDayOfMonth = LocalDate(yearMonth.year, yearMonth.month.number, 1)
+    val lastDayOfMonth = firstDayOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
     val firstDayOfWeek = firstDayOfMonth.dayOfWeek
-    val daysInMonth = lastDayOfMonth.day
+    val daysInMonth = lastDayOfMonth.dayOfMonth
 
-    // Calculate offset for Monday start (ISO-8601 week)
-    val offset = firstDayOfWeek.ordinal + 1
+    // ISO-8601 week için offset hesaplama (Monday = 1)
+    val offset = (firstDayOfWeek.ordinal + 1) % 7
     val totalCells = offset + daysInMonth
     val rows = (totalCells + 6) / 7
 
@@ -683,29 +687,26 @@ private fun CalendarGrid(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Empty cells before month starts
+        // Month başlamadan önceki boş hücreler
         items(offset) {
             Spacer(modifier = Modifier.size(40.dp))
         }
 
+        // Ayın günleri
         items(daysInMonth) { dayIndex ->
-            val date = LocalDate(yearMonth.year, yearMonth.month, dayIndex + 1)
+            val date = LocalDate(yearMonth.year, yearMonth.month.number, dayIndex + 1)
             val record = records.find { it.date == date }
             val progress = record?.let {
                 it.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)
             } ?: 0f
-            val hasNote = record?.note?.isNotBlank() == true
 
             DayCell(
                 date = date,
                 progress = progress,
-                hasNote = hasNote,
                 isSelected = date == selectedDate,
                 isToday = date == today,
-                isFuture = date > today,
-                isPast = date < today,
                 habitColor = habitColor,
-                onClick = { onDateClick(date) } // Tüm tarihler tıklanabilir
+                onClick = { onDateClick(date) }
             )
         }
     }
@@ -818,37 +819,32 @@ private fun DayCell(
 @Composable
 private fun StatsCards(
     statistics: HabitDetailViewModel.HabitStats?,
-    habit: Habit,
-    modifier: Modifier = Modifier
+    habit: Habit
 ) {
-    LazyRow(
-        modifier = modifier,
+    val stats = statistics ?: HabitDetailViewModel.HabitStats()
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            StatCard(
-                icon = Icons.Outlined.CheckCircle,
-                value = "${statistics?.totalCompletions ?: 0}",
-                label = "Total",
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        item {
-            StatCard(
-                icon = Icons.Outlined.Percent,
-                value = "${statistics?.completionRate ?: 0}%",
-                label = "Success",
-                color = MaterialTheme.colorScheme.secondary
-            )
-        }
-        item {
-            StatCard(
-                icon = Icons.Outlined.LocalFireDepartment,
-                value = "${statistics?.bestStreak ?: 0}",
-                label = "Best Streak",
-                color = Color(0xFFFF6B35)
-            )
-        }
+        StatCard(
+            modifier = Modifier.weight(1f),
+            title = "Total",
+            value = stats.thisMonthCount.toString(), // totalCompletions yerine
+            icon = Icons.Outlined.CheckCircle
+        )
+        StatCard(
+            modifier = Modifier.weight(1f),
+            title = "Best Streak",
+            value = stats.longestStreak.toString(), // bestStreak yerine
+            icon = Icons.Outlined.LocalFireDepartment
+        )
+        StatCard(
+            modifier = Modifier.weight(1f),
+            title = "Rate",
+            value = "${stats.completionRate.toInt()}%", // completionRate zaten var
+            icon = Icons.Outlined.Percent
+        )
     }
 }
 

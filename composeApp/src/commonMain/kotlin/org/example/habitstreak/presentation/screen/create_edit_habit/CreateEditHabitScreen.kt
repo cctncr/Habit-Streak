@@ -1137,7 +1137,12 @@ private fun FrequencySelectionContent(
             onClick = {
                 customInterval.toIntOrNull()?.let { interval ->
                     if (interval > 0) {
-                        onFrequencySelected(HabitFrequency.Custom(interval, customUnit))
+                        onFrequencySelected(
+                            HabitFrequency.Custom(
+                                repeatInterval = interval,
+                                repeatUnit = customUnit
+                            )
+                        )
                     }
                 }
             },

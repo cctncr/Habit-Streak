@@ -8,8 +8,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import org.example.habitstreak.presentation.screen.habit_detail.StatsTimeFilter
-import org.example.habitstreak.presentation.ui.utils.isInCurrentWeekFromMonday
-import org.example.habitstreak.presentation.ui.utils.startOfWeekFromMonday
 import kotlinx.coroutines.flow.*
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.presentation.ui.state.HabitDetailUiState
@@ -214,12 +212,6 @@ class HabitDetailViewModel(
         }
     }
 
-    // Açık bir reload için ayrı fonksiyon
-    fun reloadData() {
-        isDataLoaded = false
-        loadData()
-    }
-
     private fun loadRecords() {
         viewModelScope.launch {
             habitRecordRepository.observeRecordsForHabit(habitId).collect { records ->
@@ -232,10 +224,6 @@ class HabitDetailViewModel(
                 calculateStatistics()
             }
         }
-    }
-
-    fun setFutureReminder(date: LocalDate, time: LocalTime) {
-        // Implement future reminder logic if needed
     }
 
     fun selectDate(date: LocalDate) {
@@ -306,76 +294,6 @@ class HabitDetailViewModel(
         return records.filter { it.date >= monthStart }.sumOf { it.completedCount }
     }
 
-    @OptIn(ExperimentalTime::class)
-    fun updateStatsFilter(filter: StatsTimeFilter) {
-        currentFilter = filter
-        viewModelScope.launch {
-            val habit = _uiState.value.habit ?: return@launch
-            val records = _uiState.value.records
-            val today = dateProvider.today()
-            val currentMonth = _uiState.value.selectedMonth
-
-            val filteredRecords = when (filter) {
-                StatsTimeFilter.ALL_TIME -> {
-                    records.filter { it.date >= habit.createdAt }
-                }
-
-                StatsTimeFilter.THIS_MONTH -> {
-                    records.filter { it.date.year == currentMonth.year && it.date.monthNumber == currentMonth.month.number }
-                }
-
-                StatsTimeFilter.THIS_WEEK -> {
-                    records.filter { it.date.isInCurrentWeekFromMonday(today) }
-                }
-            }
-
-            val totalCompletions = filteredRecords.count {
-                it.completedCount >= habit.targetCount
-            }
-
-            val periodDays = when (filter) {
-                StatsTimeFilter.ALL_TIME -> {
-                    (today.toEpochDays() - habit.createdAt.toEpochDays() + 1).toInt()
-                }
-
-                StatsTimeFilter.THIS_MONTH -> {
-                    val daysInMonth = when (currentMonth.month.number) {
-                        1, 3, 5, 7, 8, 10, 12 -> 31
-                        4, 6, 9, 11 -> 30
-                        2 -> if (currentMonth.isLeapYear) 29 else 28
-                        else -> 30
-                    }
-                    if (currentMonth.year == today.year && currentMonth.month.number == today.month.number) {
-                        today.day
-                    } else {
-                        daysInMonth
-                    }
-                }
-
-                StatsTimeFilter.THIS_WEEK -> {
-                    val startOfWeek = today.startOfWeekFromMonday()
-                    (today.toEpochDays() - startOfWeek.toEpochDays() + 1).toInt()
-                }
-            }
-
-            val completionRate = if (periodDays > 0) {
-                (totalCompletions * 100) / periodDays.coerceAtLeast(1)
-            } else 0
-
-            val bestStreak = calculateBestStreakForPeriod(filteredRecords.map { it.date }.sorted())
-
-            _uiState.update { state ->
-                state.copy(
-                    filteredStatistics = HabitStats(
-                        totalCompletions = totalCompletions,
-                        completionRate = completionRate.coerceIn(0, 100),
-                        bestStreak = bestStreak
-                    )
-                )
-            }
-        }
-    }
-
     private fun calculateBestStreakForPeriod(sortedDates: List<LocalDate>): Int {
         if (sortedDates.isEmpty()) return 0
 
@@ -395,11 +313,8 @@ class HabitDetailViewModel(
         return maxStreak
     }
 
-    fun changeMonth(yearMonth: YearMonth) {
-        _uiState.update { it.copy(currentMonth = yearMonth) }
-        if (currentFilter == StatsTimeFilter.THIS_MONTH) {
-            updateStatsFilter(StatsTimeFilter.THIS_MONTH)
-        }
+    fun changeMonth(yearMonth: org.example.habitstreak.presentation.model.YearMonth) {
+        _uiState.update { it.copy(selectedMonth = yearMonth) }
     }
 
     fun deleteHabit(onSuccess: () -> Unit) {
@@ -433,12 +348,6 @@ class HabitDetailViewModel(
         val thisWeekCount: Int = 0,
         val thisMonthCount: Int = 0,
         val lastCompleted: LocalDate? = null
-    )
-
-    data class FilteredStats(
-        val totalCompletions: Int,
-        val completionRate: Int,
-        val bestStreak: Int
     )
 
     data class YearMonth(val year: Int, val month: Month) {

@@ -34,20 +34,30 @@ class CreateEditHabitViewModel(
             habitRepository.getHabitById(id).fold(
                 onSuccess = { habit ->
                     habit?.let {
+                        val reminderTime = it.reminderTime?.let { timeString ->
+                            try {
+                                LocalTime.parse(timeString)
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+
                         _uiState.value = CreateEditHabitUiState(
                             title = it.title,
                             description = it.description,
                             selectedIcon = it.icon,
                             selectedColor = it.color,
                             frequency = it.frequency,
-                            reminderTime = it.reminderTime,
+                            reminderTime = reminderTime,
                             targetCount = it.targetCount,
                             unit = it.unit,
                             isEditMode = true
                         )
                     }
                 },
-                onFailure = { /* Handle error */ }
+                onFailure = { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
             )
         }
     }
@@ -90,6 +100,7 @@ class CreateEditHabitViewModel(
         _uiState.update { it.copy(isArchived = isArchived) }
     }
 
+    @OptIn(ExperimentalTime::class)
     fun saveHabit(onSuccess: () -> Unit) {
         viewModelScope.launch {
             val state = _uiState.value
@@ -112,11 +123,15 @@ class CreateEditHabitViewModel(
                                 )
                             ).fold(
                                 onSuccess = { onSuccess() },
-                                onFailure = { /* handle error */ }
+                                onFailure = { error ->
+                                    _uiState.update { it.copy(error = error.message) }
+                                }
                             )
                         }
                     },
-                    onFailure = { /* handle error */ }
+                    onFailure = { error ->
+                        _uiState.update { it.copy(error = error.message) }
+                    }
                 )
             } else {
                 // Create new habit
@@ -133,7 +148,9 @@ class CreateEditHabitViewModel(
                     )
                 ).fold(
                     onSuccess = { onSuccess() },
-                    onFailure = { /* handle error */ }
+                    onFailure = { error ->
+                        _uiState.update { it.copy(error = error.message) }
+                    }
                 )
             }
         }
