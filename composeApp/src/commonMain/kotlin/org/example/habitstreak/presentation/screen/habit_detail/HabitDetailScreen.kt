@@ -1,114 +1,45 @@
 package org.example.habitstreak.presentation.screen.habit_detail
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Circle
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.Percent
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Today
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.*
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.minus
-import kotlinx.datetime.number
-import kotlinx.datetime.plus
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.ui.components.NotificationSettingsCard
-import org.example.habitstreak.presentation.ui.components.common.StreakBadge
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 import org.example.habitstreak.presentation.ui.utils.DateFormatter
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
@@ -117,13 +48,27 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Enum definitions
+enum class StatsTimeFilter(val label: String) {
+    ALL_TIME("All Time"),
+    THIS_YEAR("This Year"),
+    THIS_MONTH("This Month"),
+    THIS_WEEK("This Week"),
+    LAST_30_DAYS("Last 30 Days")
+}
+
+enum class ActivityTab(val label: String) {
+    HISTORY("History"),
+    NOTES("Notes")
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun HabitDetailScreen(
     habitId: String,
     onNavigateBack: () -> Unit,
     onNavigateToEdit: () -> Unit,
-    viewModel: HabitDetailViewModel = koinViewModel(key = habitId) { parametersOf(habitId) }, // key eklendi
+    viewModel: HabitDetailViewModel = koinViewModel(key = habitId) { parametersOf(habitId) },
     dateProvider: DateProvider = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -230,7 +175,7 @@ fun HabitDetailScreen(
 
                     // Stats Cards
                     StatsCards(
-                        statistics = uiState.filteredStatistics,
+                        statistics = uiState.filteredStatistics ?: uiState.statistics,
                         habit = habit
                     )
                 }
@@ -332,10 +277,15 @@ fun HabitDetailScreen(
                     viewModel.updateProgress(selectedDate!!, value)
                 },
                 onUpdateNote = { note ->
-                    viewModel.updateNote(selectedDate!!, note)
+                    val record = uiState.records.find { it.date == selectedDate }
+                    viewModel.updateProgress(selectedDate!!, record?.completedCount ?: 0, note)
                 },
-                onSetReminder = { time ->
-                    viewModel.setFutureReminder(selectedDate!!, time)
+                onDeleteRecord = {
+                    viewModel.deleteRecord(selectedDate!!)
+                    coroutineScope.launch {
+                        bottomSheetState.hide()
+                        selectedDate = null
+                    }
                 }
             )
         }
@@ -344,18 +294,16 @@ fun HabitDetailScreen(
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Habit?") },
-                text = { Text("This will permanently delete \"${habit.title}\" and all its data.") },
+                title = { Text("Delete Habit") },
+                text = { Text("Are you sure you want to delete this habit? This action cannot be undone.") },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             viewModel.deleteHabit {
                                 onNavigateBack()
                             }
-                        },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
+                            showDeleteDialog = false
+                        }
                     ) {
                         Text("Delete")
                     }
@@ -364,17 +312,38 @@ fun HabitDetailScreen(
                     TextButton(onClick = { showDeleteDialog = false }) {
                         Text("Cancel")
                     }
-                },
-                icon = {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
                 }
             )
         }
-    } ?: LoadingState()
+    }
+
+    // Show loading or error states
+    when {
+        uiState.isLoading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        uiState.habit == null -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Habit not found")
+            }
+        }
+    }
+
+    // Handle errors
+    uiState.error?.let { error ->
+        LaunchedEffect(error) {
+            // Show snackbar or handle error
+            viewModel.clearError()
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -384,48 +353,76 @@ private fun HabitDetailTopBar(
     statistics: HabitDetailViewModel.HabitStats?,
     onNavigateBack: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     TopAppBar(
+        modifier = modifier,
         title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = habit.icon.emoji,
-                    fontSize = 24.sp
-                )
+            Column {
                 Text(
                     text = habit.title,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    overflow = TextOverflow.Ellipsis
                 )
-                // Kompakt streak badge ekle
                 statistics?.let { stats ->
-                    if (stats.currentStreak > 0) {
-                        StreakBadge(
-                            streak = stats.currentStreak,
-                            modifier = Modifier
-                        )
-                    }
+                    Text(
+                        text = "${stats.currentStreak} day streak",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         },
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(
+                    Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back"
+                )
             }
         },
         actions = {
             IconButton(onClick = onEdit) {
-                Icon(Icons.Outlined.Edit, contentDescription = "Edit")
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Edit habit"
+                )
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = "Delete")
+
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "More options"
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            onDelete()
+                            showMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
             }
-        }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = HabitStreakTheme.habitColorToComposeColor(habit.color).copy(alpha = 0.1f)
+        )
     )
 }
 
@@ -434,15 +431,15 @@ private fun HabitDescriptionStrip(
     description: String,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    Card(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(8.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
     ) {
         Text(
             text = description,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
@@ -450,71 +447,26 @@ private fun HabitDescriptionStrip(
     }
 }
 
-@Composable
-private fun HabitHeader(
-    habit: Habit,
-    statistics: HabitDetailViewModel.HabitStats?,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Current Streak
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("🔥", fontSize = 32.sp)
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "${statistics?.currentStreak ?: 0}",
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "day streak",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                }
-            }
-
-            if (habit.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = habit.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalTime::class)
 @Composable
 private fun CalendarView(
-    currentMonth: HabitDetailViewModel.YearMonth,
+    currentMonth: org.example.habitstreak.presentation.model.YearMonth?,
     records: List<HabitRecord>,
     habit: Habit,
     selectedDate: LocalDate?,
     today: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    onMonthChange: (HabitDetailViewModel.YearMonth) -> Unit,
+    onMonthChange: (org.example.habitstreak.presentation.model.YearMonth) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
-    val monthDate = LocalDate(currentMonth.year, currentMonth.month, 1)
+
+    if (currentMonth == null) return
+
+    val monthNames = listOf(
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    )
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -532,7 +484,12 @@ private fun CalendarView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = {
-                    onMonthChange(currentMonth.previousMonth())
+                    val newMonth = if (currentMonth.monthNumber == 1) {
+                        org.example.habitstreak.presentation.model.YearMonth(currentMonth.year - 1, 12)
+                    } else {
+                        org.example.habitstreak.presentation.model.YearMonth(currentMonth.year, currentMonth.monthNumber - 1)
+                    }
+                    onMonthChange(newMonth)
                 }) {
                     Icon(
                         Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
@@ -540,30 +497,19 @@ private fun CalendarView(
                     )
                 }
 
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "${DateFormatter.formatMonthShort(monthDate)} ${currentMonth.year}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    // Hangi yıl olduğunu daha belirgin göster
-                    if (currentMonth.year != today.year) {
-                        Text(
-                            text = if (currentMonth.year > today.year) {
-                                "${currentMonth.year - today.year} years from now"
-                            } else {
-                                "${today.year - currentMonth.year} years ago"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                Text(
+                    text = "${monthNames[currentMonth.monthNumber - 1]} ${currentMonth.year}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
 
                 IconButton(onClick = {
-                    onMonthChange(currentMonth.nextMonth())
+                    val newMonth = if (currentMonth.monthNumber == 12) {
+                        org.example.habitstreak.presentation.model.YearMonth(currentMonth.year + 1, 1)
+                    } else {
+                        org.example.habitstreak.presentation.model.YearMonth(currentMonth.year, currentMonth.monthNumber + 1)
+                    }
+                    onMonthChange(newMonth)
                 }) {
                     Icon(
                         Icons.AutoMirrored.Outlined.KeyboardArrowRight,
@@ -574,18 +520,17 @@ private fun CalendarView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Week days header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun").forEach { day ->
+            // Day of Week Headers
+            Row(modifier = Modifier.fillMaxWidth()) {
+                val dayNames = listOf("M", "T", "W", "T", "F", "S", "S")
+                dayNames.forEach { day ->
                     Text(
                         text = day,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -603,6 +548,9 @@ private fun CalendarView(
                 today = today
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Quick Actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -614,9 +562,9 @@ private fun CalendarView(
                         AssistChip(
                             onClick = {
                                 onMonthChange(
-                                    HabitDetailViewModel.YearMonth(
-                                        habit.createdAt.year,
-                                        habit.createdAt.month.number
+                                    org.example.habitstreak.presentation.model.YearMonth(
+                                        habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date.year,
+                                        habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date.month.number
                                     )
                                 )
                             },
@@ -635,9 +583,9 @@ private fun CalendarView(
                         AssistChip(
                             onClick = {
                                 onMonthChange(
-                                    HabitDetailViewModel.YearMonth(
+                                    org.example.habitstreak.presentation.model.YearMonth(
                                         today.year,
-                                        today.month.number
+                                        today.monthNumber
                                     )
                                 )
                             },
@@ -650,11 +598,9 @@ private fun CalendarView(
                                 )
                             }
                         )
-
                     }
                 }
             }
-
         }
     }
 }
@@ -669,12 +615,12 @@ private fun CalendarGrid(
     habitColor: Color,
     today: LocalDate
 ) {
-    val firstDayOfMonth = LocalDate(yearMonth.year, yearMonth.month.number, 1)
+    val firstDayOfMonth = LocalDate(yearMonth.year, yearMonth.monthNumber, 1)
     val lastDayOfMonth = firstDayOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
     val firstDayOfWeek = firstDayOfMonth.dayOfWeek
     val daysInMonth = lastDayOfMonth.dayOfMonth
 
-    // ISO-8601 week için offset hesaplama (Monday = 1)
+    // ISO-8601 week offset calculation (Monday = 1)
     val offset = (firstDayOfWeek.ordinal + 1) % 7
     val totalCells = offset + daysInMonth
     val rows = (totalCells + 6) / 7
@@ -687,130 +633,66 @@ private fun CalendarGrid(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Month başlamadan önceki boş hücreler
+        // Empty cells before month starts
         items(offset) {
             Spacer(modifier = Modifier.size(40.dp))
         }
 
-        // Ayın günleri
+        // Days of the month
         items(daysInMonth) { dayIndex ->
-            val date = LocalDate(yearMonth.year, yearMonth.month.number, dayIndex + 1)
+            val date = LocalDate(yearMonth.year, yearMonth.monthNumber, dayIndex + 1)
             val record = records.find { it.date == date }
             val progress = record?.let {
                 it.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)
             } ?: 0f
 
-            DayCell(
-                date = date,
-                progress = progress,
-                isSelected = date == selectedDate,
-                isToday = date == today,
-                habitColor = habitColor,
-                onClick = { onDateClick(date) }
-            )
-        }
-    }
-}
+            val isToday = date == today
+            val isSelected = date == selectedDate
+            val isFuture = date > today
+            val isPast = date < today
+            val hasNote = record?.note?.isNotBlank() == true
 
-@Composable
-private fun DayCell(
-    date: LocalDate,
-    progress: Float,
-    hasNote: Boolean,
-    isSelected: Boolean,
-    isToday: Boolean,
-    isFuture: Boolean,
-    isPast: Boolean,
-    habitColor: Color,
-    onClick: () -> Unit
-) {
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            progress >= 1f -> habitColor
-            progress > 0f -> habitColor.copy(alpha = 0.3f + (0.5f * progress))
-            hasNote && isFuture -> MaterialTheme.colorScheme.tertiaryContainer.copy(
-                alpha = 0.7f
-            ) // Future note
-            hasNote && isPast -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f) // Past note
-            hasNote -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) // Today note
-            isFuture -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) // Future days
-            else -> MaterialTheme.colorScheme.surfaceVariant
-        },
-        label = "bg"
-    )
-
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.1f else 1f,
-        animationSpec = spring(),
-        label = "scale"
-    )
-
-    val borderColor = when {
-        isToday -> MaterialTheme.colorScheme.primary
-        isSelected -> habitColor
-        else -> Color.Transparent
-    }
-
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .scale(scale)
-            .clip(CircleShape)
-            .background(backgroundColor)
-            .border(
-                width = if (isToday || isSelected) 2.dp else 0.dp,
-                color = borderColor,
-                shape = CircleShape
-            )
-            .clickable { onClick() }, // Tüm günler tıklanabilir
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            progress >= 1f -> {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-
-            progress > 0f -> {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        when {
+                            isSelected -> habitColor
+                            isToday -> habitColor.copy(alpha = 0.3f)
+                            progress > 0f -> habitColor.copy(alpha = progress * 0.8f + 0.2f)
+                            else -> Color.Transparent
+                        }
+                    )
+                    .clickable(enabled = !isFuture) {
+                        onDateClick(date)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "${(progress * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (progress >= 0.5f) Color.White else MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            hasNote -> {
-                Icon(
-                    Icons.AutoMirrored.Outlined.StickyNote2,
-                    contentDescription = "Has note",
-                    modifier = Modifier.size(16.dp),
-                    tint = when {
-                        isFuture -> MaterialTheme.colorScheme.onTertiaryContainer
-                        isPast -> MaterialTheme.colorScheme.onSecondaryContainer
-                        else -> MaterialTheme.colorScheme.onPrimaryContainer
-                    }
-                )
-            }
-
-            else -> {
-                Text(
-                    text = date.day.toString(),
-                    style = MaterialTheme.typography.bodySmall,
+                    text = (dayIndex + 1).toString(),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = when {
-                        isToday -> MaterialTheme.colorScheme.primary
-                        isFuture -> MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                            alpha = 0.7f
-                        )
-
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        isSelected -> Color.White
+                        isFuture -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        progress > 0.5f -> Color.White
+                        else -> MaterialTheme.colorScheme.onSurface
                     },
                     fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
                 )
+
+                if (hasNote) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(
+                                color = if (isSelected || progress > 0.5f) Color.White else habitColor,
+                                shape = RoundedCornerShape(3.dp)
+                            )
+                            .align(Alignment.BottomEnd)
+                            .offset(x = (-2).dp, y = (-2).dp)
+                    )
+                }
             }
         }
     }
@@ -819,50 +701,56 @@ private fun DayCell(
 @Composable
 private fun StatsCards(
     statistics: HabitDetailViewModel.HabitStats?,
-    habit: Habit
+    habit: Habit,
+    modifier: Modifier = Modifier
 ) {
     val stats = statistics ?: HabitDetailViewModel.HabitStats()
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         StatCard(
             modifier = Modifier.weight(1f),
-            title = "Total",
-            value = stats.thisMonthCount.toString(), // totalCompletions yerine
-            icon = Icons.Outlined.CheckCircle
+            value = stats.thisMonthCount.toString(),
+            label = "Total",
+            icon = Icons.Outlined.CheckCircle,
+            color = MaterialTheme.colorScheme.primary
         )
         StatCard(
             modifier = Modifier.weight(1f),
-            title = "Best Streak",
-            value = stats.longestStreak.toString(), // bestStreak yerine
-            icon = Icons.Outlined.LocalFireDepartment
+            value = stats.longestStreak.toString(),
+            label = "Best Streak",
+            icon = Icons.Outlined.LocalFireDepartment,
+            color = MaterialTheme.colorScheme.secondary
         )
         StatCard(
             modifier = Modifier.weight(1f),
-            title = "Rate",
-            value = "${stats.completionRate.toInt()}%", // completionRate zaten var
-            icon = Icons.Outlined.Percent
+            value = "${(stats.completionRate * 100).toInt()}%",
+            label = "Rate",
+            icon = Icons.Outlined.Percent,
+            color = MaterialTheme.colorScheme.tertiary
         )
     }
 }
 
 @Composable
 private fun StatCard(
-    icon: ImageVector,
+    modifier: Modifier = Modifier,
     value: String,
     label: String,
+    icon: ImageVector,
     color: Color
 ) {
     Card(
+        modifier = modifier,
         colors = CardDefaults.cardColors(
             containerColor = color.copy(alpha = 0.1f)
         )
     ) {
         Column(
             modifier = Modifier
-                .width(110.dp)
+                .fillMaxWidth()
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -893,7 +781,8 @@ private fun ActivityHistory(
     records: List<HabitRecord>,
     habit: Habit,
     today: LocalDate,
-    onRecordClick: (HabitRecord) -> Unit
+    onRecordClick: (HabitRecord) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     if (records.isEmpty()) {
         EmptyStateMessage("No activity yet")
@@ -902,32 +791,86 @@ private fun ActivityHistory(
 
     val sortedRecords = records.sortedByDescending { it.date }
 
-    Card {
-        LazyColumn(
+    Card(modifier = modifier) {
+        Column(
             modifier = Modifier.fillMaxWidth()
-                .heightIn(min = 200.dp, max = 600.dp), // Minimum ve maksimum yükseklik
-            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            itemsIndexed(sortedRecords) { index, record ->
-                ActivityItem(
+            sortedRecords.take(10).forEach { record ->
+                ActivityHistoryItem(
                     record = record,
                     habit = habit,
                     today = today,
                     onClick = { onRecordClick(record) }
                 )
-                if (index < sortedRecords.size - 1) {
-                    HorizontalDivider()
-                }
             }
         }
     }
 }
 
 @Composable
+private fun ActivityHistoryItem(
+    record: HabitRecord,
+    habit: Habit,
+    today: LocalDate,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val progress = record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)
+    val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
+
+    ListItem(
+        modifier = modifier.clickable { onClick() },
+        headlineContent = {
+            Text(DateFormatter.formatRelativeDate(record.date, today))
+        },
+        supportingContent = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("${record.completedCount}/${habit.targetCount}")
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.weight(1f),
+                    color = habitColor,
+                )
+                if (record.note.isNotBlank()) {
+                    Icon(
+                        Icons.Outlined.Note,
+                        contentDescription = "Has note",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        leadingContent = {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = habitColor.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = record.date.dayOfMonth.toString(),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = habitColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    )
+}
+
+@Composable
 private fun NotesHistory(
     records: List<HabitRecord>,
     today: LocalDate,
-    onNoteClick: (HabitRecord) -> Unit
+    onNoteClick: (HabitRecord) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val recordsWithNotes = records.filter { it.note.isNotBlank() }
 
@@ -936,226 +879,73 @@ private fun NotesHistory(
         return
     }
 
-    val sortedRecordsWithNotes = recordsWithNotes.sortedByDescending { it.date }
-
-    Card {
-        LazyColumn(
+    Card(modifier = modifier) {
+        Column(
             modifier = Modifier.fillMaxWidth()
-                .heightIn(min = 200.dp, max = 600.dp), // Minimum ve maksimum yükseklik
-            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            itemsIndexed(sortedRecordsWithNotes) { index, record ->
-                NoteItem(
+            recordsWithNotes.sortedByDescending { it.date }.forEach { record ->
+                NotesHistoryItem(
                     record = record,
                     today = today,
                     onClick = { onNoteClick(record) }
                 )
-                if (index < sortedRecordsWithNotes.size - 1) {
-                    HorizontalDivider()
-                }
             }
         }
     }
 }
 
 @Composable
-private fun ActivityItem(
-    record: HabitRecord,
-    habit: Habit,
-    today: LocalDate,
-    onClick: () -> Unit
-) {
-    val progress = record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)
-    val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
-    val isFuture = record.date > today
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when {
-                            progress >= 1f -> habitColor
-                            progress > 0f -> habitColor.copy(alpha = 0.3f)
-                            isFuture && record.note.isNotBlank() -> MaterialTheme.colorScheme.tertiaryContainer
-                            else -> MaterialTheme.colorScheme.surfaceVariant
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    progress >= 1f -> {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    progress > 0f -> {
-                        Text(
-                            text = "${(progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    isFuture && record.note.isNotBlank() -> {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.StickyNote2,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    else -> {
-                        Icon(
-                            Icons.Outlined.Circle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = DateFormatter.formatRelativeDate(record.date, today),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isFuture) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
-                    )
-
-                    // Future indicator
-                    if (isFuture) {
-                        Text(
-                            text = "📅",
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (habit.targetCount > 1 && progress > 0) {
-                        Text(
-                            text = "${record.completedCount} ${habit.unit}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (record.note.isNotBlank()) {
-                        Text(
-                            text = record.note,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, false)
-                        )
-                    }
-                }
-            }
-        }
-
-        if (record.note.isNotBlank()) {
-            Icon(
-                Icons.AutoMirrored.Outlined.StickyNote2,
-                contentDescription = "Has note",
-                modifier = Modifier.size(16.dp),
-                tint = if (isFuture) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun NoteItem(
+private fun NotesHistoryItem(
     record: HabitRecord,
     today: LocalDate,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val isFuture = record.date > today
-
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                isFuture -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
-                else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-            }
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = DateFormatter.formatRelativeDate(record.date, today),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isFuture) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-
-                    // Future indicator
-                    if (isFuture) {
-                        Text(
-                            text = "📅",
-                            fontSize = 10.sp
-                        )
-                    }
-                }
-
-                Text(
-                    text = DateFormatter.formatDateShort(record.date),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
+    ListItem(
+        modifier = modifier.clickable { onClick() },
+        headlineContent = {
+            Text(DateFormatter.formatRelativeDate(record.date, today))
+        },
+        supportingContent = {
             Text(
                 text = record.note,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        leadingContent = {
+            Icon(
+                Icons.Outlined.Note,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
             )
         }
+    )
+}
+
+@Composable
+private fun EmptyStateMessage(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
+// Bottom sheet component
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SelectedDateBottomSheet(
@@ -1166,8 +956,8 @@ private fun SelectedDateBottomSheet(
     today: LocalDate,
     onDismiss: () -> Unit,
     onUpdateProgress: (Int) -> Unit,
-    onUpdateNote: (String) -> Unit,
-    onSetReminder: (LocalTime?) -> Unit
+    onUpdateNote: (String?) -> Unit,
+    onDeleteRecord: () -> Unit
 ) {
     var progress by remember(record) {
         mutableStateOf(record?.completedCount ?: 0)
@@ -1175,22 +965,8 @@ private fun SelectedDateBottomSheet(
     var note by remember(record) {
         mutableStateOf(record?.note ?: "")
     }
-    var originalNote by remember(record) {
-        mutableStateOf(record?.note ?: "")
-    }
-    var isEditingNote by remember { mutableStateOf(false) }
-    var showReminderTime by remember { mutableStateOf(false) }
-    var reminderTime by remember { mutableStateOf<LocalTime?>(null) }
-    var hasChanges by remember { mutableStateOf(false) }
 
-    val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
-    val isToday = date == today
     val isFuture = date > today
-
-    // Changes kontrolü
-    LaunchedEffect(note, progress) {
-        hasChanges = note != originalNote || progress != (record?.completedCount ?: 0)
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1200,8 +976,7 @@ private fun SelectedDateBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 32.dp)
-                .animateContentSize(),
+                .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Header
@@ -1220,7 +995,7 @@ private fun SelectedDateBottomSheet(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${date.day} ${DateFormatter.formatMonthShort(date)} ${date.year}",
+                        text = DateFormatter.formatFullDate(date),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1231,11 +1006,11 @@ private fun SelectedDateBottomSheet(
                 }
             }
 
-            // Progress Input - İleri tarihler için gösterme
+            // Progress section
             if (!isFuture) {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = habitColor.copy(alpha = 0.1f)
+                        containerColor = HabitStreakTheme.habitColorToComposeColor(habit.color).copy(alpha = 0.1f)
                     )
                 ) {
                     Column(
@@ -1243,325 +1018,85 @@ private fun SelectedDateBottomSheet(
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Progress",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = "$progress / ${habit.targetCount} ${habit.unit}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = habitColor
-                            )
-                        }
+                        Text(
+                            text = "Progress: $progress/${habit.targetCount}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                        // Quick selection buttons
+                        // Progress controls here
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf(
-                                0,
-                                habit.targetCount / 2,
-                                habit.targetCount
-                            ).distinct().forEach { value ->
-                                FilterChip(
-                                    selected = progress == value,
-                                    onClick = { progress = value },
-                                    label = {
-                                        Text(
-                                            text = when (value) {
-                                                0 -> "None"
-                                                habit.targetCount -> "Complete"
-                                                else -> "$value"
-                                            }
-                                        )
-                                    },
-                                    leadingIcon = if (progress == value) {
-                                        {
-                                            Icon(
-                                                Icons.Default.Check,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    } else null,
-                                    modifier = Modifier.weight(1f)
-                                )
+                            Button(
+                                onClick = {
+                                    progress = 0
+                                    onUpdateProgress(0)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Clear")
                             }
-                        }
-
-                        // Slider for precise control
-                        if (habit.targetCount > 2) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Slider(
-                                value = progress.toFloat(),
-                                onValueChange = { progress = it.toInt() },
-                                valueRange = 0f..habit.targetCount.toFloat(),
-                                steps = habit.targetCount - 1,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = habitColor,
-                                    activeTrackColor = habitColor
-                                )
-                            )
+                            Button(
+                                onClick = {
+                                    progress = habit.targetCount
+                                    onUpdateProgress(habit.targetCount)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Complete")
+                            }
                         }
                     }
                 }
             }
 
-            // Note Section
+            // Note section
             Card {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.StickyNote2,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = if (isFuture) "Future Note" else "Note",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-
-                        IconButton(
-                            onClick = {
-                                isEditingNote = !isEditingNote
-                                if (isEditingNote) {
-                                    // Editing başladığında original note'u kaydet
-                                    originalNote = note
-                                }
-                            }
-                        ) {
-                            Icon(
-                                if (isEditingNote) Icons.Default.Check else Icons.Outlined.Edit,
-                                contentDescription = if (isEditingNote) "Save" else "Edit"
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Note",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    AnimatedContent(
-                        targetState = isEditingNote,
-                        transitionSpec = {
-                            fadeIn() togetherWith fadeOut()
+                    OutlinedTextField(
+                        value = note,
+                        onValueChange = {
+                            note = it
+                            onUpdateNote(it.takeIf { it.isNotBlank() })
                         },
-                        label = "note_edit"
-                    ) { editing ->
-                        if (editing) {
-                            OutlinedTextField(
-                                value = note,
-                                onValueChange = { note = it },
-                                placeholder = {
-                                    Text(
-                                        if (isFuture) "Add a note for this future date..."
-                                        else "Add a note about today..."
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                minLines = 3,
-                                maxLines = 5,
-                                keyboardOptions = KeyboardOptions(
-                                    imeAction = ImeAction.Done
-                                )
-                            )
-                        } else {
-                            Text(
-                                text = note.ifBlank { "No note added" },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (note.isBlank())
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                else
-                                    MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { isEditingNote = true }
-                                    .padding(vertical = 8.dp)
-                            )
-                        }
-                    }
-
-                    // İleri tarih için reminder switch
-                    if (isFuture && note.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(
-                                    alpha = 0.3f
-                                )
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.NotificationsActive,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.tertiary
-                                        )
-                                        Column {
-                                            Text(
-                                                text = "Reminder",
-                                                style = MaterialTheme.typography.titleSmall
-                                            )
-                                            if (reminderTime != null) {
-                                                Text(
-                                                    text = "At ${
-                                                        DateFormatter.formatTime(
-                                                            reminderTime!!
-                                                        )
-                                                    }",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Switch(
-                                        checked = reminderTime != null,
-                                        onCheckedChange = { enabled ->
-                                            if (enabled) {
-                                                showReminderTime = true
-                                                reminderTime =
-                                                    LocalTime(9, 0) // Default time
-                                            } else {
-                                                reminderTime = null
-                                                onSetReminder(null)
-                                            }
-                                        }
-                                    )
-                                }
-
-                                // Time picker
-                                AnimatedVisibility(visible = showReminderTime && reminderTime != null) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 8.dp),
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        TextButton(onClick = {
-                                            reminderTime = LocalTime(9, 0)
-                                            onSetReminder(reminderTime)
-                                            showReminderTime = false
-                                        }) {
-                                            Text(
-                                                "Set Time: ${
-                                                    reminderTime?.let {
-                                                        DateFormatter.formatTime(
-                                                            it
-                                                        )
-                                                    } ?: "Not set"
-                                                }")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Add a note...") },
+                        maxLines = 3
+                    )
                 }
             }
 
-            // Save Button - Sadece değişiklik varsa aktif
-            Button(
-                onClick = {
-                    // Progress değiştiğinde kaydet
-                    if (progress != (record?.completedCount ?: 0)) {
-                        onUpdateProgress(progress)
-                    }
-
-                    // Note değiştiğinde kaydet
-                    if (note != originalNote) {
-                        onUpdateNote(note)
-                    }
-
-                    // Reminder varsa kaydet
-                    if (reminderTime != null) {
-                        onSetReminder(reminderTime)
-                    }
-
-                    onDismiss()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = habitColor
-                ),
-                enabled = hasChanges || reminderTime != null
-            ) {
-                Text(
-                    text = if (hasChanges) "Save Changes" else "Close",
-                    fontWeight = FontWeight.Bold
-                )
+            // Delete option for existing records
+            if (record != null && !isFuture) {
+                TextButton(
+                    onClick = onDeleteRecord,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Delete record")
+                }
             }
         }
     }
-}
-
-@Composable
-private fun EmptyStateMessage(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun LoadingState() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator()
-    }
-}
-
-// Enums
-enum class ActivityTab(val label: String) {
-    HISTORY("Activity History"),
-    NOTES("Notes")
-}
-
-enum class StatsTimeFilter(val label: String) {
-    ALL_TIME("Since Created"),
-    THIS_MONTH("Selected Month"),
-    THIS_WEEK("This Week")
 }

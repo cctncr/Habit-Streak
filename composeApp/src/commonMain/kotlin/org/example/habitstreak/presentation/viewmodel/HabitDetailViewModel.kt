@@ -22,6 +22,7 @@ import org.example.habitstreak.domain.usecase.CalculateStreakUseCase
 import org.example.habitstreak.domain.util.DateProvider
 import kotlin.collections.filter
 
+@OptIn(ExperimentalTime::class)
 class HabitDetailViewModel(
     private val habitId: String,
     private val habitRepository: HabitRepository,
@@ -46,7 +47,7 @@ class HabitDetailViewModel(
             it.copy(
                 selectedMonth = org.example.habitstreak.presentation.model.YearMonth(
                     today.year,
-                    today.month.number
+                    today.monthNumber
                 ),
                 isLoading = true
             )
@@ -58,7 +59,7 @@ class HabitDetailViewModel(
 
     private fun loadHabitData() {
         viewModelScope.launch {
-            habitRepository.observeHabitById(habitId).collect { habit ->
+            habitRepository.observeHabitById(habitId).collect { habit: Habit? ->
                 _uiState.update { it.copy(habit = habit) }
                 if (habit != null) {
                     calculateStatistics()
@@ -67,11 +68,20 @@ class HabitDetailViewModel(
         }
     }
 
+    private fun loadRecords() {
+        viewModelScope.launch {
+            habitRecordRepository.observeRecordsForHabit(habitId).collect { records: List<HabitRecord> ->
+                _uiState.update { it.copy(records = records, isLoading = false) }
+                calculateStatistics()
+            }
+        }
+    }
+
     private fun observeNotificationConfig() {
         if (notificationService == null) {
             // Fallback to habit's reminderTime
             viewModelScope.launch {
-                habitRepository.observeHabitById(habitId).collect { habit ->
+                habitRepository.observeHabitById(habitId).collect { habit: Habit? ->
                     _uiState.update { state ->
                         state.copy(
                             isNotificationEnabled = habit?.isReminderEnabled == true,
@@ -119,43 +129,18 @@ class HabitDetailViewModel(
     }
 
     fun updateNotificationTime(time: LocalTime?) {
-        if (notificationService == null) {
-            _uiState.update { it.copy(error = "Notification service not available") }
-            return
-        }
-
-        if (time == null) {
-            disableNotification()
-            return
-        }
-
-        viewModelScope.launch {
-            val result = if (_uiState.value.isNotificationEnabled) {
-                notificationService.updateNotificationTime(habitId, time)
-            } else {
+        if (time != null && notificationService != null) {
+            viewModelScope.launch {
                 enableNotification(time)
             }
-
-            result.onSuccess {
-                _uiState.update { it.copy(notificationTime = time, error = null) }
-            }.onFailure { error ->
-                _uiState.update { it.copy(error = error.message) }
-            }
+        } else {
+            _uiState.update { it.copy(notificationTime = time) }
         }
     }
 
-    private fun enableNotification(time: LocalTime) {
-        if (notificationService == null) return
-
-        viewModelScope.launch {
-            val habit = _uiState.value.habit ?: return@launch
-            val message = "Time to ${habit.title}"
-
-            notificationService.enableNotification(
-                habitId = habitId,
-                time = time,
-                message = message
-            ).onSuccess {
+    private suspend fun enableNotification(time: LocalTime) {
+        notificationService?.enableNotification(habitId, time)?.fold(
+            onSuccess = {
                 _uiState.update { state ->
                     state.copy(
                         isNotificationEnabled = true,
@@ -163,71 +148,69 @@ class HabitDetailViewModel(
                         error = null
                     )
                 }
-            }.onFailure { error ->
+            },
+            onFailure = { error: Throwable ->
                 _uiState.update { it.copy(error = error.message) }
+            }
+        )
+    }
+
+    private suspend fun disableNotification() {
+        notificationService?.disableNotification(habitId)?.fold(
+            onSuccess = {
+                _uiState.update { state ->
+                    state.copy(
+                        isNotificationEnabled = false,
+                        error = null
+                    )
+                }
+            },
+            onFailure = { error: Throwable ->
+                _uiState.update { it.copy(error = error.message) }
+            }
+        )
+    }
+
+    fun updateProgress(date: LocalDate, completedCount: Int, note: String? = null) {
+        viewModelScope.launch {
+            if (completedCount == 0) {
+                habitRecordRepository.markHabitAsIncomplete(habitId, date).fold(
+                    onSuccess = {
+                        calculateStatistics()
+                    },
+                    onFailure = { error: Throwable ->
+                        _uiState.update { it.copy(error = error.message) }
+                    }
+                )
+            } else {
+                habitRecordRepository.markHabitAsComplete(
+                    habitId = habitId,
+                    date = date,
+                    count = completedCount,
+                    note = note ?: ""
+                ).fold(
+                    onSuccess = {
+                        calculateStatistics()
+                    },
+                    onFailure = { error: Throwable ->
+                        _uiState.update { it.copy(error = error.message) }
+                    }
+                )
             }
         }
     }
 
-    private fun disableNotification() {
-        if (notificationService == null) return
-
+    fun deleteRecord(date: LocalDate) {
         viewModelScope.launch {
-            notificationService.disableNotification(habitId).fold(
+            habitRecordRepository.markHabitAsIncomplete(habitId, date).fold(
                 onSuccess = {
-                    _uiState.update { state ->
-                        state.copy(
-                            isNotificationEnabled = false,
-                            notificationTime = null,
-                            error = null
-                        )
-                    }
+                    calculateStatistics()
                 },
-                onFailure = { error ->
+                onFailure = { error: Throwable ->
                     _uiState.update { it.copy(error = error.message) }
                 }
             )
         }
-    }
-
-    fun updateProgress(date: LocalDate, value: Int) {
-        viewModelScope.launch {
-            habitRecordRepository.markHabitAsComplete(habitId, date, value, "")
-            loadHabitData()
-        }
-    }
-
-    fun updateNote(date: LocalDate, note: String) {
-        viewModelScope.launch {
-            val record = _uiState.value.records.find { it.date == date }
-            if (record != null) {
-                habitRecordRepository.markHabitAsComplete(
-                    habitId,
-                    date,
-                    record.completedCount,
-                    note
-                )
-                loadHabitData()
-            }
-        }
-    }
-
-    private fun loadRecords() {
-        viewModelScope.launch {
-            habitRecordRepository.observeRecordsForHabit(habitId).collect { records ->
-                _uiState.update {
-                    it.copy(
-                        records = records,
-                        isLoading = false
-                    )
-                }
-                calculateStatistics()
-            }
-        }
-    }
-
-    fun selectDate(date: LocalDate) {
-        _uiState.update { it.copy(selectedDate = date) }
     }
 
     private fun calculateStatistics() {
@@ -240,30 +223,32 @@ class HabitDetailViewModel(
                 return@launch
             }
 
-            calculateStreakUseCase(habitId).onSuccess { streakInfo ->
-                val stats = HabitStats(
-                    currentStreak = streakInfo.currentStreak,
-                    longestStreak = streakInfo.longestStreak,
-                    totalDays = records.count { it.completedCount >= habit.targetCount },
-                    completionRate = calculateCompletionRate(records, habit),
-                    averagePerDay = calculateAveragePerDay(records),
-                    thisWeekCount = calculateThisWeekCount(records),
-                    thisMonthCount = calculateThisMonthCount(records),
-                    lastCompleted = streakInfo.lastCompletedDate
-                )
-                _uiState.update {
-                    it.copy(
-                        statistics = stats,
-                        filteredStatistics = stats
+            calculateStreakUseCase(habitId).fold(
+                onSuccess = { streakInfo: CalculateStreakUseCase.StreakInfo ->
+                    val stats = HabitStats(
+                        currentStreak = streakInfo.currentStreak,
+                        longestStreak = streakInfo.longestStreak,
+                        totalDays = records.count { it.completedCount >= habit.targetCount },
+                        completionRate = calculateCompletionRate(records, habit),
+                        averagePerDay = calculateAveragePerDay(records),
+                        thisWeekCount = calculateThisWeekCount(records),
+                        thisMonthCount = calculateThisMonthCount(records),
+                        lastCompleted = streakInfo.lastCompletedDate
                     )
+                    _uiState.update {
+                        it.copy(
+                            statistics = stats,
+                            filteredStatistics = stats
+                        )
+                    }
+                },
+                onFailure = { error: Throwable ->
+                    _uiState.update { it.copy(error = "Failed to calculate statistics") }
                 }
-            }.onFailure {
-                _uiState.update { it.copy(error = "Failed to calculate statistics") }
-            }
+            )
         }
     }
 
-    @OptIn(ExperimentalTime::class)
     private fun calculateCompletionRate(records: List<HabitRecord>, habit: Habit): Double {
         val completedDays = records.count { it.completedCount >= habit.targetCount }
         val createdDate = habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -294,6 +279,86 @@ class HabitDetailViewModel(
         return records.filter { it.date >= monthStart }.sumOf { it.completedCount }
     }
 
+    private fun calculateFilteredStats(records: List<HabitRecord>, today: LocalDate, filter: StatsTimeFilter): HabitStats {
+        val filteredRecords = when (filter) {
+            StatsTimeFilter.ALL_TIME -> records
+            StatsTimeFilter.THIS_YEAR -> {
+                val yearStart = LocalDate(today.year, 1, 1)
+                records.filter { it.date >= yearStart }
+            }
+            StatsTimeFilter.THIS_MONTH -> {
+                val monthStart = LocalDate(today.year, today.month, 1)
+                records.filter { it.date >= monthStart }
+            }
+            StatsTimeFilter.THIS_WEEK -> {
+                val weekStart = today.minus(DatePeriod(days = today.dayOfWeek.ordinal))
+                records.filter { it.date >= weekStart }
+            }
+            StatsTimeFilter.LAST_30_DAYS -> {
+                val thirtyDaysAgo = today.minus(DatePeriod(days = 30))
+                records.filter { it.date >= thirtyDaysAgo }
+            }
+        }
+
+        return calculateStatsFromRecords(filteredRecords, today)
+    }
+
+    private fun calculateStatsFromRecords(records: List<HabitRecord>, today: LocalDate): HabitStats {
+        if (records.isEmpty()) return HabitStats()
+
+        val habit = _uiState.value.habit ?: return HabitStats()
+        val completedDates = records.filter { it.completedCount >= habit.targetCount }.map { it.date }
+        val sortedDates = completedDates.sorted()
+
+        val currentStreak = calculateCurrentStreakFromDates(sortedDates, today)
+        val longestStreak = calculateBestStreakForPeriod(sortedDates)
+        val totalDays = records.size
+        val completionRate = if (totalDays > 0) completedDates.size.toDouble() / totalDays else 0.0
+        val averagePerDay = if (totalDays > 0) records.sumOf { it.completedCount }.toDouble() / totalDays else 0.0
+
+        val thisWeekStart = today.minus(DatePeriod(days = today.dayOfWeek.ordinal))
+        val thisWeekCount = records.filter { it.date >= thisWeekStart && it.date <= today }.sumOf { it.completedCount }
+
+        val thisMonthStart = LocalDate(today.year, today.month, 1)
+        val thisMonthCount = records.filter { it.date >= thisMonthStart }.sumOf { it.completedCount }
+
+        val lastCompleted = completedDates.maxOrNull()
+
+        return HabitStats(
+            currentStreak = currentStreak,
+            longestStreak = longestStreak,
+            totalDays = totalDays,
+            completionRate = completionRate,
+            averagePerDay = averagePerDay,
+            thisWeekCount = thisWeekCount,
+            thisMonthCount = thisMonthCount,
+            lastCompleted = lastCompleted
+        )
+    }
+
+    private fun calculateCurrentStreakFromDates(sortedDates: List<LocalDate>, today: LocalDate): Int {
+        if (sortedDates.isEmpty()) return 0
+
+        val lastDate = sortedDates.last()
+        val daysSinceLastCompletion = today.toEpochDays() - lastDate.toEpochDays()
+
+        // If last completion is not today or yesterday, streak is 0
+        if (daysSinceLastCompletion > 1L) return 0
+
+        // Count consecutive days backwards from the latest completion
+        var streak = 1
+        for (i in sortedDates.size - 2 downTo 0) {
+            val daysDiff = sortedDates[i + 1].toEpochDays() - sortedDates[i].toEpochDays()
+            if (daysDiff == 1L) {
+                streak++
+            } else {
+                break
+            }
+        }
+
+        return streak
+    }
+
     private fun calculateBestStreakForPeriod(sortedDates: List<LocalDate>): Int {
         if (sortedDates.isEmpty()) return 0
 
@@ -317,6 +382,14 @@ class HabitDetailViewModel(
         _uiState.update { it.copy(selectedMonth = yearMonth) }
     }
 
+    fun updateStatsFilter(filter: StatsTimeFilter) {
+        val today = dateProvider.today()
+        val filteredStats = calculateFilteredStats(_uiState.value.records, today, filter)
+        _uiState.update {
+            it.copy(filteredStatistics = filteredStats)
+        }
+    }
+
     fun deleteHabit(onSuccess: () -> Unit) {
         viewModelScope.launch {
             // Cancel notifications before deleting (null-safe)
@@ -324,7 +397,7 @@ class HabitDetailViewModel(
 
             habitRepository.deleteHabit(habitId).fold(
                 onSuccess = { onSuccess() },
-                onFailure = { error ->
+                onFailure = { error: Throwable ->
                     _uiState.update { it.copy(error = error.message) }
                 }
             )
@@ -349,47 +422,4 @@ class HabitDetailViewModel(
         val thisMonthCount: Int = 0,
         val lastCompleted: LocalDate? = null
     )
-
-    data class YearMonth(val year: Int, val month: Month) {
-        constructor(year: Int, monthNumber: Int) : this(
-            year = when {
-                monthNumber > 12 -> year + ((monthNumber - 1) / 12)
-                monthNumber < 1 -> year + ((monthNumber - 12) / 12)
-                else -> year
-            },
-            month = Month(
-                when {
-                    monthNumber > 12 -> ((monthNumber - 1) % 12) + 1
-                    monthNumber < 1 -> 12 + (monthNumber % 12)
-                    else -> monthNumber
-                }
-            )
-        )
-
-        val isLeapYear: Boolean
-            get() = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
-
-        operator fun compareTo(other: YearMonth): Int {
-            return when {
-                this.year != other.year -> this.year.compareTo(other.year)
-                else -> this.month.number.compareTo(other.month.number)
-            }
-        }
-
-        fun nextMonth(): YearMonth {
-            return if (month.number == 12) {
-                YearMonth(year + 1, 1)
-            } else {
-                YearMonth(year, month.number + 1)
-            }
-        }
-
-        fun previousMonth(): YearMonth {
-            return if (month.number == 1) {
-                YearMonth(year - 1, 12)
-            } else {
-                YearMonth(year, month.number - 1)
-            }
-        }
-    }
 }
