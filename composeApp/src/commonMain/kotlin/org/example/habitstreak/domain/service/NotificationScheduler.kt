@@ -4,12 +4,32 @@ import org.example.habitstreak.domain.model.NotificationConfig
 
 /**
  * Platform-agnostic interface for scheduling notifications
- * Following Interface Segregation Principle - minimal interface
+ * Following Interface Segregation Principle - focused only on scheduling
+ * Permission handling moved to PermissionManager (Single Responsibility)
  */
 interface NotificationScheduler {
+    /**
+     * Schedule a notification for a habit
+     */
     suspend fun scheduleNotification(config: NotificationConfig): Result<Unit>
+
+    /**
+     * Cancel a scheduled notification
+     */
     suspend fun cancelNotification(habitId: String): Result<Unit>
+
+    /**
+     * Update an existing notification
+     */
     suspend fun updateNotification(config: NotificationConfig): Result<Unit>
-    suspend fun checkPermission(): Boolean
-    suspend fun requestPermission(): Boolean
+
+    /**
+     * Cancel all scheduled notifications
+     */
+    suspend fun cancelAllNotifications(): Result<Unit>
+
+    /**
+     * Check if a notification is scheduled
+     */
+    suspend fun isNotificationScheduled(habitId: String): Boolean
 }

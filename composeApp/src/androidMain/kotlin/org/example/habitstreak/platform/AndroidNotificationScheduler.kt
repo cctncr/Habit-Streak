@@ -1,33 +1,25 @@
 package org.example.habitstreak.platform
 
-import android.Manifest
-import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequest
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.service.NotificationScheduler
+import java.util.Calendar
 import java.util.concurrent.TimeUnit
+import kotlinx.datetime.*
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import androidx.work.Constraints
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atTime
-import kotlinx.datetime.plus
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
 
+/**
+ * Android implementation of NotificationScheduler
+ * Follows Single Responsibility - only handles scheduling, not permissions
+ */
 class AndroidNotificationScheduler(
     private val context: Context
 ) : NotificationScheduler {
@@ -36,7 +28,9 @@ class AndroidNotificationScheduler(
         const val CHANNEL_ID = "habit_reminders"
         const val CHANNEL_NAME = "Habit Reminders"
         const val NOTIFICATION_WORK_TAG = "habit_notification_"
-        const val PERMISSION_REQUEST_CODE = 1001
+        const val KEY_HABIT_ID = "habit_id"
+        const val KEY_HABIT_TITLE = "habit_title"
+        const val KEY_MESSAGE = "message"
     }
 
     init {
@@ -55,7 +49,9 @@ class AndroidNotificationScheduler(
                 setShowBadge(true)
             }
 
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notificationManager = context.getSystemService(
+                Context.NOTIFICATION_SERVICE
+            ) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
     }
@@ -63,11 +59,13 @@ class AndroidNotificationScheduler(
     override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
         return try {
             val workRequest = createWorkRequest(config)
+
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 NOTIFICATION_WORK_TAG + config.habitId,
                 ExistingPeriodicWorkPolicy.REPLACE,
                 workRequest
             )
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -76,7 +74,8 @@ class AndroidNotificationScheduler(
 
     override suspend fun cancelNotification(habitId: String): Result<Unit> {
         return try {
-            WorkManager.getInstance(context).cancelUniqueWork(NOTIFICATION_WORK_TAG + habitId)
+            WorkManager.getInstance(context)
+                .cancelUniqueWork(NOTIFICATION_WORK_TAG + habitId)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -84,63 +83,59 @@ class AndroidNotificationScheduler(
     }
 
     override suspend fun updateNotification(config: NotificationConfig): Result<Unit> {
+        // Cancel existing and reschedule
         cancelNotification(config.habitId)
         return scheduleNotification(config)
     }
 
-    override suspend fun checkPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            NotificationManagerCompat.from(context).areNotificationsEnabled()
+    override suspend fun cancelAllNotifications(): Result<Unit> {
+        return try {
+            WorkManager.getInstance(context)
+                .cancelAllWorkByTag(NOTIFICATION_WORK_TAG)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
-    override suspend fun requestPermission(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val activity = context as? Activity
-            if (activity != null) {
-                ActivityCompat.requestPermissions(
-                    activity,
-                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                    PERMISSION_REQUEST_CODE
-                )
-            }
+    override suspend fun isNotificationScheduled(habitId: String): Boolean {
+        return try {
+            val workInfos = WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWork(NOTIFICATION_WORK_TAG + habitId)
+                .get()
+
+            workInfos.any { !it.state.isFinished }
+        } catch (e: Exception) {
+            false
         }
-        return checkPermission()
     }
 
     @OptIn(ExperimentalTime::class)
-    private fun createWorkRequest(config: NotificationConfig): PeriodicWorkRequest {
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        val scheduledTime = LocalDateTime(now.date, config.time)
+    private fun createWorkRequest(config: NotificationConfig) =
+        PeriodicWorkRequestBuilder<NotificationWorker>(
+            24, TimeUnit.HOURS
+        ).apply {
+            setInputData(
+                workDataOf(
+                    KEY_HABIT_ID to config.habitId,
+                    KEY_MESSAGE to config.message
+                )
+            )
 
-        val initialDelay = if (scheduledTime > now) {
-            scheduledTime.toInstant(TimeZone.currentSystemDefault()) - now.toInstant(TimeZone.currentSystemDefault())
-        } else {
-            scheduledTime.date.plus(1, DateTimeUnit.DAY)
-                .atTime(config.time)
-                .toInstant(TimeZone.currentSystemDefault()) - now.toInstant(TimeZone.currentSystemDefault())
-        }
+            // Calculate initial delay to notification time
+            val now = Clock.System.now()
+            val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+            var targetDateTime = today.atTime(config.time)
 
-        val inputData = workDataOf(
-            "habitId" to config.habitId,
-            "message" to config.message,
-            "time" to config.time.toString()
-        )
+            // If time has passed today, schedule for tomorrow
+            if (targetDateTime.toInstant(TimeZone.currentSystemDefault()) <= now) {
+                targetDateTime = today.plus(1, DateTimeUnit.DAY).atTime(config.time)
+            }
 
-        val constraints = Constraints.Builder()
-            .setRequiresBatteryNotLow(false)
-            .build()
+            val delay = targetDateTime.toInstant(TimeZone.currentSystemDefault()) - now
+            setInitialDelay(delay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
 
-        return PeriodicWorkRequestBuilder<HabitNotificationWorker>(1, TimeUnit.DAYS)
-            .setInitialDelay(initialDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS)
-            .setInputData(inputData)
-            .addTag(NOTIFICATION_WORK_TAG + config.habitId)
-            .setConstraints(constraints)
-            .build()
-    }
+            addTag(NOTIFICATION_WORK_TAG)
+            addTag(NOTIFICATION_WORK_TAG + config.habitId)
+        }.build()
 }

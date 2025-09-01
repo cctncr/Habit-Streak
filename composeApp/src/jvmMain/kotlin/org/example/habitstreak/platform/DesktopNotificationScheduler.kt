@@ -11,6 +11,10 @@ import java.util.TimerTask
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.ImageIcon
 
+/**
+ * Desktop implementation of NotificationScheduler
+ * Uses system tray for notifications
+ */
 class DesktopNotificationScheduler : NotificationScheduler {
 
     private val scheduledTasks = ConcurrentHashMap<String, Timer>()
@@ -46,7 +50,10 @@ class DesktopNotificationScheduler : NotificationScheduler {
     private fun createDefaultIcon(): Image {
         // Create a simple 16x16 icon
         val size = 16
-        val image = java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        val image = java.awt.image.BufferedImage(
+            size, size,
+            java.awt.image.BufferedImage.TYPE_INT_ARGB
+        )
         val g2d = image.createGraphics()
 
         // Draw a simple notification bell icon
@@ -63,38 +70,35 @@ class DesktopNotificationScheduler : NotificationScheduler {
         return image
     }
 
-    override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> =
-        withContext(Dispatchers.IO) {
+    override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
+        return withContext(Dispatchers.IO) {
             try {
                 // Cancel existing timer if any
-                scheduledTasks[config.habitId]?.cancel()
+                cancelNotification(config.habitId)
 
-                val timer = Timer("Habit_${config.habitId}", true)
-                val task = object : TimerTask() {
-                    override fun run() {
-                        showNotification(config)
-                    }
+                // Create new timer
+                val timer = Timer("habit-${config.habitId}", true)
+
+                // Calculate delay to first notification
+                val now = Clock.System.now()
+                val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                var targetDateTime = today.atTime(config.time)
+
+                // If time has passed today, schedule for tomorrow
+                if (targetDateTime.toInstant(TimeZone.currentSystemDefault()) <= now) {
+                    targetDateTime = today.plus(1, DateTimeUnit.DAY).atTime(config.time)
                 }
 
-                // Calculate initial delay and period
-                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                val scheduledTime = LocalDateTime(now.date, config.time)
+                val delay = targetDateTime.toInstant(TimeZone.currentSystemDefault()) - now
 
-                val initialDelay = if (scheduledTime > now) {
-                    scheduledTime.toInstant(TimeZone.currentSystemDefault()) -
-                            now.toInstant(TimeZone.currentSystemDefault())
-                } else {
-                    // Schedule for next day
-                    scheduledTime.date.plus(1, DateTimeUnit.DAY)
-                        .atTime(config.time)
-                        .toInstant(TimeZone.currentSystemDefault()) -
-                            now.toInstant(TimeZone.currentSystemDefault())
-                }
-
-                // Schedule daily repetition
+                // Schedule daily task
                 timer.scheduleAtFixedRate(
-                    task,
-                    initialDelay.inWholeMilliseconds,
+                    object : TimerTask() {
+                        override fun run() {
+                            showNotification(config)
+                        }
+                    },
+                    delay.inWholeMilliseconds,
                     24 * 60 * 60 * 1000 // 24 hours in milliseconds
                 )
 
@@ -104,99 +108,41 @@ class DesktopNotificationScheduler : NotificationScheduler {
                 Result.failure(e)
             }
         }
+    }
 
-    override suspend fun cancelNotification(habitId: String): Result<Unit> =
-        withContext(Dispatchers.IO) {
-            try {
-                scheduledTasks[habitId]?.cancel()
-                scheduledTasks.remove(habitId)
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+    override suspend fun cancelNotification(habitId: String): Result<Unit> {
+        return try {
+            scheduledTasks.remove(habitId)?.cancel()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
+    }
 
     override suspend fun updateNotification(config: NotificationConfig): Result<Unit> {
         cancelNotification(config.habitId)
         return scheduleNotification(config)
     }
 
-    override suspend fun checkPermission(): Boolean {
-        // Desktop notifications don't require special permissions
-        return SystemTray.isSupported()
+    override suspend fun cancelAllNotifications(): Result<Unit> {
+        return try {
+            scheduledTasks.values.forEach { it.cancel() }
+            scheduledTasks.clear()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
-    override suspend fun requestPermission(): Boolean {
-        return checkPermission()
+    override suspend fun isNotificationScheduled(habitId: String): Boolean {
+        return scheduledTasks.containsKey(habitId)
     }
 
     private fun showNotification(config: NotificationConfig) {
-        if (SystemTray.isSupported()) {
-            trayIcon?.displayMessage(
-                "Habit Reminder",
-                config.message ?: "Time to complete your habit!",
-                TrayIcon.MessageType.INFO
-            )
-        } else {
-            // Fallback: Use native desktop notification via java-desktop
-            showDesktopNotification(config)
-        }
-    }
-
-    private fun showDesktopNotification(config: NotificationConfig) {
-        try {
-            val osName = System.getProperty("os.name").lowercase()
-
-            when {
-                osName.contains("mac") -> {
-                    Runtime.getRuntime().exec(arrayOf(
-                        "osascript", "-e",
-                        "display notification \"${config.message}\" with title \"Habit Reminder\""
-                    ))
-                }
-                osName.contains("linux") -> {
-                    Runtime.getRuntime().exec(arrayOf(
-                        "notify-send",
-                        "Habit Reminder",
-                        config.message ?: "Time to complete your habit!"
-                    ))
-                }
-                osName.contains("windows") -> {
-                    // Windows PowerShell notification
-                    val command = """
-                        [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-                        [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-                        [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
-                        
-                        ${'$'}template = @"
-                        <toast>
-                            <visual>
-                                <binding template="ToastText02">
-                                    <text id="1">Habit Reminder</text>
-                                    <text id="2">${config.message}</text>
-                                </binding>
-                            </visual>
-                        </toast>
-                        "@
-                        
-                        ${'$'}xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-                        ${'$'}xml.LoadXml(${'$'}template)
-                        ${'$'}toast = [Windows.UI.Notifications.ToastNotification]::new(${'$'}xml)
-                        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("HabitStreak").Show(${'$'}toast)
-                    """.trimIndent()
-
-                    Runtime.getRuntime().exec(arrayOf("powershell", "-Command", command))
-                }
-            }
-        } catch (e: Exception) {
-            println("Failed to show desktop notification: ${e.message}")
-        }
-    }
-
-    fun cleanup() {
-        scheduledTasks.values.forEach { it.cancel() }
-        scheduledTasks.clear()
-
-        SystemTray.getSystemTray().remove(trayIcon)
+        trayIcon?.displayMessage(
+            "Habit Reminder",
+            config.message,
+            TrayIcon.MessageType.INFO
+        )
     }
 }

@@ -1,33 +1,41 @@
 package org.example.habitstreak.platform
 
-import kotlinx.cinterop.*
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.datetime.*
-import platform.UserNotifications.*
-import platform.Foundation.*
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.service.NotificationScheduler
+import platform.Foundation.*
+import platform.UserNotifications.*
 import kotlin.coroutines.resume
 
+/**
+ * iOS implementation of NotificationScheduler
+ * Following Single Responsibility - only handles scheduling
+ */
 @OptIn(ExperimentalForeignApi::class)
 class IOSNotificationScheduler : NotificationScheduler {
 
     private val notificationCenter = UNUserNotificationCenter.currentNotificationCenter()
 
+    init {
+        setupNotificationCategories()
+    }
+
     override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
         return try {
-            // Create notification content
             val content = UNMutableNotificationContent().apply {
                 setTitle("Habit Reminder")
-                setBody(config.message ?: "Time to complete your habit!")
-                setSound(UNNotificationSound.defaultSound())
-                setBadge(1)
+                setBody(config.message)
+                setSound(UNNotificationSound.defaultSound)
                 setCategoryIdentifier("HABIT_REMINDER")
                 setUserInfo(mapOf("habitId" to config.habitId))
             }
 
-            // Create trigger based on time
+            // Create date components for daily notification
             val dateComponents = createDateComponents(config.time)
+
+            // Create trigger for daily repeat
             val trigger = UNCalendarNotificationTrigger.triggerWithDateMatchingComponents(
                 dateComponents,
                 repeats = true
@@ -41,17 +49,17 @@ class IOSNotificationScheduler : NotificationScheduler {
             )
 
             // Schedule notification
-            suspendCancellableCoroutine<Unit> { continuation ->
+            suspendCancellableCoroutine { continuation ->
                 notificationCenter.addNotificationRequest(request) { error ->
-                    if (error != null) {
-                        continuation.resume(Unit)
+                    if (error == null) {
+                        continuation.resume(Result.success(Unit))
                     } else {
-                        continuation.resume(Unit)
+                        continuation.resume(
+                            Result.failure(Exception(error.localizedDescription))
+                        )
                     }
                 }
             }
-
-            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -73,24 +81,22 @@ class IOSNotificationScheduler : NotificationScheduler {
         return scheduleNotification(config)
     }
 
-    override suspend fun checkPermission(): Boolean {
-        return suspendCancellableCoroutine { continuation ->
-            notificationCenter.getNotificationSettingsWithCompletionHandler { settings ->
-                val isAuthorized = settings?.authorizationStatus ==
-                        UNAuthorizationStatusAuthorized
-                continuation.resume(isAuthorized)
-            }
+    override suspend fun cancelAllNotifications(): Result<Unit> {
+        return try {
+            notificationCenter.removeAllPendingNotificationRequests()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
-    override suspend fun requestPermission(): Boolean {
+    override suspend fun isNotificationScheduled(habitId: String): Boolean {
         return suspendCancellableCoroutine { continuation ->
-            val options = UNAuthorizationOptionAlert or
-                    UNAuthorizationOptionBadge or
-                    UNAuthorizationOptionSound
-
-            notificationCenter.requestAuthorizationWithOptions(options) { granted, _ ->
-                continuation.resume(granted)
+            notificationCenter.getPendingNotificationRequestsWithCompletionHandler { requests ->
+                val isScheduled = requests?.any { request ->
+                    (request as? UNNotificationRequest)?.identifier == "habit_$habitId"
+                } ?: false
+                continuation.resume(isScheduled)
             }
         }
     }
@@ -102,7 +108,7 @@ class IOSNotificationScheduler : NotificationScheduler {
         }
     }
 
-    fun setupNotificationCategories() {
+    private fun setupNotificationCategories() {
         val completeAction = UNNotificationAction.actionWithIdentifier(
             identifier = "COMPLETE_ACTION",
             title = "Mark Complete",
