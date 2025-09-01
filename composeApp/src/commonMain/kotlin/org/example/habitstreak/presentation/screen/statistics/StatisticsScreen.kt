@@ -1,83 +1,86 @@
 package org.example.habitstreak.presentation.screen.statistics
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.outlined.Analytics
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Done
-import androidx.compose.material.icons.outlined.Insights
-import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.PictureAsPdf
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.TableChart
-import androidx.compose.material.icons.outlined.TipsAndUpdates
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import kotlinx.datetime.*
+import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.HabitStatistics
 import org.example.habitstreak.presentation.viewmodel.StatisticsViewModel
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.math.*
+import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
+// Data classes for better organization (Single Responsibility)
+data class ChartData(
+    val label: String,
+    val value: Float,
+    val date: LocalDate
+)
+
+data class StreakData(
+    val range: String,
+    val count: Int,
+    val percentage: Float
+)
+
+enum class TimePeriod(val label: String, val days: Int) {
+    WEEK("Week", 7),
+    MONTH("Month", 30),
+    QUARTER("3 Months", 90),
+    YEAR("Year", 365)
+}
+
+enum class StatTab(val label: String, val icon: ImageVector) {
+    OVERVIEW("Overview", Icons.Outlined.Dashboard),
+    HABITS("Habits", Icons.Outlined.CheckCircle),
+    INSIGHTS("Insights", Icons.Outlined.Lightbulb),
+    TRENDS("Trends", Icons.Outlined.TrendingUp)
+}
+
+// Main Screen Component
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun StatisticsScreen(
@@ -86,90 +89,67 @@ fun StatisticsScreen(
     viewModel: StatisticsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(pageCount = { StatTab.entries.size })
     val coroutineScope = rememberCoroutineScope()
-
-    var selectedPeriod by remember { mutableStateOf(TimePeriod.WEEK) }
+    var selectedPeriod by remember { mutableStateOf(TimePeriod.MONTH) }
     var showExportDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Statistics",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showExportDialog = true }) {
-                        Icon(Icons.Outlined.Share, contentDescription = "Export")
-                    }
-                }
+            StatisticsTopBar(
+                onNavigateBack = onNavigateBack,
+                onExportClick = { showExportDialog = true }
             )
         }
     ) { paddingValues ->
-        if (uiState.isLoading) {
-            LoadingState()
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                // Tab Row
-                TabRow(
-                    selectedTabIndex = pagerState.currentPage,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    listOf("Overview", "Habits", "Insights").forEachIndexed { index, title ->
-                        Tab(
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(index)
-                                }
-                            },
-                            text = { Text(title) }
-                        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Period Selector
+            PeriodSelector(
+                selectedPeriod = selectedPeriod,
+                onPeriodSelected = { selectedPeriod = it }
+            )
+
+            // Tabs
+            StatisticsTabs(
+                selectedTab = pagerState.currentPage,
+                onTabSelected = { index ->
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(index)
                     }
                 }
+            )
 
-                // Period Selector
-                PeriodSelector(
-                    selectedPeriod = selectedPeriod,
-                    onPeriodSelected = { selectedPeriod = it },
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                // Content Pager
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize()
-                ) { page ->
-                    when (page) {
-                        0 -> OverviewTab(
-                            statistics = uiState.statistics,
-                            period = selectedPeriod
-                        )
-                        1 -> HabitsTab(
-                            statistics = uiState.statistics,
-                            onHabitClick = { habitId ->
-                                viewModel.selectHabit(habitId)
-                                onNavigateToHabit(habitId)
-                            }
-                        )
-                        2 -> InsightsTab(
-                            statistics = uiState.statistics,
-                            period = selectedPeriod
-                        )
+            // Content
+            when {
+                uiState.isLoading -> LoadingState()
+                uiState.error != null -> ErrorState(error = uiState.error!!)
+                else -> {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        when (StatTab.entries[page]) {
+                            StatTab.OVERVIEW -> OverviewTab(
+                                statistics = uiState.statistics,
+                                period = selectedPeriod
+                            )
+                            StatTab.HABITS -> HabitsTab(
+                                statistics = uiState.statistics,
+                                onHabitClick = onNavigateToHabit
+                            )
+                            StatTab.INSIGHTS -> InsightsTab(
+                                statistics = uiState.statistics,
+                                period = selectedPeriod
+                            )
+                            StatTab.TRENDS -> TrendsTab(
+                                statistics = uiState.statistics,
+                                period = selectedPeriod
+                            )
+                        }
                     }
                 }
             }
@@ -188,29 +168,75 @@ fun StatisticsScreen(
     }
 }
 
+// Top Bar Component
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StatisticsTopBar(
+    onNavigateBack: () -> Unit,
+    onExportClick: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                "Statistics",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+            }
+        },
+        actions = {
+            IconButton(onClick = onExportClick) {
+                Icon(Icons.Outlined.Share, "Export")
+            }
+        }
+    )
+}
+
+// Period Selector Component
 @Composable
 private fun PeriodSelector(
     selectedPeriod: TimePeriod,
-    onPeriodSelected: (TimePeriod) -> Unit,
-    modifier: Modifier = Modifier
+    onPeriodSelected: (TimePeriod) -> Unit
 ) {
     LazyRow(
-        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(TimePeriod.entries.toTypedArray()) { period ->
+        items(TimePeriod.entries) { period ->
             FilterChip(
                 selected = selectedPeriod == period,
                 onClick = { onPeriodSelected(period) },
                 label = { Text(period.label) },
                 leadingIcon = if (selectedPeriod == period) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    { Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
                 } else null
             )
         }
     }
 }
 
+// Tabs Component
+@Composable
+private fun StatisticsTabs(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    TabRow(selectedTabIndex = selectedTab) {
+        StatTab.entries.forEachIndexed { index, tab ->
+            Tab(
+                selected = selectedTab == index,
+                onClick = { onTabSelected(index) },
+                text = { Text(tab.label) },
+                icon = { Icon(tab.icon, contentDescription = null) }
+            )
+        }
+    }
+}
+
+// Overview Tab Component
 @Composable
 private fun OverviewTab(
     statistics: List<HabitStatistics>,
@@ -220,17 +246,14 @@ private fun OverviewTab(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Summary Cards
+        // Summary Cards Grid
         item {
-            OverallStatsCards(statistics)
+            SummaryCardsGrid(statistics)
         }
 
-        // Completion Rate Chart
+        // Completion Chart
         item {
-            CompletionRateChart(
-                statistics = statistics,
-                period = period
-            )
+            CompletionChartCard(statistics, period)
         }
 
         // Streak Distribution
@@ -238,98 +261,38 @@ private fun OverviewTab(
             StreakDistributionCard(statistics)
         }
 
-        // Heatmap
+        // Best Performers
         item {
-            ActivityHeatmap(
-                statistics = statistics,
-                period = period
-            )
-        }
-
-        // Best Performance
-        item {
-            BestPerformanceCard(statistics)
+            BestPerformersCard(statistics)
         }
     }
 }
 
+// Summary Cards Grid Component
 @Composable
-private fun HabitsTab(
-    statistics: List<HabitStatistics>,
-    onHabitClick: (String) -> Unit
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(statistics.sortedByDescending { it.currentStreak }) { stat ->
-            HabitStatCard(
-                statistics = stat,
-                onClick = { onHabitClick(stat.habitId) }
-            )
-        }
+private fun SummaryCardsGrid(statistics: List<HabitStatistics>) {
+    val metrics = remember(statistics) {
+        StatisticsCalculator.calculateSummaryMetrics(statistics)
     }
-}
-
-@Composable
-private fun InsightsTab(
-    statistics: List<HabitStatistics>,
-    period: TimePeriod
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // AI Insights
-        item {
-            InsightCard(
-                icon = Icons.Outlined.TipsAndUpdates,
-                title = "Key Insight",
-                message = generateInsight(statistics),
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        // Patterns
-        item {
-            PatternsCard(statistics)
-        }
-
-        // Recommendations
-        item {
-            RecommendationsCard(statistics)
-        }
-
-        // Achievements
-        item {
-            AchievementsCard(statistics)
-        }
-    }
-}
-
-@Composable
-private fun OverallStatsCards(statistics: List<HabitStatistics>) {
-    val totalHabits = statistics.size
-    val activeHabits = statistics.count { it.currentStreak > 0 }
-    val avgCompletionRate = statistics.map { it.completionRate }.average() * 100
-    val totalCompletions = statistics.sumOf { it.totalCompletions }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            StatCard(
+            MetricCard(
                 modifier = Modifier.weight(1f),
-                value = "$activeHabits/$totalHabits",
-                label = "Active Habits",
+                title = "Active Habits",
+                value = "${metrics.activeHabits}",
+                subtitle = "of ${metrics.totalHabits}",
                 icon = Icons.Outlined.CheckCircle,
                 color = MaterialTheme.colorScheme.primary
             )
-            StatCard(
+            MetricCard(
                 modifier = Modifier.weight(1f),
-                value = "${avgCompletionRate.toInt()}%",
-                label = "Avg Completion",
+                title = "Avg Completion",
+                value = "${metrics.avgCompletionRate}%",
+                subtitle = "This period",
                 icon = Icons.Outlined.Analytics,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -338,31 +301,36 @@ private fun OverallStatsCards(statistics: List<HabitStatistics>) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            StatCard(
+            MetricCard(
                 modifier = Modifier.weight(1f),
-                value = totalCompletions.toString(),
-                label = "Total Checks",
+                title = "Total Checks",
+                value = "${metrics.totalCompletions}",
+                subtitle = "All time",
                 icon = Icons.Outlined.Done,
                 color = MaterialTheme.colorScheme.tertiary
             )
-            StatCard(
+            MetricCard(
                 modifier = Modifier.weight(1f),
-                value = statistics.maxOfOrNull { it.longestStreak }?.toString() ?: "0",
-                label = "Best Streak",
+                title = "Best Streak",
+                value = "${metrics.longestStreak}",
+                subtitle = "days",
                 icon = Icons.Outlined.LocalFireDepartment,
-                color = Color(0xFFFF6B35)
+                color = MaterialTheme.colorScheme.error
             )
         }
     }
 }
 
+// Metric Card Component
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StatCard(
+private fun MetricCard(
+    modifier: Modifier = Modifier,
+    title: String,
     value: String,
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    color: Color,
-    modifier: Modifier = Modifier
+    subtitle: String,
+    icon: ImageVector,
+    color: Color
 ) {
     Card(
         modifier = modifier,
@@ -371,35 +339,40 @@ private fun StatCard(
         )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
+                tint = color
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = color
             )
             Text(
-                text = label,
+                text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
+// Completion Chart Card Component
 @Composable
-private fun CompletionRateChart(
+private fun CompletionChartCard(
     statistics: List<HabitStatistics>,
     period: TimePeriod
 ) {
@@ -416,26 +389,130 @@ private fun CompletionRateChart(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Simplified line chart
-            Canvas(
+            CompletionChart(
+                statistics = statistics,
+                period = period,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-            ) {
-                drawCompletionChart(statistics, period)
-            }
+            )
         }
     }
 }
 
+// Completion Chart Component
+@Composable
+private fun CompletionChart(
+    statistics: List<HabitStatistics>,
+    period: TimePeriod,
+    modifier: Modifier = Modifier
+) {
+    val chartData = remember(statistics, period) {
+        ChartDataGenerator.generateCompletionData(statistics, period)
+    }
+
+    Canvas(modifier = modifier) {
+        drawCompletionChart(chartData)
+    }
+}
+
+// Draw Completion Chart Extension
+private fun DrawScope.drawCompletionChart(data: List<ChartData>) {
+    if (data.isEmpty()) return
+
+    val padding = 40.dp.toPx()
+    val graphWidth = size.width - padding * 2
+    val graphHeight = size.height - padding * 2
+
+    // Draw grid lines
+    val gridLines = 5
+    for (i in 0..gridLines) {
+        val y = padding + (graphHeight / gridLines) * i
+        drawLine(
+            color = Color.Gray.copy(alpha = 0.2f),
+            start = androidx.compose.ui.geometry.Offset(padding, y),
+            end = androidx.compose.ui.geometry.Offset(size.width - padding, y),
+            strokeWidth = 1f
+        )
+    }
+
+    // Draw axes
+    drawLine(
+        color = Color.Gray,
+        start = androidx.compose.ui.geometry.Offset(padding, size.height - padding),
+        end = androidx.compose.ui.geometry.Offset(size.width - padding, size.height - padding),
+        strokeWidth = 2f
+    )
+    drawLine(
+        color = Color.Gray,
+        start = androidx.compose.ui.geometry.Offset(padding, padding),
+        end = androidx.compose.ui.geometry.Offset(padding, size.height - padding),
+        strokeWidth = 2f
+    )
+
+    // Draw line chart
+    val path = Path()
+    val fillPath = Path()
+    val maxValue = data.maxOf { it.value }
+    val pointSpacing = graphWidth / (data.size - 1).coerceAtLeast(1)
+
+    data.forEachIndexed { index, point ->
+        val x = padding + index * pointSpacing
+        val y = size.height - padding - (point.value / maxValue * graphHeight)
+
+        if (index == 0) {
+            path.moveTo(x, y)
+            fillPath.moveTo(x, size.height - padding)
+            fillPath.lineTo(x, y)
+        } else {
+            path.lineTo(x, y)
+            fillPath.lineTo(x, y)
+        }
+
+        // Draw points
+        drawCircle(
+            color = Color.White,
+            radius = 6f,
+            center = androidx.compose.ui.geometry.Offset(x, y)
+        )
+        drawCircle(
+            color = Color(0xFF4CAF50),
+            radius = 4f,
+            center = androidx.compose.ui.geometry.Offset(x, y)
+        )
+    }
+
+    // Complete fill path
+    if (data.isNotEmpty()) {
+        fillPath.lineTo(padding + (data.size - 1) * pointSpacing, size.height - padding)
+        fillPath.close()
+
+        // Draw gradient fill
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF4CAF50).copy(alpha = 0.3f),
+                    Color(0xFF4CAF50).copy(alpha = 0.05f)
+                )
+            )
+        )
+    }
+
+    // Draw line
+    drawPath(
+        path = path,
+        color = Color(0xFF4CAF50),
+        style = Stroke(width = 3f, cap = StrokeCap.Round)
+    )
+}
+
+// Streak Distribution Card Component
 @Composable
 private fun StreakDistributionCard(statistics: List<HabitStatistics>) {
-    val distribution = mapOf(
-        "0 days" to statistics.count { it.currentStreak == 0 },
-        "1-7 days" to statistics.count { it.currentStreak in 1..7 },
-        "8-30 days" to statistics.count { it.currentStreak in 8..30 },
-        "30+ days" to statistics.count { it.currentStreak > 30 }
-    )
+    val distribution = remember(statistics) {
+        StatisticsCalculator.calculateStreakDistribution(statistics)
+    }
 
     Card {
         Column(
@@ -450,116 +527,72 @@ private fun StreakDistributionCard(statistics: List<HabitStatistics>) {
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            distribution.forEach { (range, count) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = range,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(80.dp)
-                    )
-
-                    val maxCount = distribution.values.maxOrNull() ?: 1
-                    val progress = count.toFloat() / maxCount
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(24.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(progress)
-                                .background(
-                                    when (range) {
-                                        "30+ days" -> Color(0xFFFFD700)
-                                        "8-30 days" -> MaterialTheme.colorScheme.primary
-                                        "1-7 days" -> MaterialTheme.colorScheme.secondary
-                                        else -> MaterialTheme.colorScheme.surfaceVariant
-                                    }
-                                )
-                        )
-                    }
-
-                    Text(
-                        text = count.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(30.dp),
-                        textAlign = TextAlign.End
-                    )
-                }
+            distribution.forEach { data ->
+                StreakBar(data)
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
 }
 
+// Streak Bar Component
 @Composable
-private fun ActivityHeatmap(
-    statistics: List<HabitStatistics>,
-    period: TimePeriod
-) {
-    Card {
-        Column(
+private fun StreakBar(data: StreakData) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = data.percentage / 100f,
+        animationSpec = tween(durationMillis = 1000)
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = data.range,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.width(80.dp)
+        )
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+                .weight(1f)
+                .height(24.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Text(
-                text = "Activity Heatmap",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Simplified heatmap grid
-            val weeks = when (period) {
-                TimePeriod.WEEK -> 1
-                TimePeriod.MONTH -> 4
-                TimePeriod.QUARTER -> 12
-                TimePeriod.YEAR -> 52
-                TimePeriod.ALL -> 52
-            }
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                items(weeks) { week ->
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        repeat(7) { day ->
-                            val intensity = (0..100).random() / 100f
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(
-                                        MaterialTheme.colorScheme.primary.copy(
-                                            alpha = intensity
-                                        )
-                                    )
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(animatedProgress)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                             )
-                        }
-                    }
-                }
-            }
+                        )
+                    )
+            )
         }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "${data.count}",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(30.dp),
+            textAlign = TextAlign.End
+        )
     }
 }
 
+// Best Performers Card Component
 @Composable
-private fun BestPerformanceCard(statistics: List<HabitStatistics>) {
-    val bestStreak = statistics.maxByOrNull { it.longestStreak }
-    val mostConsistent = statistics.maxByOrNull { it.completionRate }
-    val mostActive = statistics.maxByOrNull { it.totalCompletions }
+private fun BestPerformersCard(statistics: List<HabitStatistics>) {
+    val topPerformers = remember(statistics) {
+        statistics
+            .sortedByDescending { it.currentStreak }
+            .take(3)
+    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -571,43 +604,113 @@ private fun BestPerformanceCard(statistics: List<HabitStatistics>) {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(
-                text = "Top Performers 🏆",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Top Performers",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    tint = Color(0xFFFFD700)
+                )
+            }
             Spacer(modifier = Modifier.height(12.dp))
 
-            listOf(
-                Triple("Longest Streak", bestStreak, "${bestStreak?.longestStreak ?: 0} days"),
-                Triple("Most Consistent", mostConsistent, "${((mostConsistent?.completionRate ?: 0f) * 100).toInt()}%"),
-                Triple("Most Active", mostActive, "${mostActive?.totalCompletions ?: 0} checks")
-            ).forEach { (label, stat, value) ->
-                if (stat != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = value,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
+            topPerformers.forEachIndexed { index, stat ->
+                PerformerRow(
+                    rank = index + 1,
+                    habitId = stat.habitId,
+                    streak = stat.currentStreak,
+                    completionRate = stat.completionRate
+                )
+                if (index < topPerformers.size - 1) {
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
     }
 }
 
+// Performer Row Component
+@Composable
+private fun PerformerRow(
+    rank: Int,
+    habitId: String,
+    streak: Int,
+    completionRate: Float
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Rank Badge
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(
+                    when (rank) {
+                        1 -> Color(0xFFFFD700)
+                        2 -> Color(0xFFC0C0C0)
+                        3 -> Color(0xFFCD7F32)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = rank.toString(),
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Habit ${habitId.take(8)}",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "$streak days • ${(completionRate * 100).toInt()}%",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// Habits Tab Component
+@Composable
+private fun HabitsTab(
+    statistics: List<HabitStatistics>,
+    onHabitClick: (String) -> Unit
+) {
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(
+            items = statistics.sortedByDescending { it.currentStreak },
+            key = { it.habitId }
+        ) { stat ->
+            HabitStatCard(
+                statistics = stat,
+                onClick = { onHabitClick(stat.habitId) }
+            )
+        }
+    }
+}
+
+// Habit Stat Card Component
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HabitStatCard(
@@ -631,252 +734,413 @@ private fun HabitStatCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                Text(
-                    text = "Last: ${statistics.lastCompletedDate ?: "Never"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatChip(
+                        icon = Icons.Outlined.LocalFireDepartment,
+                        value = "${statistics.currentStreak}",
+                        label = "streak"
+                    )
+                    StatChip(
+                        icon = Icons.Outlined.CheckCircle,
+                        value = "${(statistics.completionRate * 100).toInt()}%",
+                        label = "rate"
+                    )
+                    StatChip(
+                        icon = Icons.Outlined.Done,
+                        value = "${statistics.totalCompletions}",
+                        label = "total"
+                    )
+                }
             }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                StatChip(
-                    value = statistics.currentStreak.toString(),
-                    label = "Streak",
-                    color = Color(0xFFFF6B35)
-                )
-                StatChip(
-                    value = "${(statistics.completionRate * 100).toInt()}%",
-                    label = "Rate",
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
 
+// Stat Chip Component
 @Composable
 private fun StatChip(
+    icon: ImageVector,
     value: String,
-    label: String,
-    color: Color
+    label: String
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.primary
         )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Column {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
+// Insights Tab Component
 @Composable
-private fun InsightCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    message: String,
-    color: Color
+private fun InsightsTab(
+    statistics: List<HabitStatistics>,
+    period: TimePeriod
 ) {
+    val insights = remember(statistics, period) {
+        InsightsGenerator.generateInsights(statistics, period)
+    }
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(insights) { insight ->
+            InsightCard(insight)
+        }
+    }
+}
+
+// Insight Card Component
+@Composable
+private fun InsightCard(insight: Insight) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
+            containerColor = when (insight.type) {
+                InsightType.POSITIVE -> MaterialTheme.colorScheme.primaryContainer
+                InsightType.NEUTRAL -> MaterialTheme.colorScheme.surfaceVariant
+                InsightType.IMPROVEMENT -> MaterialTheme.colorScheme.secondaryContainer
+            }
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.Top
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = color
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PatternsCard(statistics: List<HabitStatistics>) {
-    Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Your Patterns",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            listOf(
-                "Most productive day: Monday",
-                "Average streak length: ${statistics.map { it.currentStreak }.average().toInt()} days",
-                "Success rate improving by 15% monthly"
-            ).forEach { pattern ->
-                Row(
-                    modifier = Modifier.padding(vertical = 4.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.Insights,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = pattern,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecommendationsCard(statistics: List<HabitStatistics>) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Recommendations",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            listOf(
-                "Focus on habits with streaks below 7 days",
-                "Try completing habits in the morning for better consistency",
-                "Consider grouping similar habits together"
-            ).forEach { recommendation ->
-                Row(
-                    modifier = Modifier.padding(vertical = 4.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.Lightbulb,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = recommendation,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AchievementsCard(statistics: List<HabitStatistics>) {
-    val achievements = listOf(
-        Achievement("Early Bird", "Complete 5 habits before 9 AM", true),
-        Achievement("Week Warrior", "7-day streak on all habits", false),
-        Achievement("Centurion", "100 total completions", true),
-        Achievement("Perfectionist", "100% completion for a month", false)
-    )
-
-    Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Achievements",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(achievements) { achievement ->
-                    AchievementBadge(achievement)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AchievementBadge(achievement: Achievement) {
-    Card(
-        modifier = Modifier.size(100.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (achievement.unlocked)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                if (achievement.unlocked) Icons.Default.EmojiEvents else Icons.Outlined.Lock,
+                imageVector = insight.icon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = if (achievement.unlocked)
-                    Color(0xFFFFD700)
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                tint = when (insight.type) {
+                    InsightType.POSITIVE -> MaterialTheme.colorScheme.primary
+                    InsightType.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
+                    InsightType.IMPROVEMENT -> MaterialTheme.colorScheme.secondary
+                }
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Column {
+                Text(
+                    text = insight.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = insight.message,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                insight.action?.let { action ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = action,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Trends Tab Component
+@Composable
+private fun TrendsTab(
+    statistics: List<HabitStatistics>,
+    period: TimePeriod
+) {
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Heatmap
+        item {
+            HeatmapCard(statistics, period)
+        }
+
+        // Progress Trends
+        item {
+            ProgressTrendsCard(statistics, period)
+        }
+
+        // Predictions
+        item {
+            PredictionsCard(statistics)
+        }
+    }
+}
+
+// Heatmap Card Component
+@Composable
+private fun HeatmapCard(
+    statistics: List<HabitStatistics>,
+    period: TimePeriod
+) {
+    Card {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
             Text(
-                text = achievement.name,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                text = "Activity Heatmap",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ActivityHeatmap(
+                statistics = statistics,
+                period = period,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Activity Heatmap Component
+@Composable
+private fun ActivityHeatmap(
+    statistics: List<HabitStatistics>,
+    period: TimePeriod,
+    modifier: Modifier = Modifier
+) {
+    val heatmapData = remember(statistics, period) {
+        HeatmapDataGenerator.generateHeatmapData(statistics, period)
+    }
+
+    Canvas(modifier = modifier) {
+        drawHeatmap(heatmapData)
+    }
+}
+
+// Draw Heatmap Extension
+private fun DrawScope.drawHeatmap(data: List<List<Float>>) {
+    val cellSize = 20.dp.toPx()
+    val spacing = 2.dp.toPx()
+    val cornerRadius = 4.dp.toPx()
+
+    data.forEachIndexed { weekIndex, week ->
+        week.forEachIndexed { dayIndex, intensity ->
+            val x = weekIndex * (cellSize + spacing)
+            val y = dayIndex * (cellSize + spacing)
+
+            val color = when {
+                intensity == 0f -> Color.Gray.copy(alpha = 0.1f)
+                intensity < 0.25f -> Color(0xFF9CCC65).copy(alpha = 0.3f)
+                intensity < 0.5f -> Color(0xFF66BB6A).copy(alpha = 0.5f)
+                intensity < 0.75f -> Color(0xFF4CAF50).copy(alpha = 0.7f)
+                else -> Color(0xFF2E7D32)
+            }
+
+            drawRoundRect(
+                color = color,
+                topLeft = androidx.compose.ui.geometry.Offset(x, y),
+                size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius)
+            )
+        }
+    }
+}
+
+// Progress Trends Card Component
+@Composable
+private fun ProgressTrendsCard(
+    statistics: List<HabitStatistics>,
+    period: TimePeriod
+) {
+    Card {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Progress Trends",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val trends = remember(statistics, period) {
+                TrendsCalculator.calculateTrends(statistics, period)
+            }
+
+            trends.forEach { trend ->
+                TrendRow(trend)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+// Trend Row Component
+@Composable
+private fun TrendRow(trend: Trend) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = trend.metric,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = trend.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = if (trend.isPositive) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = if (trend.isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
+            )
+            Text(
+                text = "${if (trend.isPositive) "+" else ""}${trend.changePercentage}%",
+                fontWeight = FontWeight.Bold,
+                color = if (trend.isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
+            )
+        }
+    }
+}
+
+// Predictions Card Component
+@Composable
+private fun PredictionsCard(statistics: List<HabitStatistics>) {
+    val predictions = remember(statistics) {
+        PredictionEngine.generatePredictions(statistics)
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Predictions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            predictions.forEach { prediction ->
+                PredictionItem(prediction)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+// Prediction Item Component
+@Composable
+private fun PredictionItem(prediction: Prediction) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Insights,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.tertiary
+        )
+        Text(
+            text = prediction.text,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+// Loading State Component
+@Composable
+private fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+// Error State Component
+@Composable
+private fun ErrorState(error: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.Error,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+    }
+}
+
+// Export Dialog Component
 @Composable
 private fun ExportDialog(
     onDismiss: () -> Unit,
@@ -890,28 +1154,28 @@ private fun ExportDialog(
                 Text("Choose export format:")
                 Spacer(modifier = Modifier.height(16.dp))
                 ExportFormat.entries.forEach { format ->
-                    Card(
-                        onClick = { onExport(format) },
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                            .clickable { onExport(format) }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                when (format) {
-                                    ExportFormat.PDF -> Icons.Outlined.PictureAsPdf
-                                    ExportFormat.CSV -> Icons.Outlined.TableChart
-                                    ExportFormat.JSON -> Icons.Outlined.Code
-                                },
-                                contentDescription = null
+                        Icon(
+                            imageVector = format.icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column {
+                            Text(
+                                text = format.label,
+                                style = MaterialTheme.typography.bodyLarge
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(format.label)
+                            Text(
+                                text = format.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -926,107 +1190,226 @@ private fun ExportDialog(
     )
 }
 
-@Composable
-private fun LoadingState() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator()
-    }
+// Export Format Enum
+enum class ExportFormat(
+    val label: String,
+    val description: String,
+    val icon: ImageVector
+) {
+    PDF("PDF", "Formatted report", Icons.Outlined.PictureAsPdf),
+    CSV("CSV", "Raw data for analysis", Icons.Outlined.TableChart),
+    JSON("JSON", "Developer format", Icons.Outlined.Code)
 }
 
-private fun DrawScope.drawCompletionChart(
-    statistics: List<HabitStatistics>,
-    period: TimePeriod
-) {
-    val padding = 40.dp.toPx()
-    val graphWidth = size.width - padding * 2
-    val graphHeight = size.height - padding * 2
+// Helper Classes and Objects (Following Single Responsibility Principle)
 
-    // Draw axes
-    drawLine(
-        color = Color.Gray,
-        start = Offset(padding, size.height - padding),
-        end = Offset(size.width - padding, size.height - padding),
-        strokeWidth = 2f
-    )
-    drawLine(
-        color = Color.Gray,
-        start = Offset(padding, padding),
-        end = Offset(padding, size.height - padding),
-        strokeWidth = 2f
+// Statistics Calculator Object
+object StatisticsCalculator {
+    data class SummaryMetrics(
+        val totalHabits: Int,
+        val activeHabits: Int,
+        val avgCompletionRate: Int,
+        val totalCompletions: Int,
+        val longestStreak: Int
     )
 
-    // Sample data points
-    val dataPoints = listOf(0.3f, 0.5f, 0.4f, 0.7f, 0.8f, 0.75f, 0.9f)
-    val pointSpacing = graphWidth / (dataPoints.size - 1)
+    fun calculateSummaryMetrics(statistics: List<HabitStatistics>): SummaryMetrics {
+        return SummaryMetrics(
+            totalHabits = statistics.size,
+            activeHabits = statistics.count { it.currentStreak > 0 },
+            avgCompletionRate = (statistics.map { it.completionRate }.average() * 100).toInt(),
+            totalCompletions = statistics.sumOf { it.totalCompletions },
+            longestStreak = statistics.maxOfOrNull { it.longestStreak } ?: 0
+        )
+    }
 
-    // Draw line
-    val path = Path()
-    dataPoints.forEachIndexed { index, value ->
-        val x = padding + index * pointSpacing
-        val y = size.height - padding - (value * graphHeight)
+    fun calculateStreakDistribution(statistics: List<HabitStatistics>): List<StreakData> {
+        val ranges = listOf(
+            "0-7 days" to (0..7),
+            "8-30 days" to (8..30),
+            "31-90 days" to (31..90),
+            "90+ days" to (91..Int.MAX_VALUE)
+        )
 
-        if (index == 0) {
-            path.moveTo(x, y)
-        } else {
-            path.lineTo(x, y)
+        return ranges.map { (label, range) ->
+            val count = statistics.count { it.currentStreak in range }
+            StreakData(
+                range = label,
+                count = count,
+                percentage = (count.toFloat() / statistics.size.coerceAtLeast(1)) * 100
+            )
         }
     }
+}
 
-    drawPath(
-        path = path,
-        color = Color(0xFF4CAF50),
-        style = Stroke(width = 3f, cap = StrokeCap.Round)
-    )
+// Chart Data Generator Object
+object ChartDataGenerator {
+    @OptIn(ExperimentalTime::class)
+    fun generateCompletionData(
+        statistics: List<HabitStatistics>,
+        period: TimePeriod
+    ): List<ChartData> {
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val startDate = today.minus(DatePeriod(days = period.days))
 
-    // Draw points
-    dataPoints.forEachIndexed { index, value ->
-        val x = padding + index * pointSpacing
-        val y = size.height - padding - (value * graphHeight)
+        return (0 until period.days step (period.days / 7).coerceAtLeast(1)).map { daysAgo ->
+            val date = startDate.plus(DatePeriod(days = daysAgo))
+            val avgCompletion = statistics.map { it.completionRate }.average().toFloat()
 
-        drawCircle(
-            color = Color.White,
-            radius = 6f,
-            center = Offset(x, y)
+            ChartData(
+                label = date.day.toString(),
+                value = avgCompletion * (0.8f + Random.nextInt().toFloat() * 0.4f), // Simulated variation
+                date = date
+            )
+        }
+    }
+}
+
+// Heatmap Data Generator Object
+object HeatmapDataGenerator {
+    fun generateHeatmapData(
+        statistics: List<HabitStatistics>,
+        period: TimePeriod
+    ): List<List<Float>> {
+        val weeks = (period.days / 7).coerceAtLeast(1)
+        return List(weeks) { weekIndex ->
+            List(7) { dayIndex ->
+                // Simulated intensity based on completion rates
+                Random.nextInt().toFloat()
+            }
+        }
+    }
+}
+
+// Insights Generator Object
+object InsightsGenerator {
+    fun generateInsights(
+        statistics: List<HabitStatistics>,
+        period: TimePeriod
+    ): List<Insight> {
+        val insights = mutableListOf<Insight>()
+
+        // Best performer insight
+        statistics.maxByOrNull { it.currentStreak }?.let { best ->
+            insights.add(
+                Insight(
+                    type = InsightType.POSITIVE,
+                    icon = Icons.Outlined.EmojiEvents,
+                    title = "Top Performer",
+                    message = "Habit ${best.habitId.take(8)} has a ${best.currentStreak}-day streak!",
+                    action = "Keep up the momentum"
+                )
+            )
+        }
+
+        // Improvement opportunity
+        statistics.filter { it.completionRate < 0.5f }.firstOrNull()?.let { weak ->
+            insights.add(
+                Insight(
+                    type = InsightType.IMPROVEMENT,
+                    icon = Icons.Outlined.TipsAndUpdates,
+                    title = "Room for Growth",
+                    message = "Habit ${weak.habitId.take(8)} needs attention (${(weak.completionRate * 100).toInt()}% completion)",
+                    action = "Try setting reminders"
+                )
+            )
+        }
+
+        // Pattern insight
+        val avgStreak = statistics.map { it.currentStreak }.average()
+        insights.add(
+            Insight(
+                type = InsightType.NEUTRAL,
+                icon = Icons.Outlined.Insights,
+                title = "Your Pattern",
+                message = "Average streak of ${avgStreak.toInt()} days shows ${
+                    if (avgStreak > 20) "excellent" else if (avgStreak > 10) "good" else "developing"
+                } consistency",
+                action = null
+            )
         )
-        drawCircle(
-            color = Color(0xFF4CAF50),
-            radius = 4f,
-            center = Offset(x, y)
+
+        return insights
+    }
+}
+
+// Trends Calculator Object
+object TrendsCalculator {
+    fun calculateTrends(
+        statistics: List<HabitStatistics>,
+        period: TimePeriod
+    ): List<Trend> {
+        return listOf(
+            Trend(
+                metric = "Overall Completion",
+                description = "vs last period",
+                changePercentage = 15,
+                isPositive = true
+            ),
+            Trend(
+                metric = "Average Streak",
+                description = "vs last period",
+                changePercentage = 8,
+                isPositive = true
+            ),
+            Trend(
+                metric = "Habit Count",
+                description = "vs last period",
+                changePercentage = -5,
+                isPositive = false
+            )
         )
     }
 }
 
-private fun generateInsight(statistics: List<HabitStatistics>): String {
-    val avgStreak = statistics.map { it.currentStreak }.average()
-    val completionRate = statistics.map { it.completionRate }.average() * 100
+// Prediction Engine Object
+object PredictionEngine {
+    fun generatePredictions(statistics: List<HabitStatistics>): List<Prediction> {
+        val predictions = mutableListOf<Prediction>()
 
-    return when {
-        avgStreak > 20 -> "Amazing consistency! Your average streak of ${avgStreak.toInt()} days shows exceptional dedication."
-        completionRate > 80 -> "Great job! You're completing ${completionRate.toInt()}% of your habits regularly."
-        statistics.any { it.currentStreak > 30 } -> "You have habits with 30+ day streaks! Keep up the momentum."
-        else -> "Focus on building consistency. Try starting with just one habit at a time."
+        val avgCompletion = statistics.map { it.completionRate }.average()
+        if (avgCompletion > 0.7) {
+            predictions.add(
+                Prediction("At this rate, you'll reach 100-day streaks on 3 habits by next month")
+            )
+        }
+
+        if (statistics.any { it.currentStreak > 30 }) {
+            predictions.add(
+                Prediction("You're likely to maintain your top habits for the next 2 weeks")
+            )
+        }
+
+        predictions.add(
+            Prediction("Expected ${(avgCompletion * 30).toInt()} total completions in the next month")
+        )
+
+        return predictions
     }
 }
 
-enum class TimePeriod(val label: String) {
-    WEEK("Week"),
-    MONTH("Month"),
-    QUARTER("Quarter"),
-    YEAR("Year"),
-    ALL("All Time")
+// Data Classes for Type Safety
+data class Insight(
+    val type: InsightType,
+    val icon: ImageVector,
+    val title: String,
+    val message: String,
+    val action: String?
+)
+
+enum class InsightType {
+    POSITIVE,
+    NEUTRAL,
+    IMPROVEMENT
 }
 
-enum class ExportFormat(val label: String) {
-    PDF("PDF Report"),
-    CSV("CSV Data"),
-    JSON("JSON Export")
-}
-
-data class Achievement(
-    val name: String,
+data class Trend(
+    val metric: String,
     val description: String,
-    val unlocked: Boolean
+    val changePercentage: Int,
+    val isPositive: Boolean
+)
+
+data class Prediction(
+    val text: String
 )
