@@ -5,8 +5,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,7 +16,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,9 +25,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.HabitType
@@ -41,11 +35,13 @@ import org.example.habitstreak.presentation.ui.components.NotificationSettingsCa
 import org.example.habitstreak.presentation.ui.components.ProgressCard
 import org.example.habitstreak.presentation.ui.components.StatsCard
 import org.example.habitstreak.presentation.ui.theme.AppTheme
-import org.example.habitstreak.presentation.ui.utils.DateFormatter
+import org.example.habitstreak.presentation.ui.utils.formatShort
+import org.example.habitstreak.presentation.ui.utils.formatLong
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 // Enum definitions
@@ -88,12 +84,11 @@ fun HabitDetailScreen(
             when (event) {
                 is HabitDetailViewModel.UiEvent.RequestNotificationPermission -> {
                     // Platform-specific handler will handle this
-                    handlePermissionRequest(viewModel)
+                    println("Permission request needed - integrate with platform-specific handler")
                 }
-
                 is HabitDetailViewModel.UiEvent.OpenAppSettings -> {
                     // Platform-specific handler will handle this
-                    handleOpenSettings()
+                    println("Opening app settings - integrate with platform-specific handler")
                 }
             }
         }
@@ -327,7 +322,6 @@ private fun ActivitySection(
                     ActivityTab.HISTORY -> {
                         HistoryList(records = records)
                     }
-
                     ActivityTab.NOTES -> {
                         NotesList(records = records.filter { !it.note.isNullOrBlank() })
                     }
@@ -366,7 +360,7 @@ private fun HistoryList(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        DateFormatter.formatShort(record.date),
+                        formatShort(record.date),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
@@ -411,7 +405,7 @@ private fun NotesList(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            DateFormatter.formatShort(record.date),
+                            formatShort(record.date),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -427,6 +421,7 @@ private fun NotesList(
     }
 }
 
+@OptIn(ExperimentalTime::class)
 @Composable
 private fun DateDetailBottomSheet(
     date: LocalDate,
@@ -457,7 +452,7 @@ private fun DateDetailBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    DateFormatter.formatLong(date),
+                    formatLong(date),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -576,8 +571,8 @@ private fun CountableProgressSection(
         }
 
         LinearProgressIndicator(
-            progress = { currentValue.toFloat() / targetValue.coerceAtLeast(1) },
-            modifier = Modifier.fillMaxWidth(),
+            progress = { (currentValue.toFloat() / targetValue.coerceAtLeast(1)) },
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -620,16 +615,4 @@ private fun YesNoProgressSection(
             )
         }
     }
-}
-
-@Composable
-private fun handlePermissionRequest(viewModel: HabitDetailViewModel) {
-    // This will be handled by platform-specific code
-    // The ViewModel will emit an event that the Activity/ViewController can handle
-}
-
-@Composable
-private fun handleOpenSettings() {
-    // This will be handled by platform-specific code
-    // The ViewModel already has openAppSettings() method that uses PermissionManager
 }

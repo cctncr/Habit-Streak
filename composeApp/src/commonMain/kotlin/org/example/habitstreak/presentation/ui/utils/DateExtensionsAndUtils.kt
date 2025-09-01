@@ -3,10 +3,13 @@ package org.example.habitstreak.presentation.ui.utils
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 import org.example.habitstreak.domain.util.DateProvider
+import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /**
@@ -216,13 +219,16 @@ fun LocalDate.startOfWeekFromMonday(): LocalDate {
 }
 
 fun formatShort(date: LocalDate): String {
-    return DateFormatter.formatShort(date)
+    return DateFormatter.formatFullDate(date)
 }
 
 fun formatLong(date: LocalDate): String {
-    return DateFormatter.formatLong(date)
+    val dayOfWeek = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+    return "$dayOfWeek, ${DateFormatter.formatFullDate(date)}"
 }
 
+@OptIn(ExperimentalTime::class)
 fun formatRelative(date: LocalDate): String {
-    return DateFormatter.formatRelative(date)
+    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    return DateFormatter.formatRelativeDate(date, today)
 }

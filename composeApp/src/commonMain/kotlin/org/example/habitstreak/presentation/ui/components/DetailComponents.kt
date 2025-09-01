@@ -1,13 +1,11 @@
 package org.example.habitstreak.presentation.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -28,7 +26,9 @@ import org.example.habitstreak.domain.model.HabitType
 import org.example.habitstreak.domain.model.getType
 import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.screen.habit_detail.StatsTimeFilter
+import org.example.habitstreak.presentation.ui.utils.formatRelative
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
+import kotlin.time.ExperimentalTime
 
 @Composable
 fun ProgressCard(
@@ -52,7 +52,7 @@ fun ProgressCard(
                 modifier = Modifier.size(120.dp)
             ) {
                 CircularProgressIndicator(
-                    progress = (stats.completionRate / 100f).coerceIn(0f, 1f),
+                    progress = (stats.completionRate.toFloat() / 100f).coerceIn(0f, 1f),
                     modifier = Modifier.fillMaxSize(),
                     strokeWidth = 8.dp,
                     color = MaterialTheme.colorScheme.primary
@@ -132,6 +132,7 @@ private fun QuickStat(
     }
 }
 
+@OptIn(ExperimentalTime::class)
 @Composable
 fun StatsCard(
     stats: HabitDetailViewModel.HabitStats,
@@ -183,7 +184,7 @@ fun StatsCard(
             stats.lastCompleted?.let { date ->
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Last completed: ${DateFormatter.formatRelative(date)}",
+                    text = "Last completed: ${formatRelative(date)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
