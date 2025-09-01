@@ -5,13 +5,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -26,6 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalTime
+import org.example.habitstreak.domain.model.NotificationError
 
 @Composable
 fun NotificationSettingsCard(
@@ -41,9 +47,27 @@ fun NotificationSettingsCard(
     notificationTime: LocalTime?,
     onToggleEnabled: (Boolean) -> Unit,
     onTimeChanged: (LocalTime) -> Unit,
+    notificationError: NotificationError? = null,
+    onErrorDismiss: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showTimePicker by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var pendingError by remember { mutableStateOf<NotificationError?>(null) }
+
+    LaunchedEffect(notificationError) {
+        if (notificationError != null && notificationError != pendingError) {
+            pendingError = notificationError
+            showErrorDialog = true
+        }
+    }
+
+    LaunchedEffect(notificationError) {
+        if (notificationError == null && pendingError != null) {
+            // Error cleared but keep dialog open until user dismisses
+        }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -90,7 +114,13 @@ fun NotificationSettingsCard(
 
                 Switch(
                     checked = isEnabled,
-                    onCheckedChange = onToggleEnabled
+                    onCheckedChange = { enabled ->
+                        if (!enabled || notificationTime != null) {
+                            onToggleEnabled(enabled)
+                        } else {
+                            showTimePicker = true
+                        }
+                    }
                 )
             }
 
@@ -138,21 +168,130 @@ fun NotificationSettingsCard(
                             }
                         )
                     }
+
+                    // ✅ Type-safe error display
+                    val displayError = notificationError ?: pendingError
+                    if (displayError?.requiresUserAction() == true) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = getErrorDisplayMessage(displayError),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
+    // Time Picker Dialog
     if (showTimePicker) {
         TimePickerDialog(
             initialTime = notificationTime ?: LocalTime(9, 0),
             onTimeSelected = { time ->
                 onTimeChanged(time)
                 showTimePicker = false
+
+                if (!isEnabled) {
+                    onToggleEnabled(true)
+                }
             },
             onDismiss = { showTimePicker = false }
         )
     }
+
+    // ✅ Type-safe error dialog with settings option
+    if (showErrorDialog && pendingError != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showErrorDialog = false
+                pendingError = null
+                onErrorDismiss?.invoke()
+            },
+            title = { Text("Notification Issue") },
+            text = {
+                Text(getErrorDialogMessage(pendingError!!))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showErrorDialog = false
+                        pendingError = null
+                        onErrorDismiss?.invoke()
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = if (pendingError!!.requiresUserAction() && onOpenSettings != null) {
+                {
+                    TextButton(
+                        onClick = {
+                            showErrorDialog = false
+                            pendingError = null
+                            onOpenSettings() // ✅ Open settings implementation
+                            onErrorDismiss?.invoke()
+                        }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Outlined.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Settings")
+                        }
+                    }
+                }
+            } else null
+        )
+    }
+}
+
+// ✅ Type-safe error message helpers
+private fun getErrorDisplayMessage(error: NotificationError): String = when (error) {
+    is NotificationError.PermissionDenied ->
+        if (error.canRequestAgain) "Permission needed - tap Settings"
+        else "Enable permission in Settings"
+    is NotificationError.GloballyDisabled -> "Enable notifications in app Settings"
+    else -> "Check notification settings"
+}
+
+private fun getErrorDialogMessage(error: NotificationError): String = when (error) {
+    is NotificationError.PermissionDenied ->
+        if (error.canRequestAgain)
+            "Notification permission is required. Please grant permission in Settings to receive habit reminders."
+        else
+            "Notification permission is permanently denied. Please enable notifications for this app in your device Settings."
+    is NotificationError.GloballyDisabled ->
+        "Notifications are disabled in app settings. Please enable notifications first, then try again."
+    is NotificationError.ServiceUnavailable ->
+        "Notification service is not available on this device."
+    is NotificationError.HabitNotFound ->
+        "Habit not found. Please refresh and try again."
+    is NotificationError.SchedulingFailed ->
+        "Failed to schedule notification: ${error.reason}"
+    is NotificationError.GeneralError ->
+        error.message
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -9,15 +9,18 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import org.example.habitstreak.presentation.screen.habit_detail.StatsTimeFilter
 import kotlinx.coroutines.flow.*
-import kotlinx.datetime.LocalDate
 import org.example.habitstreak.presentation.ui.state.HabitDetailUiState
 import kotlin.time.ExperimentalTime
 import androidx.lifecycle.ViewModel
+import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
+import org.example.habitstreak.domain.model.NotificationError
 import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.service.NotificationService
+import org.example.habitstreak.domain.service.PermissionResult
 import org.example.habitstreak.domain.usecase.CalculateStreakUseCase
 import org.example.habitstreak.domain.util.DateProvider
 import kotlin.collections.filter
@@ -29,11 +32,15 @@ class HabitDetailViewModel(
     private val habitRecordRepository: HabitRecordRepository,
     private val calculateStreakUseCase: CalculateStreakUseCase,
     private val dateProvider: DateProvider,
-    private val notificationService: NotificationService? = null
+    private val notificationService: NotificationService? = null,
+    private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HabitDetailUiState())
     val uiState: StateFlow<HabitDetailUiState> = _uiState.asStateFlow()
+
+    private val _uiEvents = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
+    val uiEvents: SharedFlow<UiEvent> = _uiEvents.asSharedFlow()
 
     init {
         loadData()
@@ -60,7 +67,13 @@ class HabitDetailViewModel(
     private fun loadHabitData() {
         viewModelScope.launch {
             habitRepository.observeHabitById(habitId).collect { habit: Habit? ->
-                _uiState.update { it.copy(habit = habit) }
+                val currentError = _uiState.value.notificationError
+                _uiState.update {
+                    it.copy(
+                        habit = habit,
+                        notificationError = if (currentError?.shouldPreserve() == true) currentError else null
+                    )
+                }
                 if (habit != null) {
                     calculateStatistics()
                 }
@@ -70,18 +83,34 @@ class HabitDetailViewModel(
 
     private fun loadRecords() {
         viewModelScope.launch {
-            habitRecordRepository.observeRecordsForHabit(habitId).collect { records: List<HabitRecord> ->
-                _uiState.update { it.copy(records = records, isLoading = false) }
+            habitRecordRepository.observeRecordsForHabit(habitId).collect { records ->
+                val currentError = _uiState.value.notificationError
+                _uiState.update {
+                    it.copy(
+                        records = records,
+                        isLoading = false,
+                        notificationError = if (currentError?.shouldPreserve() == true) currentError else null
+                    )
+                }
                 calculateStatistics()
             }
         }
     }
 
+    private fun shouldPreserveError(error: String?): Boolean {
+        if (error.isNullOrBlank()) return false
+
+        return error.contains("permission", ignoreCase = true) ||
+                error.contains("Settings", ignoreCase = true) ||
+                error.contains("Global notifications", ignoreCase = true) ||
+                error.contains("service not available", ignoreCase = true)
+    }
+
     private fun observeNotificationConfig() {
         if (notificationService == null) {
-            // Fallback to habit's reminderTime
             viewModelScope.launch {
-                habitRepository.observeHabitById(habitId).collect { habit: Habit? ->
+                habitRepository.observeHabitById(habitId).collect { habit ->
+                    val currentError = _uiState.value.notificationError
                     _uiState.update { state ->
                         state.copy(
                             isNotificationEnabled = habit?.isReminderEnabled == true,
@@ -91,7 +120,8 @@ class HabitDetailViewModel(
                                 } catch (e: Exception) {
                                     null
                                 }
-                            }
+                            },
+                            notificationError = if (currentError?.shouldPreserve() == true) currentError else null
                         )
                     }
                 }
@@ -101,11 +131,13 @@ class HabitDetailViewModel(
 
         viewModelScope.launch {
             notificationService.observeNotificationConfig(habitId).collect { config ->
+                val currentError = _uiState.value.notificationError
                 _uiState.update { state ->
                     state.copy(
                         notificationConfig = config,
                         isNotificationEnabled = config?.isEnabled == true,
-                        notificationTime = config?.time
+                        notificationTime = config?.time,
+                        notificationError = if (currentError?.shouldPreserve() == true) currentError else null
                     )
                 }
             }
@@ -114,14 +146,33 @@ class HabitDetailViewModel(
 
     fun toggleNotification(enabled: Boolean) {
         if (notificationService == null) {
-            _uiState.update { it.copy(error = "Notification service not available") }
+            setNotificationError(NotificationError.ServiceUnavailable())
             return
         }
 
         viewModelScope.launch {
             if (enabled) {
-                val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
-                enableNotification(time)
+                val permissionStatus = notificationService.checkPermissionStatus()
+
+                when (permissionStatus) {
+                    is PermissionResult.Granted -> {
+                        val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
+                        enableNotification(time)
+                    }
+                    is PermissionResult.DeniedCanAskAgain -> {
+                        _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
+                        setNotificationError(NotificationError.PermissionDenied(canRequestAgain = true))
+                        _uiState.update { it.copy(isNotificationEnabled = false) }
+                    }
+                    is PermissionResult.DeniedPermanently -> {
+                        setNotificationError(NotificationError.PermissionDenied(canRequestAgain = false))
+                        _uiState.update { it.copy(isNotificationEnabled = false) }
+                    }
+                    is PermissionResult.Error -> {
+                        setNotificationError(permissionStatus.error)
+                        _uiState.update { it.copy(isNotificationEnabled = false) }
+                    }
+                }
             } else {
                 disableNotification()
             }
@@ -129,14 +180,25 @@ class HabitDetailViewModel(
     }
 
     fun updateNotificationTime(time: LocalTime?) {
-        if (time != null && notificationService != null) {
-            viewModelScope.launch {
+        if (time == null) {
+            _uiState.update { it.copy(notificationTime = time) }
+            return
+        }
+
+        if (notificationService == null) {
+            setNotificationError(NotificationError.ServiceUnavailable())
+            return
+        }
+
+        viewModelScope.launch {
+            if (!_uiState.value.isNotificationEnabled) {
+                toggleNotification(true)
+            } else {
                 enableNotification(time)
             }
-        } else {
-            _uiState.update { it.copy(notificationTime = time) }
         }
     }
+
 
     private suspend fun enableNotification(time: LocalTime) {
         notificationService?.enableNotification(habitId, time)?.fold(
@@ -145,12 +207,22 @@ class HabitDetailViewModel(
                     state.copy(
                         isNotificationEnabled = true,
                         notificationTime = time,
-                        error = null
+                        notificationError = null
                     )
                 }
             },
             onFailure = { error: Throwable ->
-                _uiState.update { it.copy(error = error.message) }
+                val notificationError = when (error) {
+                    is NotificationError -> error
+                    else -> NotificationError.GeneralError(error)
+                }
+
+                if (notificationError is NotificationError.PermissionDenied && notificationError.canRequestAgain) {
+                    _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
+                }
+
+                setNotificationError(notificationError)
+                _uiState.update { it.copy(isNotificationEnabled = false) }
             }
         )
     }
@@ -161,14 +233,32 @@ class HabitDetailViewModel(
                 _uiState.update { state ->
                     state.copy(
                         isNotificationEnabled = false,
-                        error = null
+                        notificationError = null
                     )
                 }
             },
             onFailure = { error: Throwable ->
-                _uiState.update { it.copy(error = error.message) }
+                val notificationError = when (error) {
+                    is NotificationError -> error
+                    else -> NotificationError.GeneralError(error)
+                }
+                setNotificationError(notificationError)
             }
         )
+    }
+
+    fun openAppSettings() {
+        viewModelScope.launch {
+            val success = notificationService?.openAppSettings() ?: false
+
+            if (!success) {
+                _uiEvents.tryEmit(UiEvent.OpenAppSettings)
+            }
+        }
+    }
+
+    private fun setNotificationError(error: NotificationError) {
+        _uiState.update { it.copy(notificationError = error) }
     }
 
     fun updateProgress(date: LocalDate, completedCount: Int, note: String? = null) {
@@ -408,8 +498,24 @@ class HabitDetailViewModel(
         // Future implementation for setting reminders
     }
 
+    fun clearNotificationError() {
+        _uiState.update { it.copy(notificationError = null) }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun onPermissionGranted() {
+        viewModelScope.launch {
+            val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
+            enableNotification(time)
+        }
+    }
+
+    fun onPermissionDenied(canRequestAgain: Boolean) {
+        setNotificationError(NotificationError.PermissionDenied(canRequestAgain))
+        _uiState.update { it.copy(isNotificationEnabled = false) }
     }
 
     data class HabitStats(
@@ -422,4 +528,16 @@ class HabitDetailViewModel(
         val thisMonthCount: Int = 0,
         val lastCompleted: LocalDate? = null
     )
+
+    private enum class ErrorType {
+        PERMISSION_DENIED,
+        GLOBAL_NOTIFICATIONS_DISABLED,
+        SERVICE_UNAVAILABLE,
+        GENERAL_ERROR
+    }
+
+    sealed class UiEvent {
+        object RequestNotificationPermission : UiEvent()
+        object OpenAppSettings : UiEvent()
+    }
 }

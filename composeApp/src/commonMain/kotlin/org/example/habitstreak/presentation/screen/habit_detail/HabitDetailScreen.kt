@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Note
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -76,6 +77,19 @@ fun HabitDetailScreen(
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
 
+    LaunchedEffect(Unit) {
+        viewModel.uiEvents.collect { event ->
+            when (event) {
+                is HabitDetailViewModel.UiEvent.RequestNotificationPermission -> {
+                    // handlePermissionRequest(viewModel)
+                }
+                is HabitDetailViewModel.UiEvent.OpenAppSettings -> {
+                    // handleOpenSettings()
+                }
+            }
+        }
+    }
+
     var selectedDate by remember(habitId) { mutableStateOf<LocalDate?>(null) }
     var showDeleteDialog by remember(habitId) { mutableStateOf(false) }
     var selectedTab by remember(habitId) { mutableStateOf(ActivityTab.HISTORY) }
@@ -134,11 +148,18 @@ fun HabitDetailScreen(
                 NotificationSettingsCard(
                     isEnabled = uiState.isNotificationEnabled,
                     notificationTime = uiState.notificationTime,
+                    notificationError = uiState.notificationError,
                     onToggleEnabled = { enabled ->
                         viewModel.toggleNotification(enabled)
                     },
                     onTimeChanged = { time ->
                         viewModel.updateNotificationTime(time)
+                    },
+                    onErrorDismiss = {
+                        viewModel.clearNotificationError()
+                    },
+                    onOpenSettings = {
+                        viewModel.openAppSettings()
                     },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
@@ -585,7 +606,7 @@ private fun CalendarView(
                                 onMonthChange(
                                     org.example.habitstreak.presentation.model.YearMonth(
                                         today.year,
-                                        today.monthNumber
+                                        today.month.number
                                     )
                                 )
                             },
@@ -618,7 +639,7 @@ private fun CalendarGrid(
     val firstDayOfMonth = LocalDate(yearMonth.year, yearMonth.monthNumber, 1)
     val lastDayOfMonth = firstDayOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
     val firstDayOfWeek = firstDayOfMonth.dayOfWeek
-    val daysInMonth = lastDayOfMonth.dayOfMonth
+    val daysInMonth = lastDayOfMonth.day
 
     // ISO-8601 week offset calculation (Monday = 1)
     val offset = (firstDayOfWeek.ordinal + 1) % 7
@@ -836,7 +857,7 @@ private fun ActivityHistoryItem(
                 )
                 if (record.note.isNotBlank()) {
                     Icon(
-                        Icons.Outlined.Note,
+                        Icons.AutoMirrored.Outlined.Note,
                         contentDescription = "Has note",
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -855,7 +876,7 @@ private fun ActivityHistoryItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = record.date.dayOfMonth.toString(),
+                    text = record.date.day.toString(),
                     style = MaterialTheme.typography.titleSmall,
                     color = habitColor,
                     fontWeight = FontWeight.Bold
@@ -917,7 +938,7 @@ private fun NotesHistoryItem(
         },
         leadingContent = {
             Icon(
-                Icons.Outlined.Note,
+                Icons.AutoMirrored.Outlined.Note,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -1098,5 +1119,23 @@ private fun SelectedDateBottomSheet(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun handlePermissionRequest(viewModel: HabitDetailViewModel) {
+    LaunchedEffect(Unit) {
+        println("Permission request needed - integrate with platform-specific handler")
+        // In a real implementation, you'd signal the Activity to request permission
+        // activity?.requestNotificationPermission()
+    }
+}
+
+@Composable
+private fun handleOpenSettings() {
+    LaunchedEffect(Unit) {
+        println("Opening app settings - integrate with platform-specific handler")
+        // Platform-specific settings opening is already handled by PermissionManager
+        // This is just a fallback in case the service method fails
     }
 }

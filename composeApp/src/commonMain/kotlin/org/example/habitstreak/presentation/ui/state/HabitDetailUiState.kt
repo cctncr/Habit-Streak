@@ -5,6 +5,7 @@ import kotlinx.datetime.LocalTime
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.NotificationConfig
+import org.example.habitstreak.domain.model.NotificationError
 import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel.HabitStats
 
@@ -19,5 +20,6 @@ data class HabitDetailUiState(
     val notificationConfig: NotificationConfig? = null,
     val isNotificationEnabled: Boolean = false,
     val notificationTime: LocalTime? = null,
+    val notificationError: NotificationError? = null,
     val error: String? = null
 )

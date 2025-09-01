@@ -15,7 +15,8 @@ val notificationModule = module {
             notificationRepository = get(),
             habitRepository = get(),
             scheduler = get(),
-            preferencesRepository = get()
+            preferencesRepository = get(),
+            permissionManager = get()
         )
     }
 }

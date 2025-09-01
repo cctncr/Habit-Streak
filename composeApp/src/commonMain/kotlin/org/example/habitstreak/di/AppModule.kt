@@ -34,8 +34,9 @@ val appModule = module {
         NotificationService(
             notificationRepository = get(),
             habitRepository = get(),
-            scheduler = get(), // From platform module
-            preferencesRepository = get() // From platform module
+            scheduler = get(),
+            preferencesRepository = get(),
+            permissionManager = get()
         )
     }
 
@@ -57,7 +58,8 @@ val appModule = module {
             habitRecordRepository = get(),
             calculateStreakUseCase = get(),
             dateProvider = get(),
-            notificationService = getOrNull() // Optional
+            notificationService = getOrNull(),
+            preferencesRepository = get()
         )
     }
     factory {

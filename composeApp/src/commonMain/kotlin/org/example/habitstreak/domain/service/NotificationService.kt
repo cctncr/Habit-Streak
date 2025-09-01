@@ -11,7 +11,7 @@ class NotificationService(
     private val notificationRepository: NotificationRepository,
     private val habitRepository: HabitRepository,
     private val scheduler: NotificationScheduler,
-    private val preferencesRepository: PreferencesRepository // Added
+    private val preferencesRepository: PreferencesRepository
 ) {
     suspend fun enableNotification(
         habitId: String,
@@ -79,6 +79,20 @@ class NotificationService(
         }
     }
 
+    // ✅ EKSİK OLAN FONKSİYON - HabitDetailViewModel'deki hata için
+    suspend fun checkPermissionStatus(): PermissionResult {
+        return try {
+            if (scheduler.checkPermission()) {
+                PermissionResult.Granted
+            } else {
+                // Basit check - eğer permission yoksa request edilebilir
+                PermissionResult.DeniedCanAskAgain
+            }
+        } catch (e: Exception) {
+            PermissionResult.Error(NotificationError.GeneralError(e))
+        }
+    }
+
     suspend fun syncAllNotifications() {
         val configs = notificationRepository.getAllNotificationConfigs()
         configs.forEach { config ->
@@ -99,3 +113,18 @@ class HabitNotFoundException(habitId: String) : Exception("Habit not found: $hab
 class NotificationNotFoundException(habitId: String) :
     Exception("Notification config not found for habit: $habitId")
 class NotificationsDisabledException : Exception("Notifications are globally disabled")
+
+// ✅ Basit PermissionResult - type-safe error handling için
+sealed class PermissionResult {
+    object Granted : PermissionResult()
+    object DeniedCanAskAgain : PermissionResult()
+    object DeniedPermanently : PermissionResult()
+    data class Error(val error: NotificationError) : PermissionResult()
+}
+
+// ✅ Basit NotificationError - type-safe için
+sealed class NotificationError : Exception() {
+    data class GeneralError(override val cause: Throwable) : NotificationError()
+    data class PermissionDenied(val canRequestAgain: Boolean = true) : NotificationError()
+    object GloballyDisabled : NotificationError()
+}
