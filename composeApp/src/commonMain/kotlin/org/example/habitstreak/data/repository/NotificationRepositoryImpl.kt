@@ -3,6 +3,8 @@ package org.example.habitstreak.data.repository
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.example.habitstreak.data.local.HabitDatabase
@@ -65,7 +67,7 @@ class NotificationRepositoryImpl(
     override fun observeNotificationConfig(habitId: String): Flow<NotificationConfig?> {
         return queries.getByHabitId(habitId)
             .asFlow()
-            .mapToOneOrNull()
+            .mapToOneOrNull(Dispatchers.IO)
             .map { entity ->
                 entity?.let {
                     NotificationConfig(
@@ -81,7 +83,7 @@ class NotificationRepositoryImpl(
     override fun observeAllNotificationConfigs(): Flow<List<NotificationConfig>> {
         return queries.getAll()
             .asFlow()
-            .mapToList()
+            .mapToList(Dispatchers.IO)
             .map { entities ->
                 entities.map { entity ->
                     NotificationConfig(

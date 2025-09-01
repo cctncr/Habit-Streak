@@ -9,7 +9,8 @@ import java.awt.*
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.ConcurrentHashMap
-import javax.swing.ImageIcon
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * Desktop implementation of NotificationScheduler
@@ -58,18 +59,19 @@ class DesktopNotificationScheduler : NotificationScheduler {
 
         // Draw a simple notification bell icon
         g2d.setRenderingHint(
-            java.awt.RenderingHints.KEY_ANTIALIASING,
-            java.awt.RenderingHints.VALUE_ANTIALIAS_ON
+            RenderingHints.KEY_ANTIALIASING,
+            RenderingHints.VALUE_ANTIALIAS_ON
         )
-        g2d.color = java.awt.Color(100, 100, 255)
+        g2d.color = Color(100, 100, 255)
         g2d.fillOval(2, 2, 12, 12)
-        g2d.color = java.awt.Color.WHITE
+        g2d.color = Color.WHITE
         g2d.fillOval(4, 4, 8, 8)
         g2d.dispose()
 
         return image
     }
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {

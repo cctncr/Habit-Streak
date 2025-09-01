@@ -50,10 +50,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val dateProvider = koin.get<DateProvider>()
 
                 // Mark habit as complete for today
-                habitRecordRepository.toggleCompletion(
+                habitRecordRepository.markHabitAsComplete(
                     habitId = habitId,
                     date = dateProvider.today(),
-                    targetCount = 1 // Default to 1 completion
+                    count = 1, // Default to 1 completion
+                    note = "Completed from notification"
                 )
 
                 // Show success toast or notification

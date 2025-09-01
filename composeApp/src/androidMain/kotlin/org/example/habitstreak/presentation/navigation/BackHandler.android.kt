@@ -1,7 +1,7 @@
 package org.example.habitstreak.presentation.navigation
 
-import androidx.compose.runtime.Composable
 import androidx.activity.compose.BackHandler as AndroidBackHandler
+import androidx.compose.runtime.Composable
 
 @Composable
 actual fun BackHandler(enabled: Boolean, onBack: () -> Unit) {

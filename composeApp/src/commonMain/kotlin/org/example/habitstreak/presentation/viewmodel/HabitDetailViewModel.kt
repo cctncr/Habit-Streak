@@ -294,10 +294,12 @@ class HabitDetailViewModel(
         viewModelScope.launch {
             habitRecordRepository.markHabitAsIncomplete(habitId, date).fold(
                 onSuccess = {
-                    calculateStatistics()
+                    loadRecords()
                 },
-                onFailure = { error: Throwable ->
-                    _uiState.update { it.copy(error = error.message) }
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(error = error.message ?: "Failed to delete record")
+                    }
                 }
             )
         }
@@ -468,6 +470,10 @@ class HabitDetailViewModel(
         return maxStreak
     }
 
+    fun changeMonth(yearMonth: YearMonth) {
+        _uiState.update { it.copy(selectedMonth = yearMonth) }
+    }
+
     fun changeMonth(yearMonth: org.example.habitstreak.presentation.model.YearMonth) {
         _uiState.update { it.copy(selectedMonth = yearMonth) }
     }
@@ -480,15 +486,17 @@ class HabitDetailViewModel(
         }
     }
 
-    fun deleteHabit(onSuccess: () -> Unit) {
+    fun deleteHabit() {
         viewModelScope.launch {
-            // Cancel notifications before deleting (null-safe)
-            notificationService?.disableNotification(habitId)
-
             habitRepository.deleteHabit(habitId).fold(
-                onSuccess = { onSuccess() },
-                onFailure = { error: Throwable ->
-                    _uiState.update { it.copy(error = error.message) }
+                onSuccess = {
+                    // Habit deleted successfully
+                    // Navigation will be handled by the screen
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(error = error.message ?: "Failed to delete habit")
+                    }
                 }
             )
         }

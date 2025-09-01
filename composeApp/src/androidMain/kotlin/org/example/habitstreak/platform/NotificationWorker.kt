@@ -9,7 +9,6 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import org.example.habitstreak.MainActivity
-import org.example.habitstreak.R
 
 /**
  * Worker class for showing notifications
@@ -59,7 +58,7 @@ class NotificationWorker(
             applicationContext,
             AndroidNotificationScheduler.CHANNEL_ID
         )
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Replace with your app icon
+            .setSmallIcon(android.R.drawable.ic_dialog_info) // Use system icon
             .setContentTitle("Habit Reminder")
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
