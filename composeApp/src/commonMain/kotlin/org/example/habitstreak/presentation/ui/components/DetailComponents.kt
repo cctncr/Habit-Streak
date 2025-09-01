@@ -1,4 +1,3 @@
-// composeApp/src/commonMain/kotlin/org/example/habitstreak/presentation/ui/components/DetailComponents.kt
 package org.example.habitstreak.presentation.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -25,9 +24,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.*
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
+import org.example.habitstreak.domain.model.HabitType
+import org.example.habitstreak.domain.model.getType
 import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.screen.habit_detail.StatsTimeFilter
-import org.example.habitstreak.presentation.ui.utils.DateFormatter
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 
 @Composable
@@ -175,7 +175,7 @@ fun StatsCard(
                 )
                 StatItem(
                     label = "Average",
-                    value = String.format("%.1f", stats.averagePerDay),
+                    value = String.format("%.1f", stats.averagePerDay.toFloat()),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -318,7 +318,7 @@ fun CalendarView(
                             isToday = date == today,
                             isSelected = date == selectedDate,
                             isFuture = date > today,
-                            completionRate = if (habit.type == Habit.Type.COUNTABLE && record != null) {
+                            completionRate = if (habit.getType() == HabitType.COUNTABLE && record != null) {
                                 record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)
                             } else if (isCompleted) 1f else 0f,
                             onClick = { onDateSelected(date) }

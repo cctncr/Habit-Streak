@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
@@ -14,39 +12,35 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.Note
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
+import org.example.habitstreak.domain.model.HabitType
+import org.example.habitstreak.domain.model.getType
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.ui.components.CalendarView
 import org.example.habitstreak.presentation.ui.components.NotificationSettingsCard
 import org.example.habitstreak.presentation.ui.components.ProgressCard
 import org.example.habitstreak.presentation.ui.components.StatsCard
 import org.example.habitstreak.presentation.ui.theme.AppTheme
-import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 import org.example.habitstreak.presentation.ui.utils.DateFormatter
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import org.koin.compose.koinInject
@@ -96,6 +90,7 @@ fun HabitDetailScreen(
                     // Platform-specific handler will handle this
                     handlePermissionRequest(viewModel)
                 }
+
                 is HabitDetailViewModel.UiEvent.OpenAppSettings -> {
                     // Platform-specific handler will handle this
                     handleOpenSettings()
@@ -311,7 +306,7 @@ private fun ActivitySection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ActivityTab.entries.forEach { tab ->
+                ActivityTab.values().forEach { tab ->
                     FilterChip(
                         selected = selectedTab == tab,
                         onClick = { onTabChange(tab) },
@@ -332,6 +327,7 @@ private fun ActivitySection(
                     ActivityTab.HISTORY -> {
                         HistoryList(records = records)
                     }
+
                     ActivityTab.NOTES -> {
                         NotesList(records = records.filter { !it.note.isNullOrBlank() })
                     }
@@ -478,7 +474,7 @@ private fun DateDetailBottomSheet(
 
             // Progress Section
             if (!isFuture) {
-                if (habit.type == Habit.Type.COUNTABLE) {
+                if (habit.getType() == HabitType.COUNTABLE) {
                     CountableProgressSection(
                         currentValue = record?.completedCount ?: 0,
                         targetValue = habit.targetCount,
@@ -580,8 +576,8 @@ private fun CountableProgressSection(
         }
 
         LinearProgressIndicator(
-            progress = (currentValue.toFloat() / targetValue.coerceAtLeast(1)),
-            modifier = Modifier.fillMaxWidth()
+            progress = { currentValue.toFloat() / targetValue.coerceAtLeast(1) },
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

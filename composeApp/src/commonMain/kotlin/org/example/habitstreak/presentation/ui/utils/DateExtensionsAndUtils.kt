@@ -7,6 +7,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import org.example.habitstreak.domain.util.DateProvider
+import kotlin.time.ExperimentalTime
 
 /**
  * Date formatting utilities for UI
@@ -212,4 +213,16 @@ fun LocalDate.startOfWeekFromMonday(): LocalDate {
         kotlinx.datetime.DayOfWeek.SUNDAY -> 7
     }
     return this.minus(DatePeriod(days = mondayBasedDayOfWeek - 1))
+}
+
+fun formatShort(date: LocalDate): String {
+    return DateFormatter.formatShort(date)
+}
+
+fun formatLong(date: LocalDate): String {
+    return DateFormatter.formatLong(date)
+}
+
+fun formatRelative(date: LocalDate): String {
+    return DateFormatter.formatRelative(date)
 }
