@@ -1,5 +1,3 @@
-package org.example.habitstreak.platform
-
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -7,12 +5,10 @@ import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.example.habitstreak.di.appModule
-import org.example.habitstreak.di.androidModule
 import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.util.DateProvider
+import org.example.habitstreak.platform.AndroidNotificationScheduler
 import org.koin.core.context.GlobalContext
-import org.koin.core.context.startKoin
 
 /**
  * Handles notification actions
@@ -23,16 +19,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val habitId = intent.getStringExtra("habit_id") ?: return
 
-        // Ensure Koin is initialized
-        if (GlobalContext.getOrNull() == null) {
-            startKoin {
-                modules(appModule, androidModule)
-            }
+        val koinContext = GlobalContext.getOrNull()
+        if (koinContext == null) {
+            return
         }
 
         when (intent.action) {
-            "COMPLETE_HABIT" -> handleCompleteHabit(context, habitId)
-            "SNOOZE_HABIT" -> handleSnoozeHabit(context, habitId)
+            "COMPLETE_HABIT" -> handleCompleteHabit(context, habitId, koinContext)
+            "SNOOZE_HABIT" -> handleSnoozeHabit(context, habitId, koinContext)
         }
 
         // Cancel notification
@@ -42,12 +36,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
         notificationManager.cancel(habitId.hashCode())
     }
 
-    private fun handleCompleteHabit(context: Context, habitId: String) {
+    private fun handleCompleteHabit(context: Context, habitId: String, koinContext: org.koin.core.Koin) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val koin = GlobalContext.get()
-                val habitRecordRepository = koin.get<HabitRecordRepository>()
-                val dateProvider = koin.get<DateProvider>()
+                val habitRecordRepository = koinContext.get<HabitRecordRepository>()
+                val dateProvider = koinContext.get<DateProvider>()
 
                 // Mark habit as complete for today
                 habitRecordRepository.markHabitAsComplete(
@@ -65,7 +58,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun handleSnoozeHabit(context: Context, habitId: String) {
+    private fun handleSnoozeHabit(context: Context, habitId: String, koinContext: org.koin.core.Koin) {
         // Schedule a new notification in 1 hour
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -89,12 +82,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
         )
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Great job!")
-            .setContentText("Habit completed successfully")
+            .setContentText("Habit completed successfully!")
             .setAutoCancel(true)
             .build()
 
+        // Show completion notification briefly
         notificationManager.notify(
-            habitId.hashCode() + 1000, // Different ID to avoid conflicts
+            (habitId + "_complete").hashCode(),
             notification
         )
     }
@@ -108,14 +102,15 @@ class NotificationActionReceiver : BroadcastReceiver() {
             context,
             AndroidNotificationScheduler.CHANNEL_ID
         )
-            .setSmallIcon(android.R.drawable.ic_menu_recent_history)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Snoozed")
-            .setContentText("We'll remind you again in 1 hour")
+            .setContentText("Habit reminder snoozed for 1 hour")
             .setAutoCancel(true)
             .build()
 
+        // Show snooze notification briefly
         notificationManager.notify(
-            habitId.hashCode() + 2000, // Different ID
+            (habitId + "_snooze").hashCode(),
             notification
         )
     }

@@ -21,17 +21,15 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
 
-        // Ensure Koin is initialized
-        if (GlobalContext.getOrNull() == null) {
-            startKoin {
-                modules(appModule, androidModule)
-            }
+        val koinContext = GlobalContext.getOrNull()
+        if (koinContext == null) {
+            return
         }
 
         // Reschedule all notifications
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val notificationService = GlobalContext.get().get<NotificationService>()
+                val notificationService = koinContext.get<NotificationService>()
                 notificationService.syncAllNotifications()
             } catch (e: Exception) {
                 e.printStackTrace()
