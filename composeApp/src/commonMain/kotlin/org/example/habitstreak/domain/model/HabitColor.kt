@@ -1,5 +1,7 @@
 package org.example.habitstreak.domain.model
 
+import androidx.compose.ui.graphics.Color
+
 enum class HabitColor(val hex: String) {
     // Soft, minimalist colors
     CORAL("#FF6B6B"),
@@ -16,5 +18,16 @@ enum class HabitColor(val hex: String) {
     OCEAN("#5B9FBC"),
     FOREST("#228B22"),
     GOLD("#FFD700"),
-    CHARCOAL("#36454F")
+    CHARCOAL("#36454F");
+
+    val composeColor: Color
+        get() {
+            val colorLong = hex.removePrefix("#").toLong(16)
+            val argb = if (hex.length == 7) {
+                0xFF000000 or colorLong
+            } else {
+                colorLong
+            }
+            return Color(argb)
+        }
 }

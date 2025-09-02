@@ -1,28 +1,38 @@
 package org.example.habitstreak.presentation.screen.habit_detail
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import org.example.habitstreak.domain.model.Habit
@@ -30,28 +40,17 @@ import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.HabitType
 import org.example.habitstreak.domain.model.getType
 import org.example.habitstreak.domain.util.DateProvider
-import org.example.habitstreak.presentation.ui.components.CalendarView
+import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.ui.components.NotificationSettingsCard
-import org.example.habitstreak.presentation.ui.components.ProgressCard
-import org.example.habitstreak.presentation.ui.components.StatsCard
 import org.example.habitstreak.presentation.ui.theme.AppTheme
 import org.example.habitstreak.presentation.ui.utils.formatShort
 import org.example.habitstreak.presentation.ui.utils.formatLong
+import org.example.habitstreak.presentation.ui.utils.formatRelative
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-
-// Enum definitions
-enum class StatsTimeFilter(val label: String) {
-    ALL_TIME("All Time"),
-    THIS_YEAR("This Year"),
-    THIS_MONTH("This Month"),
-    THIS_WEEK("This Week"),
-    LAST_30_DAYS("Last 30 Days")
-}
 
 enum class ActivityTab(val label: String) {
     HISTORY("History"),
@@ -73,10 +72,9 @@ fun HabitDetailScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
-    var showMoreMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedActivityTab by remember { mutableStateOf(ActivityTab.HISTORY) }
-    var selectedStatsFilter by remember { mutableStateOf(StatsTimeFilter.ALL_TIME) }
+    val today = dateProvider.today()
 
     // Handle UI events
     LaunchedEffect(Unit) {
@@ -86,6 +84,7 @@ fun HabitDetailScreen(
                     // Platform-specific handler will handle this
                     println("Permission request needed - integrate with platform-specific handler")
                 }
+
                 is HabitDetailViewModel.UiEvent.OpenAppSettings -> {
                     // Platform-specific handler will handle this
                     println("Opening app settings - integrate with platform-specific handler")
@@ -97,51 +96,12 @@ fun HabitDetailScreen(
     AppTheme {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = uiState.habit?.title ?: "",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onNavigateToEdit) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit")
-                        }
-                        Box {
-                            IconButton(onClick = { showMoreMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "More")
-                            }
-                            DropdownMenu(
-                                expanded = showMoreMenu,
-                                onDismissRequest = { showMoreMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Delete Habit") },
-                                    onClick = {
-                                        showMoreMenu = false
-                                        showDeleteDialog = true
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    }
+                MinimalTopBar(
+                    habit = uiState.habit,
+                    stats = uiState.stats,
+                    onNavigateBack = onNavigateBack,
+                    onEdit = onNavigateToEdit,
+                    onDelete = { showDeleteDialog = true }
                 )
             }
         ) { paddingValues ->
@@ -152,39 +112,32 @@ fun HabitDetailScreen(
                     .verticalScroll(scrollState)
             ) {
                 uiState.habit?.let { habit ->
-                    // Progress Section
-                    ProgressCard(
-                        stats = uiState.stats,
+                    // Habit Header
+                    HabitHeader(
                         habit = habit,
-                        modifier = Modifier.padding(16.dp)
-                    )
-
-                    // Stats Section
-                    StatsCard(
                         stats = uiState.stats,
-                        filter = selectedStatsFilter,
-                        onFilterChange = { selectedStatsFilter = it },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
                     )
 
-                    // Calendar Section
-                    CalendarView(
+                    // Calendar
+                    MinimalCalendar(
                         currentMonth = uiState.selectedMonth,
                         records = uiState.records,
                         habit = habit,
-                        selectedDate = selectedDate,
-                        today = dateProvider.today(),
+                        today = today,
                         onDateSelected = { date ->
-                            selectedDate = date
-                            coroutineScope.launch {
-                                bottomSheetState.show()
+                            if (date <= today) {
+                                selectedDate = date
+                                coroutineScope.launch {
+                                    bottomSheetState.show()
+                                }
                             }
                         },
                         onMonthChange = viewModel::changeMonth,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Notification Settings
                     NotificationSettingsCard(
@@ -203,60 +156,131 @@ fun HabitDetailScreen(
                         onOpenSettings = {
                             viewModel.openAppSettings()
                         },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp)
                     )
 
-                    // Activity Section
-                    ActivitySection(
-                        selectedTab = selectedActivityTab,
-                        onTabChange = { selectedActivityTab = it },
-                        records = uiState.records,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    // Activity Tabs
+                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                        // Tab Selector
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(4.dp)
+                            ) {
+                                ActivityTab.values().forEach { tab ->
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                if (selectedActivityTab == tab)
+                                                    MaterialTheme.colorScheme.surface
+                                                else Color.Transparent
+                                            )
+                                            .clickable { selectedActivityTab = tab }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = tab.label,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = if (selectedActivityTab == tab)
+                                                FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Tab Content
+                        AnimatedContent(
+                            targetState = selectedActivityTab,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(200)) togetherWith
+                                        fadeOut(animationSpec = tween(200))
+                            },
+                            label = "activity_tab"
+                        ) { tab ->
+                            when (tab) {
+                                ActivityTab.HISTORY -> {
+                                    ActivityHistory(
+                                        records = uiState.records,
+                                        habit = habit,
+                                        onDateClick = { date ->
+                                            selectedDate = date
+                                            coroutineScope.launch {
+                                                bottomSheetState.show()
+                                            }
+                                        }
+                                    )
+                                }
+
+                                ActivityTab.NOTES -> {
+                                    NotesList(
+                                        records = uiState.records.filter { !it.note.isNullOrBlank() },
+                                        onDateClick = { date ->
+                                            selectedDate = date
+                                            coroutineScope.launch {
+                                                bottomSheetState.show()
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
         }
 
-        // Bottom Sheet for date details
+        // Date Detail Bottom Sheet
         selectedDate?.let { date ->
-            val record = uiState.records.find { it.date == date }
-            val habit = uiState.habit
-
-            if (bottomSheetState.isVisible && habit != null) {
+            if (bottomSheetState.isVisible) {
                 ModalBottomSheet(
                     onDismissRequest = {
+                        selectedDate = null
                         coroutineScope.launch {
                             bottomSheetState.hide()
-                            selectedDate = null
                         }
                     },
-                    sheetState = bottomSheetState
+                    sheetState = bottomSheetState,
+                    containerColor = MaterialTheme.colorScheme.surface
                 ) {
-                    DateDetailBottomSheet(
-                        date = date,
-                        habit = habit,
-                        record = record,
-                        onUpdateProgress = { value ->
-                            viewModel.updateProgress(date, value, record?.note)
-                        },
-                        onUpdateNote = { note ->
-                            viewModel.updateProgress(
-                                date,
-                                record?.completedCount ?: 0,
-                                note
-                            )
-                        },
-                        onDeleteRecord = {
-                            viewModel.deleteRecord(date)
-                            coroutineScope.launch {
-                                bottomSheetState.hide()
+                    uiState.habit?.let { habit ->
+                        val record = uiState.records.find { it.date == date }
+                        DateDetailSheet(
+                            date = date,
+                            habit = habit,
+                            record = record,
+                            today = today,
+                            onUpdateProgress = { progress, note ->
+                                viewModel.updateProgress(date, progress, note)
+                            },
+                            onDeleteRecord = {
+                                viewModel.deleteRecord(date)
                                 selectedDate = null
+                                coroutineScope.launch {
+                                    bottomSheetState.hide()
+                                }
+                            },
+                            onClose = {
+                                selectedDate = null
+                                coroutineScope.launch {
+                                    bottomSheetState.hide()
+                                }
                             }
-                        },
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -266,11 +290,10 @@ fun HabitDetailScreen(
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 title = { Text("Delete Habit?") },
-                text = { Text("This action cannot be undone. All data associated with this habit will be permanently deleted.") },
+                text = { Text("This will permanently delete the habit and all its records.") },
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            showDeleteDialog = false
                             viewModel.deleteHabit()
                             onNavigateBack()
                         }
@@ -288,42 +311,248 @@ fun HabitDetailScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ActivitySection(
-    selectedTab: ActivityTab,
-    onTabChange: (ActivityTab) -> Unit,
-    records: List<HabitRecord>,
+private fun MinimalTopBar(
+    habit: Habit?,
+    stats: HabitDetailViewModel.HabitStats,
+    onNavigateBack: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            habit?.let {
+                Column {
+                    Text(
+                        text = it.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (stats.currentStreak > 0) {
+                        Text(
+                            text = "${stats.currentStreak} day streak",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onEdit) {
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = "Edit",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background
+        )
+    )
+}
+
+@Composable
+private fun HabitHeader(
+    habit: Habit,
+    stats: HabitDetailViewModel.HabitStats,
     modifier: Modifier = Modifier
 ) {
-    Card(modifier = modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Icon
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(habit.color.composeColor.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = habit.icon.emoji,
+                fontSize = 24.sp
+            )
+        }
+
+        // Title and Description
+        Column(modifier = Modifier.weight(1f)) {
+            if (!habit.description.isNullOrBlank()) {
+                Text(
+                    text = habit.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        // Current Streak Badge (if > 0)
+        if (stats.currentStreak > 0) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.LocalFireDepartment,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "${stats.currentStreak}",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MinimalCalendar(
+    currentMonth: YearMonth,
+    records: List<HabitRecord>,
+    habit: Habit,
+    today: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    onMonthChange: (YearMonth) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Month Navigation
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ActivityTab.values().forEach { tab ->
-                    FilterChip(
-                        selected = selectedTab == tab,
-                        onClick = { onTabChange(tab) },
-                        label = { Text(tab.label) }
+                IconButton(
+                    onClick = { onMonthChange(currentMonth.previous()) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.ChevronLeft,
+                        contentDescription = "Previous month",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Text(
+                    text = "${getMonthName(currentMonth.month)} ${currentMonth.year}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                IconButton(
+                    onClick = { onMonthChange(currentMonth.next()) },
+                    modifier = Modifier.size(32.dp),
+                    enabled = currentMonth.year < today.year ||
+                            (currentMonth.year == today.year && currentMonth.month <= today.monthNumber)
+                ) {
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = "Next month",
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AnimatedContent(
-                targetState = selectedTab,
-                transitionSpec = {
-                    fadeIn() togetherWith fadeOut()
+            // Day labels
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                listOf("S", "M", "T", "W", "T", "F", "S").forEach { day ->
+                    Text(
+                        text = day,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
-            ) { tab ->
-                when (tab) {
-                    ActivityTab.HISTORY -> {
-                        HistoryList(records = records)
-                    }
-                    ActivityTab.NOTES -> {
-                        NotesList(records = records.filter { !it.note.isNullOrBlank() })
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Calendar Grid
+            val daysInMonth = getDaysInMonth(currentMonth.year, currentMonth.month)
+            val firstDayOfWeek = getFirstDayOfWeek(currentMonth.year, currentMonth.month)
+            val totalCells = ((daysInMonth + firstDayOfWeek - 1) / 7 + 1) * 7
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(7),
+                modifier = Modifier.height((totalCells / 7 * 42).dp),
+                userScrollEnabled = false,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(totalCells) { index ->
+                    val dayNumber = index - firstDayOfWeek + 2
+
+                    if (dayNumber in 1..daysInMonth) {
+                        val date = LocalDate(currentMonth.year, currentMonth.month, dayNumber)
+                        val record = records.find { it.date == date }
+                        val targetCount = habit.targetCount.coerceAtLeast(1)
+                        val completionRate = when {
+                            record == null -> 0f
+                            habit.getType() == HabitType.COUNTABLE ->
+                                (record.completedCount.toFloat() / targetCount).coerceIn(0f, 1f)
+
+                            else -> if (record.completedCount > 0) 1f else 0f
+                        }
+
+                        DayCell(
+                            dayNumber = dayNumber,
+                            date = date,
+                            completionRate = completionRate,
+                            isToday = date == today,
+                            isFuture = date > today,
+                            hasNote = !record?.note.isNullOrBlank(),
+                            onClick = { onDateSelected(date) }
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.size(36.dp))
                     }
                 }
             }
@@ -332,41 +561,185 @@ private fun ActivitySection(
 }
 
 @Composable
-private fun HistoryList(
-    records: List<HabitRecord>,
-    modifier: Modifier = Modifier
+private fun DayCell(
+    dayNumber: Int,
+    date: LocalDate,
+    completionRate: Float,
+    isToday: Boolean,
+    isFuture: Boolean,
+    hasNote: Boolean,
+    onClick: () -> Unit
 ) {
-    if (records.isEmpty()) {
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .height(100.dp),
-            contentAlignment = Alignment.Center
+    val backgroundColor = when {
+        isFuture -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        completionRate >= 1f -> MaterialTheme.colorScheme.primary
+        completionRate > 0.5f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        completionRate > 0f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    }
+
+    val textColor = when {
+        isFuture -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        completionRate >= 0.5f -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .then(
+                if (isToday) {
+                    Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary,
+                        RoundedCornerShape(8.dp)
+                    )
+                } else Modifier
+            )
+            .clickable(enabled = !isFuture) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
-                "No history yet",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = dayNumber.toString(),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                color = textColor
             )
-        }
-    } else {
-        Column(modifier = modifier) {
-            records.take(10).forEach { record ->
-                Row(
+            if (hasNote) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(4.dp)
+                        .clip(CircleShape)
+                        .background(textColor)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityHistory(
+    records: List<HabitRecord>,
+    habit: Habit,
+    onDateClick: (LocalDate) -> Unit
+) {
+    if (records.isEmpty()) {
+        EmptyState(message = "No activity yet")
+    } else {
+        val sortedRecords = records.sortedByDescending { it.date }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            sortedRecords.take(10).forEach { record ->
+                ActivityItem(
+                    record = record,
+                    habit = habit,
+                    onClick = { onDateClick(record.date) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityItem(
+    record: HabitRecord,
+    habit: Habit,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Date Box
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        formatShort(record.date),
-                        style = MaterialTheme.typography.bodyMedium
+                        text = record.date.dayOfMonth.toString(),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        "${record.completedCount} completed",
+                        text = getMonthAbbreviation(record.date.monthNumber),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+
+            // Content
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = formatRelative(record.date),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                if (!record.note.isNullOrBlank()) {
+                    Text(
+                        text = record.note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Progress
+            val progress = record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (progress >= 1f) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (habit.getType() == HabitType.COUNTABLE) {
+                    Text(
+                        text = record.completedCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (progress >= 1f) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (progress >= 1f) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -377,242 +750,375 @@ private fun HistoryList(
 @Composable
 private fun NotesList(
     records: List<HabitRecord>,
-    modifier: Modifier = Modifier
+    onDateClick: (LocalDate) -> Unit
 ) {
     if (records.isEmpty()) {
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .height(100.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "No notes yet",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        EmptyState(message = "No notes yet")
     } else {
-        Column(modifier = modifier) {
-            records.take(10).forEach { record ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            formatShort(record.date),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            record.note ?: "",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            records.sortedByDescending { it.date }.take(10).forEach { record ->
+                NoteItem(
+                    record = record,
+                    onClick = { onDateClick(record.date) }
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun NoteItem(
+    record: HabitRecord,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                Icons.AutoMirrored.Outlined.StickyNote2,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(20.dp)
+            )
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = formatRelative(record.date),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = record.note ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @OptIn(ExperimentalTime::class)
 @Composable
-private fun DateDetailBottomSheet(
+private fun DateDetailSheet(
     date: LocalDate,
     habit: Habit,
     record: HabitRecord?,
-    onUpdateProgress: (Int) -> Unit,
-    onUpdateNote: (String?) -> Unit,
+    today: LocalDate,
+    onUpdateProgress: (Int, String?) -> Unit,
     onDeleteRecord: () -> Unit,
-    modifier: Modifier = Modifier
+    onClose: () -> Unit
 ) {
-    var note by remember(record) { mutableStateOf(record?.note ?: "") }
-    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     val isFuture = date > today
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    formatLong(date),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                if (record != null) {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Progress Section
-            if (!isFuture) {
-                if (habit.getType() == HabitType.COUNTABLE) {
-                    CountableProgressSection(
-                        currentValue = record?.completedCount ?: 0,
-                        targetValue = habit.targetCount,
-                        onValueChange = onUpdateProgress
-                    )
-                } else {
-                    YesNoProgressSection(
-                        isCompleted = record != null,
-                        onToggle = { completed ->
-                            onUpdateProgress(if (completed) 1 else 0)
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Note Section
-                Column {
-                    Text(
-                        "Note",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = note,
-                        onValueChange = {
-                            note = it
-                            onUpdateNote(it.takeIf { it.isNotBlank() })
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Add a note...") },
-                        maxLines = 3
-                    )
-                }
-            }
-
-            // Delete option for existing records
-            if (record != null && !isFuture) {
-                Spacer(modifier = Modifier.height(16.dp))
-                TextButton(
-                    onClick = onDeleteRecord,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Delete record", color = MaterialTheme.colorScheme.error)
-                }
-            }
-        }
+    var currentValue by remember(record) {
+        mutableStateOf(record?.completedCount ?: 0)
     }
-}
+    var note by remember(record) {
+        mutableStateOf(record?.note ?: "")
+    }
 
-@Composable
-private fun CountableProgressSection(
-    currentValue: Int,
-    targetValue: Int,
-    onValueChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            "Progress",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+    ) {
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = { if (currentValue > 0) onValueChange(currentValue - 1) }
-            ) {
-                Icon(Icons.Default.Remove, contentDescription = "Decrease")
+            Column {
+                Text(
+                    text = formatLong(date),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                if (date == today) {
+                    Text(
+                        text = "Today",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
-            Text(
-                "$currentValue / $targetValue",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
             IconButton(
-                onClick = { onValueChange(currentValue + 1) }
+                onClick = onClose,
+                modifier = Modifier.size(32.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Increase")
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Close",
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
-        LinearProgressIndicator(
-            progress = { (currentValue.toFloat() / targetValue.coerceAtLeast(1)) },
-            modifier = Modifier.fillMaxWidth()
-        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        if (!isFuture) {
+            // Progress Section
+            when (habit.getType()) {
+                HabitType.YES_NO -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (currentValue > 0)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    currentValue = if (currentValue > 0) 0 else 1
+                                }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (currentValue > 0) "Completed" else "Not Completed",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Switch(
+                                checked = currentValue > 0,
+                                onCheckedChange = { checked ->
+                                    currentValue = if (checked) 1 else 0
+                                }
+                            )
+                        }
+                    }
+                }
+
+                HabitType.COUNTABLE -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Progress",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            FilledIconButton(
+                                onClick = { if (currentValue > 0) currentValue-- },
+                                enabled = currentValue > 0,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Remove,
+                                    contentDescription = "Decrease"
+                                )
+                            }
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = currentValue.toString(),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "/ ${habit.targetCount} ${habit.unit ?: ""}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            FilledIconButton(
+                                onClick = { currentValue++ },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = "Increase"
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LinearProgressIndicator(
+                            progress = (currentValue.toFloat() / habit.targetCount).coerceIn(
+                                0f,
+                                1f
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Note Section
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("Note (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                maxLines = 3,
+                placeholder = { Text("Add a note about this day...") }
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Delete button if record exists
+                if (record != null) {
+                    OutlinedButton(
+                        onClick = onDeleteRecord,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Delete")
+                    }
+                }
+
+                // Save Button
+                Button(
+                    onClick = {
+                        onUpdateProgress(
+                            currentValue,
+                            note.takeIf { it.isNotBlank() }
+                        )
+                        onClose()
+                    },
+                    modifier = Modifier.weight(if (record != null) 1f else 2f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Save")
+                }
+            }
+        } else {
+            // Future date message
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Text(
+                    text = "You cannot mark future dates",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }
 
-@Composable
-private fun YesNoProgressSection(
-    isCompleted: Boolean,
-    onToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            "Completed",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
-        )
+// Helper functions
+private fun getDaysInMonth(year: Int, month: Int): Int {
+    return when (month) {
+        1, 3, 5, 7, 8, 10, 12 -> 31
+        4, 6, 9, 11 -> 30
+        2 -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
+        else -> 30
+    }
+}
 
-        Spacer(modifier = Modifier.height(8.dp))
+private fun getFirstDayOfWeek(year: Int, month: Int): Int {
+    val date = LocalDate(year, month, 1)
+    return date.dayOfWeek.ordinal
+}
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            FilterChip(
-                selected = isCompleted,
-                onClick = { onToggle(!isCompleted) },
-                label = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (isCompleted) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-                        Text(if (isCompleted) "Completed" else "Mark as Complete")
-                    }
-                }
-            )
-        }
+private fun getMonthName(month: Int): String {
+    return when (month) {
+        1 -> "January"
+        2 -> "February"
+        3 -> "March"
+        4 -> "April"
+        5 -> "May"
+        6 -> "June"
+        7 -> "July"
+        8 -> "August"
+        9 -> "September"
+        10 -> "October"
+        11 -> "November"
+        12 -> "December"
+        else -> ""
+    }
+}
+
+private fun getMonthAbbreviation(month: Int): String {
+    return when (month) {
+        1 -> "Jan"
+        2 -> "Feb"
+        3 -> "Mar"
+        4 -> "Apr"
+        5 -> "May"
+        6 -> "Jun"
+        7 -> "Jul"
+        8 -> "Aug"
+        9 -> "Sep"
+        10 -> "Oct"
+        11 -> "Nov"
+        12 -> "Dec"
+        else -> ""
     }
 }

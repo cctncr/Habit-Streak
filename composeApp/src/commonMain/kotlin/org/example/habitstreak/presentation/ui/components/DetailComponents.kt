@@ -25,7 +25,6 @@ import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.HabitType
 import org.example.habitstreak.domain.model.getType
 import org.example.habitstreak.presentation.model.YearMonth
-import org.example.habitstreak.presentation.screen.habit_detail.StatsTimeFilter
 import org.example.habitstreak.presentation.ui.utils.formatRelative
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import kotlin.time.ExperimentalTime
@@ -129,67 +128,6 @@ private fun QuickStat(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@OptIn(ExperimentalTime::class)
-@Composable
-fun StatsCard(
-    stats: HabitDetailViewModel.HabitStats,
-    filter: StatsTimeFilter,
-    onFilterChange: (StatsTimeFilter) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Filter Chips
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                StatsTimeFilter.values().forEach { timeFilter ->
-                    FilterChip(
-                        selected = filter == timeFilter,
-                        onClick = { onFilterChange(timeFilter) },
-                        label = { Text(timeFilter.label) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Stats Grid
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                StatItem(
-                    label = "This Week",
-                    value = stats.thisWeekCount.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-                StatItem(
-                    label = "This Month",
-                    value = stats.thisMonthCount.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-                StatItem(
-                    label = "Average",
-                    value = String.format("%.1f", stats.averagePerDay.toFloat()),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            stats.lastCompleted?.let { date ->
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Last completed: ${formatRelative(date)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
     }
 }
 
