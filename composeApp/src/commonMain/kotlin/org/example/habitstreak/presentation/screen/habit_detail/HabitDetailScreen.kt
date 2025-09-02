@@ -3,6 +3,7 @@ package org.example.habitstreak.presentation.screen.habit_detail
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,7 +32,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -174,7 +179,7 @@ fun HabitDetailScreen(
                                     .fillMaxWidth()
                                     .padding(4.dp)
                             ) {
-                                ActivityTab.values().forEach { tab ->
+                                ActivityTab.entries.forEach { tab ->
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
@@ -756,30 +761,54 @@ private fun ActivityItem(
                 }
             }
 
-            // Progress Percentage
-            val percentage = ((record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)) * 100).toInt()
-            Surface(
-                shape = CircleShape,
-                color = if (percentage >= 100)
-                    MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+            val habitColor = habit.color.composeColor
+            val progress = (record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1))
+            val percentage = (progress * 100).toInt()
+
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .padding(4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "${percentage.coerceAtMost(999)}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (percentage >= 100)
-                            MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                // Background circle
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val radius = size.minDimension / 2f - 2.dp.toPx()
+
+                    // Background ring
+                    drawCircle(
+                        color = habitColor.copy(alpha = 0.2f),
+                        radius = radius,
+                        center = center,
+                        style = Stroke(width = 3.dp.toPx())
                     )
+
+                    // Progress ring
+                    if (progress > 0f) {
+                        drawArc(
+                            color = habitColor,
+                            startAngle = -90f,
+                            sweepAngle = 360f * progress.coerceAtMost(1f),
+                            useCenter = false,
+                            topLeft = Offset(
+                                center.x - radius,
+                                center.y - radius
+                            ),
+                            size = Size(radius * 2f, radius * 2f),
+                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
                 }
+
+                // Percentage text
+                Text(
+                    text = "${percentage.coerceAtMost(999)}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 9.sp,
+                    color = if (percentage >= 100) habitColor else MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
