@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,8 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,12 +87,9 @@ fun HabitDetailScreen(
         viewModel.uiEvents.collect { event ->
             when (event) {
                 is HabitDetailViewModel.UiEvent.RequestNotificationPermission -> {
-                    // Platform-specific handler will handle this
                     println("Permission request needed - integrate with platform-specific handler")
                 }
-
                 is HabitDetailViewModel.UiEvent.OpenAppSettings -> {
-                    // Platform-specific handler will handle this
                     println("Opening app settings - integrate with platform-specific handler")
                 }
             }
@@ -119,18 +122,16 @@ fun HabitDetailScreen(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
                     )
 
-                    // Calendar
-                    MinimalCalendar(
+                    // Calendar with navigation chips
+                    CalendarSection(
                         currentMonth = uiState.selectedMonth,
                         records = uiState.records,
                         habit = habit,
                         today = today,
                         onDateSelected = { date ->
-                            if (date <= today) {
-                                selectedDate = date
-                                coroutineScope.launch {
-                                    bottomSheetState.show()
-                                }
+                            selectedDate = date
+                            coroutineScope.launch {
+                                bottomSheetState.show()
                             }
                         },
                         onMonthChange = viewModel::changeMonth,
@@ -222,7 +223,6 @@ fun HabitDetailScreen(
                                         }
                                     )
                                 }
-
                                 ActivityTab.NOTES -> {
                                     NotesList(
                                         records = uiState.records.filter { !it.note.isNullOrBlank() },
@@ -408,7 +408,7 @@ private fun HabitHeader(
             }
         }
 
-        // Current Streak Badge (if > 0)
+        // Current Streak Badge
         if (stats.currentStreak > 0) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -437,8 +437,9 @@ private fun HabitHeader(
     }
 }
 
+@OptIn(ExperimentalTime::class)
 @Composable
-private fun MinimalCalendar(
+private fun CalendarSection(
     currentMonth: YearMonth,
     records: List<HabitRecord>,
     habit: Habit,
@@ -447,6 +448,9 @@ private fun MinimalCalendar(
     onMonthChange: (YearMonth) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val createdDate = habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val createdMonth = YearMonth(createdDate.year, createdDate.monthNumber)
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -482,9 +486,7 @@ private fun MinimalCalendar(
 
                 IconButton(
                     onClick = { onMonthChange(currentMonth.next()) },
-                    modifier = Modifier.size(32.dp),
-                    enabled = currentMonth.year < today.year ||
-                            (currentMonth.year == today.year && currentMonth.month <= today.monthNumber)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         Icons.Filled.ChevronRight,
@@ -496,12 +498,12 @@ private fun MinimalCalendar(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Day labels
+            // Day labels - Starting from Monday
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                listOf("S", "M", "T", "W", "T", "F", "S").forEach { day ->
+                listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
                     Text(
                         text = day,
                         style = MaterialTheme.typography.bodySmall,
@@ -517,7 +519,18 @@ private fun MinimalCalendar(
 
             // Calendar Grid
             val daysInMonth = getDaysInMonth(currentMonth.year, currentMonth.month)
-            val firstDayOfWeek = getFirstDayOfWeek(currentMonth.year, currentMonth.month)
+            val firstDayOfMonth = LocalDate(currentMonth.year, currentMonth.month, 1)
+            // Convert to Monday-based (1=Monday, 7=Sunday)
+            val firstDayOfWeek = when (firstDayOfMonth.dayOfWeek) {
+                DayOfWeek.MONDAY -> 0
+                DayOfWeek.TUESDAY -> 1
+                DayOfWeek.WEDNESDAY -> 2
+                DayOfWeek.THURSDAY -> 3
+                DayOfWeek.FRIDAY -> 4
+                DayOfWeek.SATURDAY -> 5
+                DayOfWeek.SUNDAY -> 6
+            }
+
             val totalCells = ((daysInMonth + firstDayOfWeek - 1) / 7 + 1) * 7
 
             LazyVerticalGrid(
@@ -528,7 +541,7 @@ private fun MinimalCalendar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(totalCells) { index ->
-                    val dayNumber = index - firstDayOfWeek + 2
+                    val dayNumber = index - firstDayOfWeek + 1
 
                     if (dayNumber in 1..daysInMonth) {
                         val date = LocalDate(currentMonth.year, currentMonth.month, dayNumber)
@@ -538,7 +551,6 @@ private fun MinimalCalendar(
                             record == null -> 0f
                             habit.getType() == HabitType.COUNTABLE ->
                                 (record.completedCount.toFloat() / targetCount).coerceIn(0f, 1f)
-
                             else -> if (record.completedCount > 0) 1f else 0f
                         }
 
@@ -556,6 +568,39 @@ private fun MinimalCalendar(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Navigation chips
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                AssistChip(
+                    onClick = { onMonthChange(createdMonth) },
+                    label = { Text("Created") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Outlined.DateRange,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+
+                AssistChip(
+                    onClick = { onMonthChange(YearMonth(today.year, today.monthNumber)) },
+                    label = { Text("Today") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Outlined.Today,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -571,7 +616,6 @@ private fun DayCell(
     onClick: () -> Unit
 ) {
     val backgroundColor = when {
-        isFuture -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         completionRate >= 1f -> MaterialTheme.colorScheme.primary
         completionRate > 0.5f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
         completionRate > 0f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
@@ -579,7 +623,6 @@ private fun DayCell(
     }
 
     val textColor = when {
-        isFuture -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         completionRate >= 0.5f -> MaterialTheme.colorScheme.onPrimary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -598,7 +641,7 @@ private fun DayCell(
                     )
                 } else Modifier
             )
-            .clickable(enabled = !isFuture) { onClick() },
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -713,33 +756,28 @@ private fun ActivityItem(
                 }
             }
 
-            // Progress
-            val progress = record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (progress >= 1f) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                    ),
-                contentAlignment = Alignment.Center
+            // Progress Percentage
+            val percentage = ((record.completedCount.toFloat() / habit.targetCount.coerceAtLeast(1)) * 100).toInt()
+            Surface(
+                shape = CircleShape,
+                color = if (percentage >= 100)
+                    MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
             ) {
-                if (habit.getType() == HabitType.COUNTABLE) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = record.completedCount.toString(),
+                        text = "${percentage.coerceAtMost(999)}%",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (progress >= 1f) MaterialTheme.colorScheme.onPrimary
+                        color = if (percentage >= 100)
+                            MaterialTheme.colorScheme.onPrimary
                         else MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                } else {
-                    Icon(
-                        Icons.Filled.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = if (progress >= 1f) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.primary
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
                     )
                 }
             }
@@ -847,6 +885,9 @@ private fun DateDetailSheet(
     var note by remember(record) {
         mutableStateOf(record?.note ?: "")
     }
+    var showDirectInput by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
         modifier = Modifier
@@ -888,8 +929,8 @@ private fun DateDetailSheet(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Progress Section (not shown for future dates)
         if (!isFuture) {
-            // Progress Section
             when (habit.getType()) {
                 HabitType.YES_NO -> {
                     Card(
@@ -925,7 +966,6 @@ private fun DateDetailSheet(
                         }
                     }
                 }
-
                 HabitType.COUNTABLE -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -937,56 +977,123 @@ private fun DateDetailSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            FilledIconButton(
-                                onClick = { if (currentValue > 0) currentValue-- },
-                                enabled = currentValue > 0,
-                                modifier = Modifier.size(40.dp)
+                        // Improved counter UX
+                        if (!showDirectInput) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(
-                                    Icons.Filled.Remove,
-                                    contentDescription = "Decrease"
-                                )
+                                // Decrease buttons
+                                FilledTonalIconButton(
+                                    onClick = { if (currentValue >= 10) currentValue -= 10 },
+                                    enabled = currentValue >= 10,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Text("-10", style = MaterialTheme.typography.labelSmall)
+                                }
+
+                                FilledIconButton(
+                                    onClick = { if (currentValue > 0) currentValue-- },
+                                    enabled = currentValue > 0,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(Icons.Filled.Remove, contentDescription = "Decrease")
+                                }
+
+                                // Current value (clickable for direct input)
+                                Surface(
+                                    onClick = { showDirectInput = true },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier.widthIn(min = 80.dp)
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = currentValue.toString(),
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "/ ${habit.targetCount} ${habit.unit ?: ""}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                // Increase buttons
+                                FilledIconButton(
+                                    onClick = { currentValue++ },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(Icons.Filled.Add, contentDescription = "Increase")
+                                }
+
+                                FilledTonalIconButton(
+                                    onClick = { currentValue += 10 },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Text("+10", style = MaterialTheme.typography.labelSmall)
+                                }
                             }
+                        } else {
+                            // Direct input mode
+                            OutlinedTextField(
+                                value = currentValue.toString(),
+                                onValueChange = { value ->
+                                    value.toIntOrNull()?.let {
+                                        if (it >= 0) currentValue = it
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        showDirectInput = false
+                                        keyboardController?.hide()
+                                    }
+                                ),
+                                modifier = Modifier
+                                    .width(120.dp)
+                                    .focusRequester(focusRequester),
+                                singleLine = true,
+                                shape = RoundedCornerShape(8.dp)
+                            )
 
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = currentValue.toString(),
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "/ ${habit.targetCount} ${habit.unit ?: ""}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            FilledIconButton(
-                                onClick = { currentValue++ },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    Icons.Filled.Add,
-                                    contentDescription = "Increase"
-                                )
+                            LaunchedEffect(showDirectInput) {
+                                if (showDirectInput) {
+                                    focusRequester.requestFocus()
+                                }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
+                        // Quick preset buttons
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(0, habit.targetCount / 2, habit.targetCount, habit.targetCount * 2)
+                                .distinct()
+                                .filter { it >= 0 }
+                                .forEach { value ->
+                                    AssistChip(
+                                        onClick = { currentValue = value },
+                                        label = { Text(value.toString()) },
+                                        modifier = Modifier.height(32.dp)
+                                    )
+                                }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Progress Bar
                         LinearProgressIndicator(
-                            progress = (currentValue.toFloat() / habit.targetCount).coerceIn(
-                                0f,
-                                1f
-                            ),
+                            progress = (currentValue.toFloat() / habit.targetCount).coerceIn(0f, 1f),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(8.dp)
@@ -997,74 +1104,61 @@ private fun DateDetailSheet(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+        }
 
-            // Note Section
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = { Text("Note (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                maxLines = 3,
-                placeholder = { Text("Add a note about this day...") }
-            )
+        // Note Section (available for all dates)
+        OutlinedTextField(
+            value = note,
+            onValueChange = { note = it },
+            label = { Text("Note") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            maxLines = 3,
+            placeholder = {
+                Text(if (isFuture) "Add a note for this future date..." else "Add a note about this day...")
+            }
+        )
 
-            Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-            // Action Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Delete button if record exists
-                if (record != null) {
-                    OutlinedButton(
-                        onClick = onDeleteRecord,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(
-                            Icons.Outlined.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Delete")
-                    }
-                }
-
-                // Save Button
-                Button(
-                    onClick = {
-                        onUpdateProgress(
-                            currentValue,
-                            note.takeIf { it.isNotBlank() }
-                        )
-                        onClose()
-                    },
-                    modifier = Modifier.weight(if (record != null) 1f else 2f),
-                    shape = RoundedCornerShape(12.dp)
+        // Action Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Delete button if record exists
+            if (record != null) {
+                OutlinedButton(
+                    onClick = onDeleteRecord,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
                 ) {
-                    Text("Save")
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Delete")
                 }
             }
-        } else {
-            // Future date message
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+
+            // Save Button
+            Button(
+                onClick = {
+                    onUpdateProgress(
+                        if (isFuture) 0 else currentValue,
+                        note.takeIf { it.isNotBlank() }
+                    )
+                    onClose()
+                },
+                modifier = Modifier.weight(if (record != null) 1f else 2f),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    text = "You cannot mark future dates",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
-                )
+                Text("Save")
             }
         }
 
