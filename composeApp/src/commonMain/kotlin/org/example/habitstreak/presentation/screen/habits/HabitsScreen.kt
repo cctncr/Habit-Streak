@@ -1,7 +1,6 @@
 package org.example.habitstreak.presentation.screen.habits
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -91,7 +90,6 @@ fun HabitsScreen(
 
     val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
     val usedCategories by viewModel.usedCategories.collectAsState()
-    var showDeleteDialog by remember { mutableStateOf<Category?>(null) }
 
     // Calculate stats
     val todayCompleted = habitsWithCompletion.count { it.isCompletedToday }
@@ -205,10 +203,7 @@ fun HabitsScreen(
                                     HabitFilter.ALL to habitsWithCompletion.size,
                                     HabitFilter.COMPLETED to todayCompleted,
                                     HabitFilter.PENDING to (totalHabits - todayCompleted)
-                                ),
-                                onCategoryLongClick = { category ->
-                                    showDeleteDialog = category
-                                }
+                                )
                             )
                         }
 
@@ -312,28 +307,6 @@ fun HabitsScreen(
             onDismiss = { showDatePicker = false }
         )
     }
-
-    // Category Delete Dialog
-    showDeleteDialog?.let { category ->
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Category") },
-            text = { Text("Are you sure you want to delete '${category.name}'? This will remove it from all habits.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteCategory(category.id)
-                    showDeleteDialog = null
-                }) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 }
 
 @Composable
@@ -407,8 +380,7 @@ private fun EnhancedFilterChipsRow(
     selectedCategoryId: String?,
     onCategorySelected: (String?) -> Unit,
     usedCategories: List<Category>,
-    habitsCount: Map<HabitFilter, Int>,
-    onCategoryLongClick: (Category) -> Unit
+    habitsCount: Map<HabitFilter, Int>
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -455,20 +427,6 @@ private fun EnhancedFilterChipsRow(
             key = { it.id }
         ) { category ->
             FilterChip(
-                modifier = Modifier.combinedClickable(
-                    onClick = {
-                        if (selectedCategoryId == category.id) {
-                            onCategorySelected(null)
-                        } else {
-                            onCategorySelected(category.id)
-                        }
-                    },
-                    onLongClick = {
-                        if (category.isCustom) {
-                            onCategoryLongClick(category)
-                        }
-                    }
-                ),
                 onClick = {
                     if (selectedCategoryId == category.id) {
                         onCategorySelected(null)

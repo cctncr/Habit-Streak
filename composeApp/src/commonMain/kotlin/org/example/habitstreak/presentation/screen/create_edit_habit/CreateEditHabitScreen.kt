@@ -13,7 +13,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.with
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,12 +44,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -75,7 +70,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -95,10 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
-import org.example.habitstreak.domain.model.Category
-import org.example.habitstreak.domain.model.NotificationError
 import org.example.habitstreak.domain.service.PermissionManager
-import org.example.habitstreak.domain.service.PermissionResult
 import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
@@ -140,7 +131,6 @@ fun CreateEditHabitScreen(
     var showReminderDialog by remember { mutableStateOf(false) }
     var showAdvancedSettings by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf<Category?>(null) }
 
     val isFormValid = uiState.title.isNotBlank()
 
@@ -253,9 +243,6 @@ fun CreateEditHabitScreen(
                             1 -> CategorySelectionStep(
                                 uiState = uiState,
                                 viewModel = viewModel,
-                                categoryOnLongClick = { category ->
-                                    showDeleteDialog = category
-                                }
                             )
 
                             2 -> GoalStep(
@@ -397,23 +384,6 @@ fun CreateEditHabitScreen(
                                 )
                             }
                         }
-                    }
-
-                    showDeleteDialog?.let { category ->
-                        AlertDialog(
-                            onDismissRequest = { showDeleteDialog = null },
-                            title = { Text("Delete Category") },
-                            text = { Text("Are you sure you want to delete '${category.name}'?") },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    viewModel.deleteCategory(category.id)
-                                    showDeleteDialog = null
-                                }) { Text("Delete") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showDeleteDialog = null }) { Text("Cancel") }
-                            }
-                        )
                     }
                 }
             }
@@ -671,8 +641,7 @@ private fun BasicInfoStep(
 @Composable
 private fun CategorySelectionStep(
     uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
-    viewModel: CreateEditHabitViewModel,
-    categoryOnLongClick: (Category) -> Unit
+    viewModel: CreateEditHabitViewModel
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -718,11 +687,6 @@ private fun CategorySelectionStep(
                         FilterChip(
                             modifier = Modifier.combinedClickable(
                                 onClick = { viewModel.toggleCategory(category) },
-                                onLongClick = {
-                                    if (category.isCustom) {
-                                        categoryOnLongClick(category)
-                                    }
-                                }
                             ),
                             selected = isSelected,
                             onClick = { viewModel.toggleCategory(category) },
