@@ -38,10 +38,6 @@ class CreateHabitUseCase(
             return Result.failure(IllegalArgumentException("Hedef sayısı en az 1 olmalıdır"))
         }
 
-        if (params.categories.isEmpty()) {
-            return Result.failure(IllegalArgumentException("En az bir kategori seçilmelidir"))
-        }
-
         val habit = Habit(
             title = params.title.trim(),
             description = params.description.trim(),

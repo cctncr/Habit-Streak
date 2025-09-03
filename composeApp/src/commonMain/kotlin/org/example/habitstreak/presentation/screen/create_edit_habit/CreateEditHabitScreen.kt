@@ -1091,7 +1091,7 @@ private fun getPresetGoals() = listOf(
     PresetGoal(30, "minutes"),
     PresetGoal(20, "pages"),
     PresetGoal(5, "reps"),
-    PresetGoal(1, "hour")
+    PresetGoal(3, "hour")
 )
 
 private fun formatTime(time: LocalTime): String {

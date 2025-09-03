@@ -20,8 +20,11 @@ fun ReminderTimeDialog(
     onTimeSelected: (LocalTime) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var hour by remember { mutableStateOf(selectedTime?.hour ?: 9) }
-    var minute by remember { mutableStateOf(selectedTime?.minute ?: 0) }
+    val timePickerState = rememberTimePickerState(
+        initialHour = selectedTime?.hour ?: 9,
+        initialMinute = selectedTime?.minute ?: 0,
+        is24Hour = false
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -38,97 +41,19 @@ fun ReminderTimeDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Choose when you want to be reminded daily:",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                // Time picker
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Hour selector
-                        TimeSelector(
-                            value = hour,
-                            onValueChange = { hour = it },
-                            range = 0..23,
-                            label = "Hour",
-                            formatter = { it.toString().padStart(2, '0') }
-                        )
-
-                        Text(
-                            text = ":",
-                            style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-
-                        // Minute selector
-                        TimeSelector(
-                            value = minute,
-                            onValueChange = { minute = it },
-                            range = 0..59 step 5,
-                            label = "Minute",
-                            formatter = { it.toString().padStart(2, '0') }
-                        )
-                    }
-                }
-
-                // Quick presets
-                Text(
-                    text = "Quick Presets",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                // Material3 TimePicker
+                TimePicker(
+                    state = timePickerState,
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PresetTimeChip(
-                        label = "Morning",
-                        time = LocalTime(7, 0),
-                        onSelect = {
-                            hour = 7
-                            minute = 0
-                        }
-                    )
-                    PresetTimeChip(
-                        label = "Noon",
-                        time = LocalTime(12, 0),
-                        onSelect = {
-                            hour = 12
-                            minute = 0
-                        }
-                    )
-                    PresetTimeChip(
-                        label = "Evening",
-                        time = LocalTime(19, 0),
-                        onSelect = {
-                            hour = 19
-                            minute = 0
-                        }
-                    )
-                    PresetTimeChip(
-                        label = "Night",
-                        time = LocalTime(21, 0),
-                        onSelect = {
-                            hour = 21
-                            minute = 0
-                        }
-                    )
-                }
 
                 // Display selected time
                 Card(
@@ -144,11 +69,18 @@ fun ReminderTimeDialog(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Selected: ${formatTime(LocalTime(hour, minute))}",
+                            text = "Selected: ${formatTime(LocalTime(timePickerState.hour, timePickerState.minute))}",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -157,10 +89,11 @@ fun ReminderTimeDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onTimeSelected(LocalTime(hour, minute))
+                    onTimeSelected(LocalTime(timePickerState.hour, timePickerState.minute))
+                    onDismiss()
                 }
             ) {
-                Text("Set Reminder")
+                Text("Set")
             }
         },
         dismissButton = {
@@ -168,90 +101,6 @@ fun ReminderTimeDialog(
                 Text("Cancel")
             }
         }
-    )
-}
-
-@Composable
-private fun TimeSelector(
-    value: Int,
-    onValueChange: (Int) -> Unit,
-    range: IntProgression,
-    label: String,
-    formatter: (Int) -> String
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Card(
-            modifier = Modifier.size(80.dp, 120.dp)
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                items(range.toList()) { item ->
-                    val isSelected = item == value
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                        onClick = { onValueChange(item) },
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            text = formatter(item),
-                            modifier = Modifier.padding(8.dp),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PresetTimeChip(
-    label: String,
-    time: LocalTime,
-    onSelect: () -> Unit
-) {
-    AssistChip(
-        onClick = onSelect,
-        label = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Text(
-                    text = formatTime(time),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        modifier = Modifier.height(48.dp)
     )
 }
 
