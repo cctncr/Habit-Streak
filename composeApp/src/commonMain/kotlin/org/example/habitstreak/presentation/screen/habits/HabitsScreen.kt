@@ -1,17 +1,10 @@
 package org.example.habitstreak.presentation.screen.habits
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -28,12 +22,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,7 +36,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -54,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -64,7 +58,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -87,8 +80,6 @@ fun HabitsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val habitsWithCompletion by viewModel.habitsWithCompletion.collectAsState()
     val today by viewModel.selectedDate.collectAsState()
-    val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
-    val usedCategories by viewModel.usedCategories.collectAsState()
 
     var selectedFilter by remember { mutableStateOf(HabitFilter.ALL) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -96,6 +87,9 @@ fun HabitsScreen(
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val listState = rememberLazyListState()
+
+    val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
+    val usedCategories by viewModel.usedCategories.collectAsState()
 
     // Calculate stats
     val todayCompleted = habitsWithCompletion.count { it.isCompletedToday }
@@ -113,14 +107,19 @@ fun HabitsScreen(
 
     // Filter habits
     val filteredHabits = remember(habitsWithCompletion, selectedFilter, selectedCategoryId) {
-        val filterByType = when (selectedFilter) {
+        var filtered = when (selectedFilter) {
             HabitFilter.ALL -> habitsWithCompletion
             HabitFilter.COMPLETED -> habitsWithCompletion.filter { it.isCompletedToday }
             HabitFilter.PENDING -> habitsWithCompletion.filter { !it.isCompletedToday }
         }
 
-        // Category filtering is already handled in ViewModel
-        filterByType
+        if (selectedCategoryId != null) {
+            filtered = filtered.filter { habitWithCompletion ->
+                habitWithCompletion.habit.categories.any { it.id == selectedCategoryId }
+            }
+        }
+
+        filtered
     }
 
     Scaffold(
@@ -182,28 +181,42 @@ fun HabitsScreen(
                         }
 
                         item(key = "filters") {
-                            FilterChipsRow(
+                            EnhancedFilterChipsRow(
                                 selectedFilter = selectedFilter,
-                                onFilterSelected = { selectedFilter = it },
+                                onFilterSelected = { filter ->
+                                    selectedFilter = filter
+                                    // Filter değiştiğinde category seçimini temizle
+                                    if (filter != HabitFilter.ALL) {
+                                        viewModel.selectCategory(null)
+                                    }
+                                },
+                                selectedCategoryId = selectedCategoryId,
+                                onCategorySelected = { categoryId ->
+                                    viewModel.selectCategory(categoryId)
+                                    // Category seçildiğinde filter'ı ALL yap
+                                    if (categoryId != null) {
+                                        selectedFilter = HabitFilter.ALL
+                                    }
+                                },
+                                usedCategories = usedCategories,
                                 habitsCount = mapOf(
                                     HabitFilter.ALL to habitsWithCompletion.size,
                                     HabitFilter.COMPLETED to todayCompleted,
                                     HabitFilter.PENDING to (totalHabits - todayCompleted)
-                                ),
-                                selectedCategoryId = selectedCategoryId,
-                                usedCategories = usedCategories,
-                                onCategorySelected = { categoryId ->
-                                    viewModel.selectCategory(categoryId)
-                                }
+                                )
                             )
                         }
 
                         stickyHeader(key = "header") {
                             SectionHeader(
-                                title = when (selectedFilter) {
-                                    HabitFilter.ALL -> "All Habits"
-                                    HabitFilter.COMPLETED -> "Completed Today"
-                                    HabitFilter.PENDING -> "Pending Habits"
+                                title = when {
+                                    selectedCategoryId != null -> {
+                                        usedCategories.find { it.id == selectedCategoryId }?.name ?: "Category"
+                                    }
+                                    selectedFilter == HabitFilter.ALL -> "All Habits"
+                                    selectedFilter == HabitFilter.COMPLETED -> "Completed Today"
+                                    selectedFilter == HabitFilter.PENDING -> "Pending Habits"
+                                    else -> "Habits"
                                 },
                                 count = filteredHabits.size
                             )
@@ -356,27 +369,26 @@ private fun ProgressOverviewCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun FilterChipsRow(
+private fun EnhancedFilterChipsRow(
     selectedFilter: HabitFilter,
     onFilterSelected: (HabitFilter) -> Unit,
-    habitsCount: Map<HabitFilter, Int>,
     selectedCategoryId: String?,
+    onCategorySelected: (String?) -> Unit,
     usedCategories: List<Category>,
-    onCategorySelected: (String?) -> Unit
+    habitsCount: Map<HabitFilter, Int>
 ) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Existing habit filters (All, Done, Todo)
+        // Mevcut filter chips
         items(HabitFilter.entries) { filter ->
             FilterChip(
                 selected = selectedFilter == filter && selectedCategoryId == null,
                 onClick = {
                     onFilterSelected(filter)
-                    onCategorySelected(null) // Clear category filter
+                    onCategorySelected(null) // Category seçimini temizle
                 },
                 label = { Text("${filter.label} (${habitsCount[filter] ?: 0})") },
                 leadingIcon = if (selectedFilter == filter && selectedCategoryId == null) {
@@ -391,60 +403,71 @@ fun FilterChipsRow(
             )
         }
 
-        // Category filters - only show used categories
-        items(usedCategories) { category ->
-            CategoryFilterChip(
-                category = category,
-                isSelected = selectedCategoryId == category.id,
+        // Divider
+        if (usedCategories.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.width(8.dp))
+                VerticalDivider(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .padding(horizontal = 4.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+        }
+
+        // Category chips
+        items(
+            items = usedCategories,
+            key = { it.id }
+        ) { category ->
+            FilterChip(
+                selected = selectedCategoryId == category.id,
                 onClick = {
                     if (selectedCategoryId == category.id) {
-                        onCategorySelected(null) // Deselect if already selected
+                        onCategorySelected(null)
                     } else {
                         onCategorySelected(category.id)
                     }
-                }
+                },
+                label = {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(category.name)
+                        if (category.usageCount > 0) {
+                            Badge(
+                                containerColor = if (selectedCategoryId == category.id) {
+                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)
+                                } else {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                }
+                            ) {
+                                Text(
+                                    text = category.usageCount.toString(),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+                },
+                leadingIcon = if (selectedCategoryId == category.id) {
+                    {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else null
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CategoryFilterChip(
-    category: Category,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    FilterChip(
-        selected = isSelected,
-        onClick = onClick,
-        label = {
-            Text(
-                text = category.name,
-                style = MaterialTheme.typography.labelMedium
-            )
-        },
-        leadingIcon = {
-            if (isSelected) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-            } else {
-                // Show category icon
-                Text(
-                    text = Category.CATEGORY_ICONS[category.name]?.emoji ?: "📌",
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
-        },
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = Category.CATEGORY_COLORS[category.name]?.composeColor?.copy(alpha = 0.2f)
-                ?: MaterialTheme.colorScheme.primaryContainer
-        )
-    )
-}
 
 @Composable
 private fun SectionHeader(title: String, count: Int) {

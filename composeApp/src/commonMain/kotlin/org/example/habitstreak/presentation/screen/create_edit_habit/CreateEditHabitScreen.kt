@@ -1,34 +1,16 @@
 package org.example.habitstreak.presentation.screen.create_edit_habit
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.with
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,49 +19,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DividerDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ProgressIndicatorDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -87,42 +32,37 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.example.habitstreak.domain.model.DayOfWeek
-import org.example.habitstreak.domain.model.HabitColor
-import org.example.habitstreak.domain.model.HabitFrequency
-import org.example.habitstreak.domain.model.HabitIcon
-import org.example.habitstreak.domain.model.RepeatUnit
+import kotlinx.datetime.LocalTime
 import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
-import org.example.habitstreak.presentation.ui.components.selection.CategorySelectionSection
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.parameter.parametersOf
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
-import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
-import org.example.habitstreak.presentation.ui.utils.navigationBarsPadding
 import org.example.habitstreak.presentation.viewmodel.CreateEditHabitViewModel
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun CreateEditHabitScreen(
-    habitId: String?,
+    habitId: String? = null,
     onNavigateBack: () -> Unit,
-    viewModel: CreateEditHabitViewModel = koinViewModel { parametersOf(habitId) }
+    viewModel: CreateEditHabitViewModel = koinViewModel(parameters = { parametersOf(habitId) })
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var currentStep by remember { mutableStateOf(0) }
+    val totalSteps = 4
     val focusManager = LocalFocusManager.current
 
-    var currentStep by remember { mutableStateOf(0) }
-    val totalSteps = if (uiState.isEditMode) 1 else 4 // Changed from 5 to 4 steps
+    // Bottom sheets states
+    var showIconSheet by remember { mutableStateOf(false) }
+    var showColorSheet by remember { mutableStateOf(false) }
+    var showReminderDialog by remember { mutableStateOf(false) }
 
-    // Form validation for each step
-    val isFormValid = when (currentStep) {
-        0 -> uiState.title.isNotBlank()
-        1 -> true // Icon and color selection
-        2 -> uiState.selectedCategories.isNotEmpty() // Category selection - UPDATED
-        3 -> true // Goal setting
-        else -> true
+    // Effects
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            // Show error snackbar if needed
+        }
     }
 
     Scaffold(
@@ -130,21 +70,36 @@ fun CreateEditHabitScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (uiState.isEditMode) "Edit Habit" else "Create New Habit"
+                        if (uiState.isEditMode) "Edit Habit" else "Create Habit",
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    if (uiState.isEditMode) {
+                    if (uiState.isEditMode || currentStep == totalSteps - 1) {
                         TextButton(
-                            onClick = { viewModel.saveHabit(onSuccess = onNavigateBack) },
-                            enabled = isFormValid
+                            onClick = {
+                                viewModel.saveHabit {
+                                    onNavigateBack()
+                                }
+                            },
+                            enabled = !uiState.isLoading && uiState.title.isNotBlank()
                         ) {
-                            Text("Save")
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(
+                                    text = if (uiState.isEditMode) "Save" else "Create",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -155,83 +110,72 @@ fun CreateEditHabitScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
         ) {
-            // Progress indicator for create mode
             if (!uiState.isEditMode) {
+                // Step indicator for create mode
+                StepIndicator(
+                    currentStep = currentStep,
+                    totalSteps = totalSteps,
+                    modifier = Modifier.padding(16.dp)
+                )
+
+                // Progress bar
                 LinearProgressIndicator(
                     progress = { (currentStep + 1).toFloat() / totalSteps },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-
-                Text(
-                    text = "Step ${currentStep + 1} of $totalSteps",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        .padding(horizontal = 16.dp)
                 )
             }
 
-            // Step content
-            AnimatedContent(
-                targetState = currentStep,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        slideInHorizontally { width -> width } + fadeIn() with
-                                slideOutHorizontally { width -> -width } + fadeOut()
-                    } else {
-                        slideInHorizontally { width -> -width } + fadeIn() with
-                                slideOutHorizontally { width -> width } + fadeOut()
-                    }
-                }
-            ) { step ->
-                when (step) {
-                    0 -> BasicInfoStep(
-                        title = uiState.title,
-                        description = uiState.description,
-                        onTitleChange = viewModel::updateTitle,
-                        onDescriptionChange = viewModel::updateDescription,
-                        isEditMode = uiState.isEditMode
+            // Content
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                if (uiState.isEditMode) {
+                    // Edit mode - show all fields
+                    EditModeContent(
+                        uiState = uiState,
+                        viewModel = viewModel,
+                        onShowIconSheet = { showIconSheet = true },
+                        onShowColorSheet = { showColorSheet = true },
+                        onShowReminderDialog = { showReminderDialog = true }
                     )
-
-                    1 -> IconColorStep(
-                        selectedIcon = uiState.selectedIcon,
-                        selectedColor = uiState.selectedColor,
-                        onIconSelected = viewModel::selectIcon,
-                        onColorSelected = viewModel::selectColor
-                    )
-
-                    2 -> {
-                        // REPLACED "How Often?" with Category Selection
+                } else {
+                    // Create mode - step by step
+                    AnimatedContent(
+                        targetState = currentStep,
+                        transitionSpec = {
+                            if (targetState > initialState) {
+                                slideInHorizontally { width -> width } + fadeIn() with
+                                        slideOutHorizontally { width -> -width } + fadeOut()
+                            } else {
+                                slideInHorizontally { width -> -width } + fadeIn() with
+                                        slideOutHorizontally { width -> width } + fadeOut()
+                            }
+                        }
+                    ) { step ->
                         Column(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            CategorySelectionSection(
-                                selectedCategories = uiState.selectedCategories,
-                                availableCategories = uiState.availableCategories,
-                                onCategoryToggle = viewModel::toggleCategory,
-                                onAddCustomCategory = viewModel::showCustomCategoryDialog,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            when (step) {
+                                0 -> BasicInfoStep(uiState, viewModel, { showIconSheet = true }, { showColorSheet = true })
+                                1 -> CategorySelectionStep(uiState, viewModel)
+                                2 -> GoalSettingStep(uiState, viewModel, { showReminderDialog = true })
+                                3 -> ReviewStep(uiState)
+                            }
                         }
                     }
-
-                    3 -> GoalSettingStep(
-                        targetCount = uiState.targetCount,
-                        unit = uiState.unit,
-                        reminderTime = uiState.reminderTime,
-                        onTargetCountChange = viewModel::updateTargetCount,
-                        onUnitChange = viewModel::updateUnit,
-                        onReminderTimeChange = viewModel::updateReminderTime,
-                        isEditMode = uiState.isEditMode,
-                        isArchived = uiState.isArchived,
-                        onArchivedChange = viewModel::updateArchived
-                    )
                 }
             }
 
-            // Navigation buttons
+            // Navigation buttons for create mode
             if (!uiState.isEditMode) {
                 Row(
                     modifier = Modifier
@@ -243,25 +187,40 @@ fun CreateEditHabitScreen(
                         onClick = { if (currentStep > 0) currentStep-- },
                         enabled = currentStep > 0
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                        Spacer(Modifier.width(8.dp))
                         Text("Previous")
                     }
 
-                    Button(
-                        onClick = {
-                            if (currentStep < totalSteps - 1) {
-                                currentStep++
-                            } else {
-                                viewModel.saveHabit(onSuccess = onNavigateBack)
+                    if (currentStep < totalSteps - 1) {
+                        Button(
+                            onClick = {
+                                if (validateStep(currentStep, uiState)) {
+                                    currentStep++
+                                }
                             }
-                        },
-                        enabled = isFormValid
-                    ) {
-                        Text(if (currentStep < totalSteps - 1) "Next" else "Create Habit")
-                        if (currentStep < totalSteps - 1) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                        ) {
+                            Text("Next")
+                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                viewModel.saveHabit {
+                                    onNavigateBack()
+                                }
+                            },
+                            enabled = !uiState.isLoading && uiState.title.isNotBlank()
+                        ) {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Create Habit")
+                            }
                         }
                     }
                 }
@@ -269,7 +228,36 @@ fun CreateEditHabitScreen(
         }
     }
 
-    // Custom category dialog
+    // Bottom sheets
+    if (showColorSheet) {
+        ModalBottomSheet(onDismissRequest = { showColorSheet = false }) {
+            ColorSelectionGrid(
+                uiState.selectedColor,
+                onColorSelected = { color ->
+                    viewModel.selectColor(color)
+                    showColorSheet = false
+                },
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+
+    if (showColorSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showColorSheet = false }
+        ) {
+            ColorSelectionGrid(
+                selectedColor = uiState.selectedColor,
+                onColorSelected = {
+                    viewModel.selectColor(it)
+                    showColorSheet = false
+                },
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+
+    // Custom Category Dialog
     if (uiState.showCustomCategoryDialog) {
         CustomCategoryDialog(
             categoryName = uiState.customCategoryName,
@@ -279,17 +267,15 @@ fun CreateEditHabitScreen(
         )
     }
 
-    // Error handling
-    uiState.error?.let { error ->
-        AlertDialog(
-            onDismissRequest = viewModel::clearError,
-            title = { Text("Error") },
-            text = { Text(error) },
-            confirmButton = {
-                TextButton(onClick = viewModel::clearError) {
-                    Text("OK")
-                }
-            }
+    // Reminder Time Dialog
+    if (showReminderDialog) {
+        ReminderTimeDialog(
+            selectedTime = uiState.reminderTime,
+            onTimeSelected = { time ->
+                viewModel.updateReminderTime(time)
+                showReminderDialog = false
+            },
+            onDismiss = { showReminderDialog = false }
         )
     }
 }
@@ -298,29 +284,28 @@ fun CreateEditHabitScreen(
 private fun StepIndicator(
     currentStep: Int,
     totalSteps: Int,
-    onStepClick: (Int) -> Unit
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        repeat(totalSteps) { step ->
+        repeat(totalSteps) { index ->
             StepCircle(
-                stepNumber = step + 1,
-                isActive = step == currentStep,
-                isCompleted = step < currentStep,
-                onClick = { onStepClick(step) }
+                stepNumber = index + 1,
+                isActive = index <= currentStep,
+                isCompleted = index < currentStep
             )
-            if (step < totalSteps - 1) {
-                HorizontalDivider(
-                    Modifier
+            if (index < totalSteps - 1) {
+                Box(
+                    modifier = Modifier
                         .weight(1f)
-                        .padding(top = 20.dp),
-                    2.dp,
-                    if (step < currentStep)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
+                        .height(2.dp)
+                        .background(
+                            if (index < currentStep) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        )
                 )
             }
         }
@@ -331,28 +316,19 @@ private fun StepIndicator(
 private fun StepCircle(
     stepNumber: Int,
     isActive: Boolean,
-    isCompleted: Boolean,
-    onClick: () -> Unit
+    isCompleted: Boolean
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isActive) 1.2f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "scale"
-    )
-
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .scale(scale)
-            .clip(CircleShape)
+            .size(32.dp)
             .background(
-                when {
+                color = when {
+                    isCompleted -> MaterialTheme.colorScheme.primary
                     isActive -> MaterialTheme.colorScheme.primary
-                    isCompleted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                     else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-            )
-            .clickable { onClick() },
+                },
+                shape = CircleShape
+            ),
         contentAlignment = Alignment.Center
     ) {
         if (isCompleted) {
@@ -365,10 +341,8 @@ private fun StepCircle(
         } else {
             Text(
                 text = stepNumber.toString(),
-                color = if (isActive)
-                    MaterialTheme.colorScheme.onPrimary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isActive) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
             )
         }
@@ -463,200 +437,131 @@ private fun BasicInfoStep(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FrequencyStep(
-    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
-    viewModel: CreateEditHabitViewModel,
-    onShowFrequencySheet: () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "How often?",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = "Choose when you want to complete this habit",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        // Quick frequency options
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FrequencyChip(
-                label = "Every Day",
-                isSelected = uiState.frequency is HabitFrequency.Daily,
-                onClick = { viewModel.updateFrequency(HabitFrequency.Daily) }
-            )
-            FrequencyChip(
-                label = "Weekdays",
-                isSelected = uiState.frequency is HabitFrequency.Weekly &&
-                        uiState.frequency.daysOfWeek.size == 5,
-                onClick = {
-                    viewModel.updateFrequency(
-                        HabitFrequency.Weekly(
-                            setOf(
-                                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
-                                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
-                            )
-                        )
-                    )
-                }
-            )
-            FrequencyChip(
-                label = "Weekends",
-                isSelected = uiState.frequency is HabitFrequency.Weekly &&
-                        uiState.frequency.daysOfWeek.size == 2,
-                onClick = {
-                    viewModel.updateFrequency(
-                        HabitFrequency.Weekly(setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY))
-                    )
-                }
-            )
-            FrequencyChip(
-                label = "Custom",
-                isSelected = uiState.frequency is HabitFrequency.Custom,
-                onClick = onShowFrequencySheet
-            )
-        }
-
-        // Show selected frequency details
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Outlined.Schedule,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = getFrequencyDescription(uiState.frequency),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun GoalStep(
+private fun CategorySelectionStep(
     uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
     viewModel: CreateEditHabitViewModel
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Set your goal",
+            text = "Choose Categories",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
         Text(
-            text = "How much do you want to achieve each time?",
-            style = MaterialTheme.typography.bodyLarge,
+            text = "Select one or more categories for your habit",
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // Goal type selection
-        var isCountable by remember { mutableStateOf(uiState.targetCount > 1) }
-
-        Row(
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            )
         ) {
-            FilterChip(
-                selected = !isCountable,
-                onClick = {
-                    isCountable = false
-                    viewModel.updateTargetCount(1)
-                    viewModel.updateUnit("")
-                },
-                label = { Text("Simple Check") },
-                leadingIcon = if (!isCountable) {
-                    {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null,
-                modifier = Modifier.weight(1f)
-            )
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Available Categories",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
 
-            FilterChip(
-                selected = isCountable,
-                onClick = { isCountable = true },
-                label = { Text("Countable") },
-                leadingIcon = if (isCountable) {
-                    {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        AnimatedVisibility(visible = isCountable) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.Bottom
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = if (uiState.targetCount > 1) uiState.targetCount.toString() else "",
-                        onValueChange = { value ->
-                            value.toIntOrNull()?.let {
-                                if (it > 0) viewModel.updateTargetCount(it)
-                            }
-                        },
-                        label = { Text("Target Amount") },
-                        placeholder = { Text("e.g., 8") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
+                    uiState.availableCategories.forEach { category ->
+                        val isSelected = uiState.selectedCategories.contains(category)
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.toggleCategory(category) },
+                            label = {
+                                Text(
+                                    category.name,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            leadingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        )
+                    }
 
-                    OutlinedTextField(
-                        value = uiState.unit,
-                        onValueChange = viewModel::updateUnit,
-                        label = { Text("Unit") },
-                        placeholder = { Text("e.g., glasses, pages, minutes") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
+                    // Add custom category chip
+                    AssistChip(
+                        onClick = viewModel::showCustomCategoryDialog,
+                        label = { Text("Add Custom") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.primary,
+                            leadingIconContentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(8.dp)
+                            )
                     )
                 }
+            }
+        }
 
-                // Preset suggestions
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Selected categories display
+        if (uiState.selectedCategories.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(getPresetGoals()) { preset ->
-                        SuggestionChip(
-                            onClick = {
-                                viewModel.updateTargetCount(preset.count)
-                                viewModel.updateUnit(preset.unit)
-                            },
-                            label = { Text("${preset.count} ${preset.unit}") }
-                        )
+                    Text(
+                        text = "Selected Categories (${uiState.selectedCategories.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        uiState.selectedCategories.forEach { category ->
+                            Chip(
+                                onClick = { },
+                                label = { Text(category.name) },
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Remove",
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clickable { viewModel.toggleCategory(category) }
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -665,25 +570,90 @@ private fun GoalStep(
 }
 
 @Composable
-private fun ReminderStep(
+private fun GoalSettingStep(
     uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
     viewModel: CreateEditHabitViewModel,
     onShowReminderDialog: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Stay on track",
+            text = "Set Your Goal",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
+        // Target count and unit
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (uiState.reminderTime != null)
-                    MaterialTheme.colorScheme.primaryContainer
-                else
-                    MaterialTheme.colorScheme.surfaceVariant
-            )
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Daily Target",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = uiState.targetCount.toString(),
+                        onValueChange = { value ->
+                            value.toIntOrNull()?.let { viewModel.updateTargetCount(it) }
+                        },
+                        label = { Text("Count") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = uiState.unit,
+                        onValueChange = viewModel::updateUnit,
+                        label = { Text("Unit (Optional)") },
+                        placeholder = { Text("e.g., glasses, pages, minutes") },
+                        modifier = Modifier.weight(2f),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.None,
+                            imeAction = ImeAction.Done
+                        ),
+                        singleLine = true
+                    )
+                }
+
+                // Quick presets
+                Text(
+                    text = "Quick Presets",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(1, 3, 5, 10).forEach { count ->
+                        FilterChip(
+                            selected = uiState.targetCount == count,
+                            onClick = { viewModel.updateTargetCount(count) },
+                            label = { Text(count.toString()) }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Reminder settings
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onShowReminderDialog
         ) {
             Row(
                 modifier = Modifier
@@ -693,29 +663,32 @@ private fun ReminderStep(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         Icons.Outlined.NotificationsActive,
-                        contentDescription = null
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
                             text = "Daily Reminder",
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = if (uiState.reminderTime != null)
-                                "At ${uiState.reminderTime}"
-                            else
-                                "Get notified to complete your habit",
+                            text = if (uiState.reminderTime != null) {
+                                "Set for ${formatTime(uiState.reminderTime)}"
+                            } else {
+                                "No reminder set"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+
                 Switch(
                     checked = uiState.reminderTime != null,
                     onCheckedChange = { enabled ->
@@ -729,35 +702,44 @@ private fun ReminderStep(
             }
         }
 
-        // Motivational messages
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.Top
+        // Archive option (only in edit mode)
+        if (uiState.isEditMode) {
+            Card(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    Icons.Outlined.AutoAwesome,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Pro Tip",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    Text(
-                        text = "Setting a reminder increases habit success rate by 40%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Outlined.Archive,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Column {
+                            Text(
+                                text = "Archive Habit",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Hide from active habits",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = uiState.isArchived,
+                        onCheckedChange = viewModel::updateArchived
                     )
                 }
             }
@@ -766,276 +748,249 @@ private fun ReminderStep(
 }
 
 @Composable
+private fun ReviewStep(
+    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Review Your Habit",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Icon and title
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                color = HabitStreakTheme.habitColorToComposeColor(uiState.selectedColor)
+                                    .copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = uiState.selectedIcon.emoji,
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = uiState.title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (uiState.description.isNotEmpty()) {
+                            Text(
+                                text = uiState.description,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Categories
+                if (uiState.selectedCategories.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Categories",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            uiState.selectedCategories.forEach { category ->
+                                Chip(
+                                    onClick = { },
+                                    label = { Text(category.name) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Goal
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Daily Goal",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = if (uiState.unit.isNotEmpty()) {
+                            "${uiState.targetCount} ${uiState.unit}"
+                        } else {
+                            "${uiState.targetCount} time${if (uiState.targetCount > 1) "s" else ""}"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // Reminder
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Reminder",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = if (uiState.reminderTime != null) {
+                            formatTime(uiState.reminderTime)
+                        } else {
+                            "Not set"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (uiState.reminderTime != null) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
+        }
+
+        // Success message
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Your habit is ready! Tap 'Create Habit' to start your journey.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditModeContent(
+    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
+    viewModel: CreateEditHabitViewModel,
+    onShowIconSheet: () -> Unit,
+    onShowColorSheet: () -> Unit,
+    onShowReminderDialog: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Basic info
+        BasicInfoStep(uiState, viewModel, onShowIconSheet, onShowColorSheet)
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Categories
+        CategorySelectionStep(uiState, viewModel)
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Goal settings
+        GoalSettingStep(uiState, viewModel, onShowReminderDialog)
+    }
+}
+
+@Composable
 private fun SelectionCard(
+    modifier: Modifier = Modifier,
     title: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     Card(
-        onClick = onClick,
         modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            content()
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            content()
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FrequencyChip(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
+private fun Chip(
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    trailingIcon: (@Composable () -> Unit)? = null
 ) {
-    FilterChip(
-        selected = isSelected,
+    Surface(
         onClick = onClick,
-        label = { Text(label) },
-        leadingIcon = if (isSelected) {
-            {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        } else null
-    )
-}
-
-@Composable
-private fun IconSelectionContent(
-    selectedIcon: HabitIcon,
-    selectedColor: HabitColor,
-    onIconSelected: (HabitIcon) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .navigationBarsPadding()
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer
     ) {
-        Text(
-            text = "Choose Icon",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        IconSelectionGrid(
-            selectedIcon = selectedIcon,
-            selectedColor = selectedColor,
-            onIconSelected = onIconSelected,
-            modifier = Modifier.height(400.dp)
-        )
-    }
-}
-
-@Composable
-private fun ColorSelectionContent(
-    selectedColor: HabitColor,
-    onColorSelected: (HabitColor) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .navigationBarsPadding()
-    ) {
-        Text(
-            text = "Choose Color",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        ColorSelectionGrid(
-            selectedColor = selectedColor,
-            onColorSelected = onColorSelected,
-            modifier = Modifier.height(300.dp)
-        )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
-@Composable
-private fun FrequencySelectionContent(
-    currentFrequency: HabitFrequency,
-    onFrequencySelected: (HabitFrequency) -> Unit
-) {
-    var selectedDays by remember {
-        mutableStateOf(
-            when (currentFrequency) {
-                is HabitFrequency.Weekly -> currentFrequency.daysOfWeek
-                else -> emptySet()
-            }
-        )
-    }
-
-    var customInterval by remember { mutableStateOf("2") }
-    var customUnit by remember { mutableStateOf(RepeatUnit.DAYS) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .navigationBarsPadding()
-    ) {
-        Text(
-            text = "Custom Frequency",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Weekly selection
-        Text(
-            text = "Select specific days",
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            DayOfWeek.entries.forEach { day ->
-                FilterChip(
-                    selected = day in selectedDays,
-                    onClick = {
-                        selectedDays = if (day in selectedDays) {
-                            selectedDays - day
-                        } else {
-                            selectedDays + day
-                        }
-                    },
-                    label = { Text(day.displayName) }
-                )
-            }
-        }
-
-        Button(
-            onClick = {
-                if (selectedDays.isNotEmpty()) {
-                    onFrequencySelected(HabitFrequency.Weekly(selectedDays))
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = selectedDays.isNotEmpty()
-        ) {
-            Text("Set Weekly Schedule")
-        }
-
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 16.dp),
-            thickness = DividerDefaults.Thickness,
-            color = DividerDefaults.color
-        )
-
-        // Custom interval
-        Text(
-            text = "Or set custom interval",
-            style = MaterialTheme.typography.titleMedium
-        )
-
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
-                value = customInterval,
-                onValueChange = { if (it.all { char -> char.isDigit() }) customInterval = it },
-                label = { Text("Every") },
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
-            )
-
-            ExposedDropdownMenuBox(
-                expanded = false,
-                onExpandedChange = { }
-            ) {
-                OutlinedTextField(
-                    value = customUnit.name.lowercase(),
-                    onValueChange = { },
-                    readOnly = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) }
-                )
-            }
-        }
-
-        Button(
-            onClick = {
-                customInterval.toIntOrNull()?.let { interval ->
-                    if (interval > 0) {
-                        onFrequencySelected(
-                            HabitFrequency.Custom(
-                                repeatInterval = interval,
-                                repeatUnit = customUnit
-                            )
-                        )
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = customInterval.toIntOrNull()?.let { it > 0 } ?: false
-        ) {
-            Text("Set Custom Interval")
+            label()
+            trailingIcon?.invoke()
         }
     }
 }
 
-private fun getFrequencyDescription(frequency: HabitFrequency): String {
-    return when (frequency) {
-        is HabitFrequency.Daily -> "Every day"
-        is HabitFrequency.Weekly -> {
-            val days = frequency.daysOfWeek.sortedBy { it.ordinal }
-            when {
-                days.size == 7 -> "Every day"
-                days.size == 5 && !days.contains(DayOfWeek.SATURDAY) && !days.contains(DayOfWeek.SUNDAY) ->
-                    "Weekdays only"
-
-                days.size == 2 && days.contains(DayOfWeek.SATURDAY) && days.contains(DayOfWeek.SUNDAY) ->
-                    "Weekends only"
-
-                else -> "Every ${days.joinToString(", ") { it.displayName }}"
-            }
-        }
-
-        is HabitFrequency.Monthly -> "On days ${frequency.daysOfMonth.sorted().joinToString(", ")}"
-        is HabitFrequency.Custom -> "Every ${frequency.repeatInterval} ${frequency.repeatUnit.name.lowercase()}"
+private fun validateStep(step: Int, uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState): Boolean {
+    return when (step) {
+        0 -> uiState.title.isNotBlank()
+        1 -> true // Categories are optional
+        2 -> uiState.targetCount > 0
+        else -> true
     }
 }
 
-private data class PresetGoal(val count: Int, val unit: String)
-
-private fun getPresetGoals() = listOf(
-    PresetGoal(8, "glasses"),
-    PresetGoal(10000, "steps"),
-    PresetGoal(30, "minutes"),
-    PresetGoal(20, "pages"),
-    PresetGoal(5, "reps"),
-    PresetGoal(3, "hour")
-)
+private fun formatTime(time: LocalTime): String {
+    val hour = if (time.hour == 0) 12 else if (time.hour > 12) time.hour - 12 else time.hour
+    val minute = time.minute.toString().padStart(2, '0')
+    val amPm = if (time.hour < 12) "AM" else "PM"
+    return "$hour:$minute $amPm"
+}

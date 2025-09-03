@@ -25,28 +25,41 @@ fun CategorySelectionSection(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Kategoriler",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Categories",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Organize your habit",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-        Text(
-            text = "Bu alışkanlık hangi kategorilere ait? (Birden fazla seçebilirsiniz)",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+            Badge(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Text("${selectedCategories.size} selected")
+            }
+        }
 
         // Predefined categories
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                containerColor = MaterialTheme.colorScheme.surface
             )
         ) {
             Column(
@@ -54,35 +67,36 @@ fun CategorySelectionSection(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Hazır Kategoriler",
-                    style = MaterialTheme.typography.labelLarge,
+                    text = "Choose from existing",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    availableCategories
-                        .filter { !it.isCustom }
-                        .forEach { category ->
-                            CategoryChip(
-                                category = category,
-                                isSelected = selectedCategories.contains(category),
-                                onClick = { onCategoryToggle(category) }
-                            )
-                        }
+                    // Predefined categories
+                    availableCategories.filter { !it.isCustom }.forEach { category ->
+                        CategoryChip(
+                            category = category,
+                            isSelected = selectedCategories.contains(category),
+                            onClick = { onCategoryToggle(category) }
+                        )
+                    }
                 }
             }
         }
 
-        // Custom categories section
+        // Custom categories
         val customCategories = availableCategories.filter { it.isCustom }
         if (customCategories.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
                 )
             ) {
                 Column(
@@ -90,12 +104,14 @@ fun CategorySelectionSection(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Özel Kategoriler",
-                        style = MaterialTheme.typography.labelLarge,
+                        text = "Your custom categories",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -103,7 +119,8 @@ fun CategorySelectionSection(
                             CategoryChip(
                                 category = category,
                                 isSelected = selectedCategories.contains(category),
-                                onClick = { onCategoryToggle(category) }
+                                onClick = { onCategoryToggle(category) },
+                                isCustom = true
                             )
                         }
                     }
@@ -112,25 +129,39 @@ fun CategorySelectionSection(
         }
 
         // Add custom category button
-        OutlinedButton(
+        OutlinedCard(
             onClick = onAddCustomCategory,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Yeni Kategori Ekle")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Create Custom Category",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
 
         // Selected categories summary
-        if (selectedCategories.isNotEmpty()) {
+        AnimatedVisibility(visible = selectedCategories.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
                 )
             ) {
                 Column(
@@ -138,15 +169,9 @@ fun CategorySelectionSection(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Seçilen Kategoriler (${selectedCategories.size})",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = selectedCategories.joinToString(", ") { it.name },
+                        text = "Selected categories will help you filter and organize your habits",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -156,10 +181,11 @@ fun CategorySelectionSection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryChip(
+private fun CategoryChip(
     category: Category,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isCustom: Boolean = false
 ) {
     FilterChip(
         selected = isSelected,
@@ -167,7 +193,7 @@ fun CategoryChip(
         label = {
             Text(
                 text = category.name,
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.bodyMedium
             )
         },
         leadingIcon = if (isSelected) {
@@ -180,51 +206,14 @@ fun CategoryChip(
             }
         } else null,
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = Category.CATEGORY_COLORS[category.name]?.composeColor?.copy(alpha = 0.3f)
-                ?: MaterialTheme.colorScheme.primaryContainer
+            containerColor = if (isCustom) {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
         )
-    )
-}
-
-@Composable
-fun CustomCategoryDialog(
-    categoryName: String,
-    onCategoryNameChange: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Yeni Kategori Ekle") },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Özel bir kategori adı girin:",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                OutlinedTextField(
-                    value = categoryName,
-                    onValueChange = onCategoryNameChange,
-                    label = { Text("Kategori Adı") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                enabled = categoryName.trim().isNotEmpty()
-            ) {
-                Text("Ekle")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("İptal")
-            }
-        }
     )
 }

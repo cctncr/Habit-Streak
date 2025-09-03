@@ -13,6 +13,7 @@ import org.example.habitstreak.domain.usecase.*
 import org.example.habitstreak.presentation.viewmodel.*
 import org.koin.dsl.module
 import org.example.habitstreak.data.local.HabitDatabase
+import org.example.habitstreak.data.repository.CategoryRepositoryImpl
 import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.domain.util.DateProviderImpl
@@ -68,6 +69,11 @@ val appModule = module {
             preferencesRepository = get(),
             notificationService = getOrNull(),
             habitRepository = get()
+        )
+    }
+    single<CategoryRepository> {
+        CategoryRepositoryImpl(
+            database = get()
         )
     }
 }
