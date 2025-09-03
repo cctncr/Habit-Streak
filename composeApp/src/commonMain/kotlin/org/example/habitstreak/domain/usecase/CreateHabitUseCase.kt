@@ -60,8 +60,16 @@ class CreateHabitUseCase(
                     createdHabit.id,
                     params.categories.map { it.id }
                 ).fold(
-                    onSuccess = { Result.success(createdHabit) },
-                    onFailure = { Result.failure(it) }
+                    onSuccess = {
+                        params.categories.forEach { category ->
+                            categoryRepository.incrementUsageCount(category.id)
+                        }
+                        Result.success(createdHabit)
+                    },
+                    onFailure = {
+                        habitRepository.deleteHabit(createdHabit.id)
+                        Result.failure(it)
+                    }
                 )
             },
             onFailure = { Result.failure(it) }

@@ -270,17 +270,6 @@ class CreateEditHabitViewModel(
                     )
                 ).fold(
                     onSuccess = { habit ->
-                        // Add categories to habit
-                        categoryRepository.updateHabitCategories(
-                            habit.id,
-                            state.selectedCategories.map { it.id }
-                        )
-
-                        // Increment usage counts for new categories
-                        state.selectedCategories.forEach { category ->
-                            categoryRepository.incrementUsageCount(category.id)
-                        }
-
                         onSuccess()
                     },
                     onFailure = { error ->
