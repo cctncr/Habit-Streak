@@ -48,6 +48,7 @@ val appModule = module {
     factory { GetHabitsWithCompletionUseCase(get(), get()) }
     factory { CalculateStreakUseCase(get(), get(), get()) }
     factory { ArchiveHabitUseCase(get()) }
+    factory { InitializeCategoriesUseCase(get()) }
 
     // ViewModels
     factory { HabitsViewModel(get(), get(), get(), get(), get(), get(), get()) }

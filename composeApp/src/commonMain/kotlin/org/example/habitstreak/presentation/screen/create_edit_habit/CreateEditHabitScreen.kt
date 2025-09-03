@@ -646,7 +646,10 @@ private fun CategorySelectionStep(
     uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
     viewModel: CreateEditHabitViewModel
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Text(
             text = "Choose Categories",
             style = MaterialTheme.typography.headlineSmall,
@@ -681,6 +684,7 @@ private fun CategorySelectionStep(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Existing categories
                     uiState.availableCategories.forEach { category ->
                         val isSelected = uiState.selectedCategories.contains(category)
                         FilterChip(
@@ -702,30 +706,47 @@ private fun CategorySelectionStep(
                                 }
                             } else null,
                             colors = FilterChipDefaults.filterChipColors(
+                                containerColor = if (category.isCustom) {
+                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                },
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                     }
 
-                    // Add custom category chip
-                    AssistChip(
+                    // Add custom category chip - FilterChip olarak değiştirildi
+                    FilterChip(
+                        selected = false,
                         onClick = viewModel::showCustomCategoryDialog,
-                        label = { Text("Add Custom") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        label = {
+                            Text(
+                                "Add Custom",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         },
-                        colors = AssistChipDefaults.assistChipColors(
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
                             containerColor = MaterialTheme.colorScheme.surface,
                             labelColor = MaterialTheme.colorScheme.primary,
-                            leadingIconContentColor = MaterialTheme.colorScheme.primary
+                            iconColor = MaterialTheme.colorScheme.primary
                         ),
-                        modifier = Modifier
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                        border = FilterChipDefaults.filterChipBorder(
+                            borderColor = MaterialTheme.colorScheme.primary,
+                            selectedBorderColor = MaterialTheme.colorScheme.primary,
+                            borderWidth = 1.dp,
+                            enabled = true,
+                            selected = false
+                        )
                     )
                 }
             }
@@ -741,34 +762,50 @@ private fun CategorySelectionStep(
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Selected Categories (${uiState.selectedCategories.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium
+                        text = "Selected Categories",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
 
                     FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         uiState.selectedCategories.forEach { category ->
-                            Chip(
-                                onClick = { },
-                                label = { Text(category.name) },
+                            FilterChip(
+                                selected = true,
+                                onClick = { viewModel.toggleCategory(category) },
+                                label = {
+                                    Text(
+                                        category.name,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                },
                                 trailingIcon = {
                                     Icon(
                                         Icons.Default.Close,
-                                        contentDescription = "Remove",
-                                        modifier = Modifier
-                                            .size(16.dp)
-                                            .clickable { viewModel.toggleCategory(category) }
+                                        contentDescription = "Remove category",
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                }
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             )
                         }
                     }
+
+                    Text(
+                        text = "Tap on a selected category to remove it",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
