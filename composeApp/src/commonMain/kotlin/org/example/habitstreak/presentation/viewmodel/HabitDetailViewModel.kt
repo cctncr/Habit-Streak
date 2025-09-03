@@ -141,14 +141,10 @@ class HabitDetailViewModel(
 
     fun updateProgress(date: LocalDate, completedCount: Int, note: String? = null) {
         viewModelScope.launch {
-            if (completedCount == 0) {
+            if (completedCount == 0 && note.isNullOrBlank()) {
                 habitRecordRepository.markHabitAsIncomplete(habitId, date).fold(
-                    onSuccess = {
-                        calculateStatistics()
-                    },
-                    onFailure = { error: Throwable ->
-                        _uiState.update { it.copy(error = error.message) }
-                    }
+                    onSuccess = { calculateStatistics() },
+                    onFailure = { error -> _uiState.update { it.copy(error = error.message) } }
                 )
             } else {
                 habitRecordRepository.markHabitAsComplete(
@@ -157,12 +153,8 @@ class HabitDetailViewModel(
                     count = completedCount,
                     note = note ?: ""
                 ).fold(
-                    onSuccess = {
-                        calculateStatistics()
-                    },
-                    onFailure = { error: Throwable ->
-                        _uiState.update { it.copy(error = error.message) }
-                    }
+                    onSuccess = { calculateStatistics() },
+                    onFailure = { error -> _uiState.update { it.copy(error = error.message) } }
                 )
             }
         }
@@ -251,15 +243,18 @@ class HabitDetailViewModel(
                         val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
                         enableNotification(time)
                     }
+
                     is PermissionResult.DeniedCanAskAgain -> {
                         _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
                         setNotificationError(NotificationError.PermissionDenied(canRequestAgain = true))
                         _uiState.update { it.copy(isNotificationEnabled = false) }
                     }
+
                     is PermissionResult.DeniedPermanently -> {
                         setNotificationError(NotificationError.PermissionDenied(canRequestAgain = false))
                         _uiState.update { it.copy(isNotificationEnabled = false) }
                     }
+
                     is PermissionResult.Error -> {
                         setNotificationError(permissionStatus.error)
                         _uiState.update { it.copy(isNotificationEnabled = false) }

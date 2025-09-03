@@ -94,6 +94,7 @@ fun HabitDetailScreen(
                 is HabitDetailViewModel.UiEvent.RequestNotificationPermission -> {
                     println("Permission request needed - integrate with platform-specific handler")
                 }
+
                 is HabitDetailViewModel.UiEvent.OpenAppSettings -> {
                     println("Opening app settings - integrate with platform-specific handler")
                 }
@@ -228,6 +229,7 @@ fun HabitDetailScreen(
                                         }
                                     )
                                 }
+
                                 ActivityTab.NOTES -> {
                                     NotesList(
                                         records = uiState.records.filter { !it.note.isNullOrBlank() },
@@ -556,6 +558,7 @@ private fun CalendarSection(
                             record == null -> 0f
                             habit.getType() == HabitType.COUNTABLE ->
                                 (record.completedCount.toFloat() / targetCount).coerceIn(0f, 1f)
+
                             else -> if (record.completedCount > 0) 1f else 0f
                         }
 
@@ -565,7 +568,7 @@ private fun CalendarSection(
                             completionRate = completionRate,
                             isToday = date == today,
                             isFuture = date > today,
-                            hasNote = !record?.note.isNullOrBlank(),
+                            hasNote = records.any { it.date == date && it.note.isNotBlank() },
                             onClick = { onDateSelected(date) }
                         )
                     } else {
@@ -995,6 +998,7 @@ private fun DateDetailSheet(
                         }
                     }
                 }
+
                 HabitType.COUNTABLE -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1040,7 +1044,10 @@ private fun DateDetailSheet(
                                 ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                        modifier = Modifier.padding(
+                                            horizontal = 16.dp,
+                                            vertical = 8.dp
+                                        )
                                     ) {
                                         Text(
                                             text = currentValue.toString(),
@@ -1106,7 +1113,12 @@ private fun DateDetailSheet(
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf(0, habit.targetCount / 2, habit.targetCount, habit.targetCount * 2)
+                            listOf(
+                                0,
+                                habit.targetCount / 2,
+                                habit.targetCount,
+                                habit.targetCount * 2
+                            )
                                 .distinct()
                                 .filter { it >= 0 }
                                 .forEach { value ->
@@ -1122,7 +1134,10 @@ private fun DateDetailSheet(
 
                         // Progress Bar
                         LinearProgressIndicator(
-                            progress = (currentValue.toFloat() / habit.targetCount).coerceIn(0f, 1f),
+                            progress = (currentValue.toFloat() / habit.targetCount).coerceIn(
+                                0f,
+                                1f
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(8.dp)
