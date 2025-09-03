@@ -1,7 +1,12 @@
 package org.example.habitstreak.presentation.screen.create_edit_habit
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -10,7 +15,21 @@ import androidx.compose.animation.with
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,12 +38,53 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -32,12 +92,19 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
+import org.example.habitstreak.domain.model.NotificationError
+import org.example.habitstreak.domain.service.PermissionManager
+import org.example.habitstreak.domain.service.PermissionResult
 import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
+import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
+import org.example.habitstreak.presentation.ui.utils.navigationBarsPadding
 import org.example.habitstreak.presentation.viewmodel.CreateEditHabitViewModel
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -46,180 +113,278 @@ import org.koin.core.parameter.parametersOf
 fun CreateEditHabitScreen(
     habitId: String? = null,
     onNavigateBack: () -> Unit,
-    viewModel: CreateEditHabitViewModel = koinViewModel(parameters = { parametersOf(habitId) })
+    viewModel: CreateEditHabitViewModel = koinViewModel { parametersOf(habitId) },
+    permissionManager: PermissionManager? = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var currentStep by remember { mutableStateOf(0) }
-    val totalSteps = 4
+    val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
 
-    // Bottom sheets states
+    var currentStep by remember { mutableStateOf(0) }
+    val totalSteps = 3
+    val stepProgress by animateFloatAsState(
+        targetValue = (currentStep + 1) / totalSteps.toFloat(),
+        animationSpec = tween(500),
+        label = "progress"
+    )
+
     var showIconSheet by remember { mutableStateOf(false) }
     var showColorSheet by remember { mutableStateOf(false) }
     var showReminderDialog by remember { mutableStateOf(false) }
+    var showAdvancedSettings by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
 
-    // Effects
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            // Show error snackbar if needed
-        }
-    }
+    val isFormValid = uiState.title.isNotBlank()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        if (uiState.isEditMode) "Edit Habit" else "Create Habit",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column {
+                        Text(
+                            text = if (uiState.isEditMode) "Edit Habit" else "Create Habit",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        if (!uiState.isEditMode) {
+                            Text(
+                                text = "Step ${currentStep + 1} of $totalSteps",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = {
+                        focusManager.clearFocus()
+                        onNavigateBack()
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 },
                 actions = {
-                    if (uiState.isEditMode || currentStep == totalSteps - 1) {
-                        TextButton(
-                            onClick = {
-                                viewModel.saveHabit {
-                                    onNavigateBack()
-                                }
-                            },
-                            enabled = !uiState.isLoading && uiState.title.isNotBlank()
-                        ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text(
-                                    text = if (uiState.isEditMode) "Save" else "Create",
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                    TextButton(
+                        onClick = {
+                            viewModel.saveHabit(onSuccess = onNavigateBack)
+                        },
+                        enabled = isFormValid && !uiState.isLoading
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = if (uiState.isEditMode) "Save" else "Create",
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (!uiState.isEditMode) {
-                // Step indicator for create mode
-                StepIndicator(
-                    currentStep = currentStep,
-                    totalSteps = totalSteps,
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                // Progress bar
-                LinearProgressIndicator(
-                    progress = { (currentStep + 1).toFloat() / totalSteps },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                )
-            }
-
-            // Content
-            Box(
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
-                if (uiState.isEditMode) {
-                    // Edit mode - show all fields
-                    EditModeContent(
-                        uiState = uiState,
-                        viewModel = viewModel,
-                        onShowIconSheet = { showIconSheet = true },
-                        onShowColorSheet = { showColorSheet = true },
-                        onShowReminderDialog = { showReminderDialog = true }
+                // Progress Indicator
+                if (!uiState.isEditMode) {
+                    LinearProgressIndicator(
+                        progress = { stepProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
                     )
-                } else {
-                    // Create mode - step by step
-                    AnimatedContent(
-                        targetState = currentStep,
-                        transitionSpec = {
-                            if (targetState > initialState) {
-                                slideInHorizontally { width -> width } + fadeIn() with
-                                        slideOutHorizontally { width -> -width } + fadeOut()
-                            } else {
-                                slideInHorizontally { width -> -width } + fadeIn() with
-                                        slideOutHorizontally { width -> width } + fadeOut()
-                            }
-                        }
-                    ) { step ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp)
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            when (step) {
-                                0 -> BasicInfoStep(uiState, viewModel, { showIconSheet = true }, { showColorSheet = true })
-                                1 -> CategorySelectionStep(uiState, viewModel)
-                                2 -> GoalSettingStep(uiState, viewModel, { showReminderDialog = true })
-                                3 -> ReviewStep(uiState)
-                            }
-                        }
-                    }
                 }
-            }
 
-            // Navigation buttons for create mode
-            if (!uiState.isEditMode) {
-                Row(
+                // Scrollable Content
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
                         .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = { if (currentStep > 0) currentStep-- },
-                        enabled = currentStep > 0
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Previous")
-                    }
-
-                    if (currentStep < totalSteps - 1) {
-                        Button(
-                            onClick = {
-                                if (validateStep(currentStep, uiState)) {
-                                    currentStep++
+                    // Step Navigation (for create mode)
+                    if (!uiState.isEditMode) {
+                        StepIndicator(
+                            currentStep = currentStep,
+                            totalSteps = totalSteps,
+                            onStepClick = { step ->
+                                if (step <= currentStep || isFormValid) {
+                                    currentStep = step
                                 }
                             }
-                        ) {
-                            Text("Next")
-                            Spacer(Modifier.width(8.dp))
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
-                        }
-                    } else {
-                        Button(
-                            onClick = {
-                                viewModel.saveHabit {
-                                    onNavigateBack()
+                        )
+                    }
+
+                    // Step Content
+                    AnimatedContent(
+                        targetState = if (uiState.isEditMode) 0 else currentStep,
+                        transitionSpec = {
+                            slideInHorizontally { width -> width } + fadeIn() with
+                                    slideOutHorizontally { width -> -width } + fadeOut()
+                        },
+                        label = "step"
+                    ) { step ->
+                        when (step) {
+                            0 -> BasicInfoStep(
+                                uiState = uiState,
+                                viewModel = viewModel,
+                                onShowIconSheet = { showIconSheet = true },
+                                onShowColorSheet = { showColorSheet = true }
+                            )
+
+                            1 -> CategorySelectionStep(
+                                uiState = uiState,
+                                viewModel = viewModel
+                            )
+
+                            2 -> GoalStep(
+                                uiState = uiState,
+                                viewModel = viewModel,
+                                onShowReminderDialog = {
+                                    coroutineScope.launch {
+                                        if (permissionManager?.hasNotificationPermission() == false) {
+                                            showPermissionDialog = true
+                                        } else {
+                                            showReminderDialog = true
+                                        }
+                                    }
                                 }
-                            },
-                            enabled = !uiState.isLoading && uiState.title.isNotBlank()
+                            )
+                        }
+                    }
+
+                    // Advanced Settings (Edit mode only)
+                    if (uiState.isEditMode) {
+                        Card(
+                            onClick = { showAdvancedSettings = !showAdvancedSettings },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
                         ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Advanced Settings",
+                                    style = MaterialTheme.typography.titleMedium
                                 )
-                            } else {
-                                Text("Create Habit")
+                                Icon(
+                                    imageVector = if (showAdvancedSettings)
+                                        Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = null
+                                )
+                            }
+                        }
+
+                        AnimatedVisibility(visible = showAdvancedSettings) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "Archive Habit",
+                                                style = MaterialTheme.typography.titleSmall
+                                            )
+                                            Text(
+                                                text = "Hide this habit without deleting data",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        }
+                                        Switch(
+                                            checked = uiState.isArchived,
+                                            onCheckedChange = { viewModel.updateArchived(it) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Navigation Buttons (for create mode)
+                    if (!uiState.isEditMode) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            OutlinedButton(
+                                onClick = { if (currentStep > 0) currentStep-- },
+                                enabled = currentStep > 0
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Previous")
+                            }
+
+                            Button(
+                                onClick = {
+                                    if (currentStep < totalSteps - 1) {
+                                        currentStep++
+                                    } else {
+                                        viewModel.saveHabit(onSuccess = onNavigateBack)
+                                    }
+                                },
+                                enabled = isFormValid
+                            ) {
+                                Text(if (currentStep < totalSteps - 1) "Next" else "Create Habit")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    if (currentStep < totalSteps - 1) Icons.AutoMirrored.Filled.ArrowForward
+                                    else Icons.Default.Check,
+                                    contentDescription = null
+                                )
+                            }
+                        }
+                    }
+
+                    // Error Message
+                    AnimatedVisibility(visible = uiState.error != null) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Error,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = uiState.error ?: "",
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
                             }
                         }
                     }
@@ -228,16 +393,18 @@ fun CreateEditHabitScreen(
         }
     }
 
-    // Bottom sheets
-    if (showColorSheet) {
-        ModalBottomSheet(onDismissRequest = { showColorSheet = false }) {
-            ColorSelectionGrid(
-                uiState.selectedColor,
-                onColorSelected = { color ->
-                    viewModel.selectColor(color)
-                    showColorSheet = false
-                },
-                modifier = Modifier.padding(16.dp)
+    // Bottom Sheets
+    if (showIconSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showIconSheet = false }
+        ) {
+            IconSelectionContent(
+                selectedIcon = uiState.selectedIcon,
+                selectedColor = uiState.selectedColor,
+                onIconSelected = { icon ->
+                    viewModel.selectIcon(icon)
+                    showIconSheet = false
+                }
             )
         }
     }
@@ -246,28 +413,16 @@ fun CreateEditHabitScreen(
         ModalBottomSheet(
             onDismissRequest = { showColorSheet = false }
         ) {
-            ColorSelectionGrid(
+            ColorSelectionContent(
                 selectedColor = uiState.selectedColor,
-                onColorSelected = {
-                    viewModel.selectColor(it)
+                onColorSelected = { color ->
+                    viewModel.selectColor(color)
                     showColorSheet = false
-                },
-                modifier = Modifier.padding(16.dp)
+                }
             )
         }
     }
 
-    // Custom Category Dialog
-    if (uiState.showCustomCategoryDialog) {
-        CustomCategoryDialog(
-            categoryName = uiState.customCategoryName,
-            onCategoryNameChange = viewModel::updateCustomCategoryName,
-            onConfirm = viewModel::createCustomCategory,
-            onDismiss = viewModel::hideCustomCategoryDialog
-        )
-    }
-
-    // Reminder Time Dialog
     if (showReminderDialog) {
         ReminderTimeDialog(
             selectedTime = uiState.reminderTime,
@@ -278,34 +433,73 @@ fun CreateEditHabitScreen(
             onDismiss = { showReminderDialog = false }
         )
     }
+
+    // Permission Dialog
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("Notification Permission Required") },
+            text = {
+                Text("To receive habit reminders, please grant notification permission in settings.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDialog = false
+                    coroutineScope.launch {
+                        permissionManager?.openAppSettings()
+                    }
+                }) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Custom Category Dialog
+    if (uiState.showCustomCategoryDialog) {
+        CustomCategoryDialog(
+            categoryName = uiState.customCategoryName,
+            onCategoryNameChange = viewModel::updateCustomCategoryName,
+            onConfirm = {
+                viewModel.createCustomCategory()
+            },
+            onDismiss = { viewModel.hideCustomCategoryDialog() }
+        )
+    }
 }
 
 @Composable
 private fun StepIndicator(
     currentStep: Int,
     totalSteps: Int,
-    modifier: Modifier = Modifier
+    onStepClick: (Int) -> Unit
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        repeat(totalSteps) { index ->
+        repeat(totalSteps) { step ->
             StepCircle(
-                stepNumber = index + 1,
-                isActive = index <= currentStep,
-                isCompleted = index < currentStep
+                stepNumber = step + 1,
+                isActive = step == currentStep,
+                isCompleted = step < currentStep,
+                onClick = { onStepClick(step) }
             )
-            if (index < totalSteps - 1) {
-                Box(
-                    modifier = Modifier
+            if (step < totalSteps - 1) {
+                HorizontalDivider(
+                    Modifier
                         .weight(1f)
-                        .height(2.dp)
-                        .background(
-                            if (index < currentStep) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        )
+                        .padding(top = 20.dp),
+                    2.dp,
+                    if (step < currentStep)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant
                 )
             }
         }
@@ -316,19 +510,28 @@ private fun StepIndicator(
 private fun StepCircle(
     stepNumber: Int,
     isActive: Boolean,
-    isCompleted: Boolean
+    isCompleted: Boolean,
+    onClick: () -> Unit
 ) {
+    val scale by animateFloatAsState(
+        targetValue = if (isActive) 1.2f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "scale"
+    )
+
     Box(
         modifier = Modifier
-            .size(32.dp)
+            .size(40.dp)
+            .scale(scale)
+            .clip(CircleShape)
             .background(
-                color = when {
-                    isCompleted -> MaterialTheme.colorScheme.primary
+                when {
                     isActive -> MaterialTheme.colorScheme.primary
+                    isCompleted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                     else -> MaterialTheme.colorScheme.surfaceVariant
-                },
-                shape = CircleShape
-            ),
+                }
+            )
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         if (isCompleted) {
@@ -341,8 +544,10 @@ private fun StepCircle(
         } else {
             Text(
                 text = stepNumber.toString(),
-                color = if (isActive) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isActive)
+                    MaterialTheme.colorScheme.onPrimary
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
             )
         }
@@ -450,14 +655,15 @@ private fun CategorySelectionStep(
 
         Text(
             text = "Select one or more categories for your habit",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        // Available Categories
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             )
         ) {
             Column(
@@ -530,7 +736,7 @@ private fun CategorySelectionStep(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                 )
             ) {
                 Column(
@@ -570,90 +776,127 @@ private fun CategorySelectionStep(
 }
 
 @Composable
-private fun GoalSettingStep(
+private fun GoalStep(
     uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
     viewModel: CreateEditHabitViewModel,
     onShowReminderDialog: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Set Your Goal",
+            text = "Set your goal",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
-        // Target count and unit
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Daily Target",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+        Text(
+            text = "How much do you want to achieve each time?",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
+        // Goal type selection
+        var isCountable by remember { mutableStateOf(uiState.targetCount > 1) }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FilterChip(
+                selected = !isCountable,
+                onClick = {
+                    isCountable = false
+                    viewModel.updateTargetCount(1)
+                    viewModel.updateUnit("")
+                },
+                label = { Text("Simple Check") },
+                leadingIcon = if (!isCountable) {
+                    {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else null,
+                modifier = Modifier.weight(1f)
+            )
+
+            FilterChip(
+                selected = isCountable,
+                onClick = { isCountable = true },
+                label = { Text("Countable") },
+                leadingIcon = if (isCountable) {
+                    {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else null,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        AnimatedVisibility(visible = isCountable) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Bottom
                 ) {
                     OutlinedTextField(
-                        value = uiState.targetCount.toString(),
+                        value = if (uiState.targetCount > 1) uiState.targetCount.toString() else "",
                         onValueChange = { value ->
-                            value.toIntOrNull()?.let { viewModel.updateTargetCount(it) }
+                            value.toIntOrNull()?.let {
+                                if (it > 0) viewModel.updateTargetCount(it)
+                            }
                         },
-                        label = { Text("Count") },
+                        label = { Text("Target Amount") },
+                        placeholder = { Text("e.g., 8") },
                         modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next
-                        ),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
 
                     OutlinedTextField(
                         value = uiState.unit,
                         onValueChange = viewModel::updateUnit,
-                        label = { Text("Unit (Optional)") },
+                        label = { Text("Unit") },
                         placeholder = { Text("e.g., glasses, pages, minutes") },
-                        modifier = Modifier.weight(2f),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.None,
-                            imeAction = ImeAction.Done
-                        ),
+                        modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                 }
 
-                // Quick presets
-                Text(
-                    text = "Quick Presets",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Row(
+                // Preset suggestions
+                LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf(1, 3, 5, 10).forEach { count ->
-                        FilterChip(
-                            selected = uiState.targetCount == count,
-                            onClick = { viewModel.updateTargetCount(count) },
-                            label = { Text(count.toString()) }
+                    items(getPresetGoals()) { preset ->
+                        SuggestionChip(
+                            onClick = {
+                                viewModel.updateTargetCount(preset.count)
+                                viewModel.updateUnit(preset.unit)
+                            },
+                            label = { Text("${preset.count} ${preset.unit}") }
                         )
                     }
                 }
             }
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Reminder settings
         Card(
             modifier = Modifier.fillMaxWidth(),
-            onClick = onShowReminderDialog
+            colors = CardDefaults.cardColors(
+                containerColor = if (uiState.reminderTime != null)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
             Row(
                 modifier = Modifier
@@ -663,32 +906,29 @@ private fun GoalSettingStep(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         Icons.Outlined.NotificationsActive,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        contentDescription = null
                     )
+                    Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
                             text = "Daily Reminder",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
+                            style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = if (uiState.reminderTime != null) {
-                                "Set for ${formatTime(uiState.reminderTime)}"
-                            } else {
-                                "No reminder set"
-                            },
+                            text = if (uiState.reminderTime != null)
+                                "At ${formatTime(uiState.reminderTime)}"
+                            else
+                                "Get notified to complete your habit",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-
                 Switch(
                     checked = uiState.reminderTime != null,
                     onCheckedChange = { enabled ->
@@ -702,258 +942,122 @@ private fun GoalSettingStep(
             }
         }
 
-        // Archive option (only in edit mode)
-        if (uiState.isEditMode) {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Outlined.Archive,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Column {
-                            Text(
-                                text = "Archive Habit",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "Hide from active habits",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Switch(
-                        checked = uiState.isArchived,
-                        onCheckedChange = viewModel::updateArchived
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReviewStep(
-    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Review Your Habit",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-
+        // Motivational messages
         Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Icon and title
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(
-                                color = HabitStreakTheme.habitColorToComposeColor(uiState.selectedColor)
-                                    .copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = uiState.selectedIcon.emoji,
-                            fontSize = 24.sp
-                        )
-                    }
-
-                    Column {
-                        Text(
-                            text = uiState.title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (uiState.description.isNotEmpty()) {
-                            Text(
-                                text = uiState.description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                HorizontalDivider()
-
-                // Categories
-                if (uiState.selectedCategories.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Categories",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium
-                        )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            uiState.selectedCategories.forEach { category ->
-                                Chip(
-                                    onClick = { },
-                                    label = { Text(category.name) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Goal
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Daily Goal",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = if (uiState.unit.isNotEmpty()) {
-                            "${uiState.targetCount} ${uiState.unit}"
-                        } else {
-                            "${uiState.targetCount} time${if (uiState.targetCount > 1) "s" else ""}"
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                // Reminder
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Reminder",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = if (uiState.reminderTime != null) {
-                            formatTime(uiState.reminderTime)
-                        } else {
-                            "Not set"
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (uiState.reminderTime != null) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-            }
-        }
-
-        // Success message
-        Card(
-            modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
             )
         ) {
             Row(
-                modifier = Modifier.padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.Top
             ) {
                 Icon(
                     Icons.Outlined.AutoAwesome,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
                 )
-                Text(
-                    text = "Your habit is ready! Tap 'Create Habit' to start your journey.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Pro Tip",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    Text(
+                        text = "Setting a reminder increases habit success rate by 40%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun EditModeContent(
-    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
-    viewModel: CreateEditHabitViewModel,
-    onShowIconSheet: () -> Unit,
-    onShowColorSheet: () -> Unit,
-    onShowReminderDialog: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Basic info
-        BasicInfoStep(uiState, viewModel, onShowIconSheet, onShowColorSheet)
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // Categories
-        CategorySelectionStep(uiState, viewModel)
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // Goal settings
-        GoalSettingStep(uiState, viewModel, onShowReminderDialog)
     }
 }
 
 @Composable
 private fun SelectionCard(
-    modifier: Modifier = Modifier,
     title: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     Card(
+        onClick = onClick,
         modifier = modifier,
-        onClick = onClick
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            content()
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            content()
         }
+    }
+}
+
+@Composable
+private fun IconSelectionContent(
+    selectedIcon: org.example.habitstreak.domain.model.HabitIcon,
+    selectedColor: org.example.habitstreak.domain.model.HabitColor,
+    onIconSelected: (org.example.habitstreak.domain.model.HabitIcon) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .navigationBarsPadding()
+    ) {
+        Text(
+            text = "Choose Icon",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        IconSelectionGrid(
+            selectedIcon = selectedIcon,
+            selectedColor = selectedColor,
+            onIconSelected = onIconSelected,
+            modifier = Modifier.height(400.dp)
+        )
+    }
+}
+
+@Composable
+private fun ColorSelectionContent(
+    selectedColor: org.example.habitstreak.domain.model.HabitColor,
+    onColorSelected: (org.example.habitstreak.domain.model.HabitColor) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .navigationBarsPadding()
+    ) {
+        Text(
+            text = "Choose Color",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        ColorSelectionGrid(
+            selectedColor = selectedColor,
+            onColorSelected = onColorSelected,
+            modifier = Modifier.height(300.dp)
+        )
     }
 }
 
@@ -979,14 +1083,16 @@ private fun Chip(
     }
 }
 
-private fun validateStep(step: Int, uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState): Boolean {
-    return when (step) {
-        0 -> uiState.title.isNotBlank()
-        1 -> true // Categories are optional
-        2 -> uiState.targetCount > 0
-        else -> true
-    }
-}
+private data class PresetGoal(val count: Int, val unit: String)
+
+private fun getPresetGoals() = listOf(
+    PresetGoal(8, "glasses"),
+    PresetGoal(10000, "steps"),
+    PresetGoal(30, "minutes"),
+    PresetGoal(20, "pages"),
+    PresetGoal(5, "reps"),
+    PresetGoal(1, "hour")
+)
 
 private fun formatTime(time: LocalTime): String {
     val hour = if (time.hour == 0) 12 else if (time.hour > 12) time.hour - 12 else time.hour
