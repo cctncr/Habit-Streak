@@ -23,7 +23,7 @@ class GetHabitsWithCompletionUseCase(
 
     override fun invoke(params: LocalDate): Flow<List<HabitWithCompletion>> {
         return combine(
-            habitRepository.observeActiveHabits(),
+            habitRepository.observeActiveHabitsWithCategories(),
             habitRecordRepository.observeRecordsForDate(params)
         ) { habits, records ->
             habits.map { habit ->
@@ -35,7 +35,7 @@ class GetHabitsWithCompletionUseCase(
                     habit = habit,
                     isCompletedToday = completedCount >= targetCount,
                     completedCount = completedCount,
-                    todayRecord = record // Record bilgisi eklendi
+                    todayRecord = record
                 )
             }
         }

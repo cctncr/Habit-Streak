@@ -6,6 +6,7 @@ import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
+import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.util.UseCase
 import org.example.habitstreak.domain.util.DateProvider
@@ -13,6 +14,7 @@ import kotlin.time.ExperimentalTime
 
 class CreateHabitUseCase(
     private val habitRepository: HabitRepository,
+    private val categoryRepository: CategoryRepository,
     private val dateProvider: DateProvider
 ) : UseCase<CreateHabitUseCase.Params, Result<Habit>> {
 
@@ -52,6 +54,17 @@ class CreateHabitUseCase(
             createdAt = dateProvider.now()
         )
 
-        return habitRepository.createHabit(habit)
+        return habitRepository.createHabit(habit).fold(
+            onSuccess = { createdHabit ->
+                categoryRepository.updateHabitCategories(
+                    createdHabit.id,
+                    params.categories.map { it.id }
+                ).fold(
+                    onSuccess = { Result.success(createdHabit) },
+                    onFailure = { Result.failure(it) }
+                )
+            },
+            onFailure = { Result.failure(it) }
+        )
     }
 }

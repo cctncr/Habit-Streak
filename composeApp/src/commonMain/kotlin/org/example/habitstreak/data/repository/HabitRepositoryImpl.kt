@@ -21,6 +21,7 @@ class HabitRepositoryImpl(
 ) : HabitRepository {
 
     private val queries = database.habitQueries
+    private val habitCategoryQueries = database.habitCategoryQueries
 
     @OptIn(ExperimentalTime::class)
     override suspend fun createHabit(habit: Habit): Result<Habit> = withContext(Dispatchers.IO) {
@@ -130,5 +131,21 @@ class HabitRepositoryImpl(
             .asFlow()
             .mapToList(Dispatchers.IO)
             .map { it.firstOrNull()?.toDomain() }
+    }
+
+    @OptIn(ExperimentalTime::class)
+    override fun observeActiveHabitsWithCategories(): Flow<List<Habit>> {
+        return queries.selectActive()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { habitDataList ->
+                habitDataList.map { habitData ->
+                    val habit = habitData.toDomain()
+                    val categories = habitCategoryQueries.selectByHabit(habit.id)
+                        .executeAsList()
+                        .map { it.toDomain() }
+                    habit.copy(categories = categories)
+                }
+            }
     }
 }

@@ -43,7 +43,7 @@ val appModule = module {
     }
 
     // Use Cases
-    factory { CreateHabitUseCase(get(), get()) }
+    factory { CreateHabitUseCase(get(), get(), get()) }
     factory { ToggleHabitCompletionUseCase(get()) }
     factory { GetHabitsWithCompletionUseCase(get(), get()) }
     factory { CalculateStreakUseCase(get(), get(), get()) }
