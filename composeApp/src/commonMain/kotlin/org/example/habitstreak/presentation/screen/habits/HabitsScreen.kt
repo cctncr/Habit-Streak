@@ -42,6 +42,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -68,6 +69,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
+import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.presentation.ui.components.card.HabitCard
 import org.example.habitstreak.presentation.ui.components.empty.EmptyHabitsState
 import org.example.habitstreak.presentation.viewmodel.HabitsViewModel
@@ -85,6 +87,8 @@ fun HabitsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val habitsWithCompletion by viewModel.habitsWithCompletion.collectAsState()
     val today by viewModel.selectedDate.collectAsState()
+    val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
+    val usedCategories by viewModel.usedCategories.collectAsState()
 
     var selectedFilter by remember { mutableStateOf(HabitFilter.ALL) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -108,12 +112,15 @@ fun HabitsScreen(
     } else 0
 
     // Filter habits
-    val filteredHabits = remember(habitsWithCompletion, selectedFilter) {
-        when (selectedFilter) {
+    val filteredHabits = remember(habitsWithCompletion, selectedFilter, selectedCategoryId) {
+        val filterByType = when (selectedFilter) {
             HabitFilter.ALL -> habitsWithCompletion
             HabitFilter.COMPLETED -> habitsWithCompletion.filter { it.isCompletedToday }
             HabitFilter.PENDING -> habitsWithCompletion.filter { !it.isCompletedToday }
         }
+
+        // Category filtering is already handled in ViewModel
+        filterByType
     }
 
     Scaffold(
@@ -182,7 +189,12 @@ fun HabitsScreen(
                                     HabitFilter.ALL to habitsWithCompletion.size,
                                     HabitFilter.COMPLETED to todayCompleted,
                                     HabitFilter.PENDING to (totalHabits - todayCompleted)
-                                )
+                                ),
+                                selectedCategoryId = selectedCategoryId,
+                                usedCategories = usedCategories,
+                                onCategorySelected = { categoryId ->
+                                    viewModel.selectCategory(categoryId)
+                                }
                             )
                         }
 
@@ -346,20 +358,28 @@ private fun ProgressOverviewCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FilterChipsRow(
+fun FilterChipsRow(
     selectedFilter: HabitFilter,
     onFilterSelected: (HabitFilter) -> Unit,
-    habitsCount: Map<HabitFilter, Int>
+    habitsCount: Map<HabitFilter, Int>,
+    selectedCategoryId: String?,
+    usedCategories: List<Category>,
+    onCategorySelected: (String?) -> Unit
 ) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
+        // Existing habit filters (All, Done, Todo)
         items(HabitFilter.entries) { filter ->
             FilterChip(
-                selected = selectedFilter == filter,
-                onClick = { onFilterSelected(filter) },
+                selected = selectedFilter == filter && selectedCategoryId == null,
+                onClick = {
+                    onFilterSelected(filter)
+                    onCategorySelected(null) // Clear category filter
+                },
                 label = { Text("${filter.label} (${habitsCount[filter] ?: 0})") },
-                leadingIcon = if (selectedFilter == filter) {
+                leadingIcon = if (selectedFilter == filter && selectedCategoryId == null) {
                     {
                         Icon(
                             Icons.Default.Check,
@@ -370,7 +390,60 @@ private fun FilterChipsRow(
                 } else null
             )
         }
+
+        // Category filters - only show used categories
+        items(usedCategories) { category ->
+            CategoryFilterChip(
+                category = category,
+                isSelected = selectedCategoryId == category.id,
+                onClick = {
+                    if (selectedCategoryId == category.id) {
+                        onCategorySelected(null) // Deselect if already selected
+                    } else {
+                        onCategorySelected(category.id)
+                    }
+                }
+            )
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryFilterChip(
+    category: Category,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    FilterChip(
+        selected = isSelected,
+        onClick = onClick,
+        label = {
+            Text(
+                text = category.name,
+                style = MaterialTheme.typography.labelMedium
+            )
+        },
+        leadingIcon = {
+            if (isSelected) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            } else {
+                // Show category icon
+                Text(
+                    text = Category.CATEGORY_ICONS[category.name]?.emoji ?: "📌",
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = Category.CATEGORY_COLORS[category.name]?.composeColor?.copy(alpha = 0.2f)
+                ?: MaterialTheme.colorScheme.primaryContainer
+        )
+    )
 }
 
 @Composable

@@ -11,6 +11,7 @@ data class Habit @OptIn(ExperimentalTime::class) constructor(
     val icon: HabitIcon,
     val color: HabitColor,
     val frequency: HabitFrequency,
+    val categories: List<Category> = emptyList(),
     val reminderTime: String? = null,
     val isReminderEnabled: Boolean = false,
     val targetCount: Int = 1,

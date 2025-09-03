@@ -93,291 +93,175 @@ import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
 import org.example.habitstreak.domain.model.RepeatUnit
 import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
+import org.example.habitstreak.presentation.ui.components.selection.CategorySelectionSection
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
+import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
 import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 import org.example.habitstreak.presentation.ui.utils.navigationBarsPadding
 import org.example.habitstreak.presentation.viewmodel.CreateEditHabitViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class,
-    ExperimentalAnimationApi::class
-)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun CreateEditHabitScreen(
-    habitId: String? = null,
+    habitId: String?,
     onNavigateBack: () -> Unit,
     viewModel: CreateEditHabitViewModel = koinViewModel { parametersOf(habitId) }
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
 
     var currentStep by remember { mutableStateOf(0) }
-    val totalSteps = 4
-    val stepProgress by animateFloatAsState(
-        targetValue = (currentStep + 1) / totalSteps.toFloat(),
-        animationSpec = tween(500),
-        label = "progress"
-    )
+    val totalSteps = if (uiState.isEditMode) 1 else 4 // Changed from 5 to 4 steps
 
-    var showIconSheet by remember { mutableStateOf(false) }
-    var showColorSheet by remember { mutableStateOf(false) }
-    var showFrequencySheet by remember { mutableStateOf(false) }
-    var showReminderDialog by remember { mutableStateOf(false) }
-    var showAdvancedSettings by remember { mutableStateOf(false) }
-
-    val isFormValid = uiState.title.isNotBlank()
+    // Form validation for each step
+    val isFormValid = when (currentStep) {
+        0 -> uiState.title.isNotBlank()
+        1 -> true // Icon and color selection
+        2 -> uiState.selectedCategories.isNotEmpty() // Category selection - UPDATED
+        3 -> true // Goal setting
+        else -> true
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = if (uiState.isEditMode) "Edit Habit" else "Create Habit",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        if (!uiState.isEditMode) {
-                            Text(
-                                text = "Step ${currentStep + 1} of $totalSteps",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Text(
+                        if (uiState.isEditMode) "Edit Habit" else "Create New Habit"
+                    )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        focusManager.clearFocus()
-                        onNavigateBack()
-                    }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 },
                 actions = {
-                    TextButton(
-                        onClick = {
-                            viewModel.saveHabit(onSuccess = onNavigateBack)
-                        },
-                        enabled = isFormValid && !uiState.isLoading
-                    ) {
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text(
-                                text = if (uiState.isEditMode) "Save" else "Create",
-                                fontWeight = FontWeight.Bold
-                            )
+                    if (uiState.isEditMode) {
+                        TextButton(
+                            onClick = { viewModel.saveHabit(onSuccess = onNavigateBack) },
+                            enabled = isFormValid
+                        ) {
+                            Text("Save")
                         }
                     }
                 }
             )
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                // Progress Indicator
-                if (!uiState.isEditMode) {
-                    LinearProgressIndicator(
-                        progress = { stepProgress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(2.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                        strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Progress indicator for create mode
+            if (!uiState.isEditMode) {
+                LinearProgressIndicator(
+                    progress = { (currentStep + 1).toFloat() / totalSteps },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                Text(
+                    text = "Step ${currentStep + 1} of $totalSteps",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
+            // Step content
+            AnimatedContent(
+                targetState = currentStep,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        slideInHorizontally { width -> width } + fadeIn() with
+                                slideOutHorizontally { width -> -width } + fadeOut()
+                    } else {
+                        slideInHorizontally { width -> -width } + fadeIn() with
+                                slideOutHorizontally { width -> width } + fadeOut()
+                    }
+                }
+            ) { step ->
+                when (step) {
+                    0 -> BasicInfoStep(
+                        title = uiState.title,
+                        description = uiState.description,
+                        onTitleChange = viewModel::updateTitle,
+                        onDescriptionChange = viewModel::updateDescription,
+                        isEditMode = uiState.isEditMode
+                    )
+
+                    1 -> IconColorStep(
+                        selectedIcon = uiState.selectedIcon,
+                        selectedColor = uiState.selectedColor,
+                        onIconSelected = viewModel::selectIcon,
+                        onColorSelected = viewModel::selectColor
+                    )
+
+                    2 -> {
+                        // REPLACED "How Often?" with Category Selection
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CategorySelectionSection(
+                                selectedCategories = uiState.selectedCategories,
+                                availableCategories = uiState.availableCategories,
+                                onCategoryToggle = viewModel::toggleCategory,
+                                onAddCustomCategory = viewModel::showCustomCategoryDialog,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    3 -> GoalSettingStep(
+                        targetCount = uiState.targetCount,
+                        unit = uiState.unit,
+                        reminderTime = uiState.reminderTime,
+                        onTargetCountChange = viewModel::updateTargetCount,
+                        onUnitChange = viewModel::updateUnit,
+                        onReminderTimeChange = viewModel::updateReminderTime,
+                        isEditMode = uiState.isEditMode,
+                        isArchived = uiState.isArchived,
+                        onArchivedChange = viewModel::updateArchived
                     )
                 }
+            }
 
-                // Scrollable Content
-                Column(
+            // Navigation buttons
+            if (!uiState.isEditMode) {
+                Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
+                        .fillMaxWidth()
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Step Navigation (for create mode)
-                    if (!uiState.isEditMode) {
-                        StepIndicator(
-                            currentStep = currentStep,
-                            totalSteps = totalSteps,
-                            onStepClick = { step ->
-                                if (step <= currentStep || isFormValid) {
-                                    currentStep = step
-                                }
-                            }
-                        )
+                    OutlinedButton(
+                        onClick = { if (currentStep > 0) currentStep-- },
+                        enabled = currentStep > 0
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Previous")
                     }
 
-                    // Step Content
-                    AnimatedContent(
-                        targetState = if (uiState.isEditMode) 0 else currentStep,
-                        transitionSpec = {
-                            slideInHorizontally { width -> width } + fadeIn() with
-                                    slideOutHorizontally { width -> -width } + fadeOut()
+                    Button(
+                        onClick = {
+                            if (currentStep < totalSteps - 1) {
+                                currentStep++
+                            } else {
+                                viewModel.saveHabit(onSuccess = onNavigateBack)
+                            }
                         },
-                        label = "step"
-                    ) { step ->
-                        when (step) {
-                            0 -> BasicInfoStep(
-                                uiState = uiState,
-                                viewModel = viewModel,
-                                onShowIconSheet = { showIconSheet = true },
-                                onShowColorSheet = { showColorSheet = true }
-                            )
-
-                            1 -> FrequencyStep(
-                                uiState = uiState,
-                                viewModel = viewModel,
-                                onShowFrequencySheet = { showFrequencySheet = true }
-                            )
-
-                            2 -> GoalStep(
-                                uiState = uiState,
-                                viewModel = viewModel
-                            )
-
-                            3 -> ReminderStep(
-                                uiState = uiState,
-                                viewModel = viewModel,
-                                onShowReminderDialog = { showReminderDialog = true }
-                            )
-                        }
-                    }
-
-                    // Advanced Settings
-                    if (uiState.isEditMode) {
-                        Card(
-                            onClick = { showAdvancedSettings = !showAdvancedSettings },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Advanced Settings",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Icon(
-                                    imageVector = if (showAdvancedSettings)
-                                        Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                    contentDescription = null
-                                )
-                            }
-                        }
-
-                        AnimatedVisibility(visible = showAdvancedSettings) {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                // Archive option, reset streak, etc.
-                                Card(
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text(
-                                                text = "Archive Habit",
-                                                style = MaterialTheme.typography.titleSmall
-                                            )
-                                            Text(
-                                                text = "Hide this habit without deleting data",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onErrorContainer
-                                            )
-                                        }
-                                        Switch(
-                                            checked = uiState.isArchived,
-                                            onCheckedChange = { viewModel.updateArchived(it) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Navigation Buttons (for create mode)
-                    if (!uiState.isEditMode) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            OutlinedButton(
-                                onClick = { if (currentStep > 0) currentStep-- },
-                                enabled = currentStep > 0
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Previous")
-                            }
-
-                            Button(
-                                onClick = {
-                                    if (currentStep < totalSteps - 1) {
-                                        currentStep++
-                                    } else {
-                                        viewModel.saveHabit(onSuccess = onNavigateBack)
-                                    }
-                                },
-                                enabled = isFormValid
-                            ) {
-                                Text(if (currentStep < totalSteps - 1) "Next" else "Create Habit")
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    if (currentStep < totalSteps - 1) Icons.AutoMirrored.Filled.ArrowForward
-                                    else Icons.Default.Check,
-                                    contentDescription = null
-                                )
-                            }
-                        }
-                    }
-
-                    // Error Message
-                    AnimatedVisibility(visible = uiState.error != null) {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Error,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = uiState.error ?: "",
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
+                        enabled = isFormValid
+                    ) {
+                        Text(if (currentStep < totalSteps - 1) "Next" else "Create Habit")
+                        if (currentStep < totalSteps - 1) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                         }
                     }
                 }
@@ -385,58 +269,27 @@ fun CreateEditHabitScreen(
         }
     }
 
-    // Bottom Sheets
-    if (showIconSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showIconSheet = false }
-        ) {
-            IconSelectionContent(
-                selectedIcon = uiState.selectedIcon,
-                selectedColor = uiState.selectedColor,
-                onIconSelected = { icon ->
-                    viewModel.selectIcon(icon)
-                    showIconSheet = false
-                }
-            )
-        }
+    // Custom category dialog
+    if (uiState.showCustomCategoryDialog) {
+        CustomCategoryDialog(
+            categoryName = uiState.customCategoryName,
+            onCategoryNameChange = viewModel::updateCustomCategoryName,
+            onConfirm = viewModel::createCustomCategory,
+            onDismiss = viewModel::hideCustomCategoryDialog
+        )
     }
 
-    if (showColorSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showColorSheet = false }
-        ) {
-            ColorSelectionContent(
-                selectedColor = uiState.selectedColor,
-                onColorSelected = { color ->
-                    viewModel.selectColor(color)
-                    showColorSheet = false
+    // Error handling
+    uiState.error?.let { error ->
+        AlertDialog(
+            onDismissRequest = viewModel::clearError,
+            title = { Text("Error") },
+            text = { Text(error) },
+            confirmButton = {
+                TextButton(onClick = viewModel::clearError) {
+                    Text("OK")
                 }
-            )
-        }
-    }
-
-    if (showFrequencySheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showFrequencySheet = false }
-        ) {
-            FrequencySelectionContent(
-                currentFrequency = uiState.frequency,
-                onFrequencySelected = { frequency ->
-                    viewModel.updateFrequency(frequency)
-                    showFrequencySheet = false
-                }
-            )
-        }
-    }
-
-    if (showReminderDialog) {
-        ReminderTimeDialog(
-            currentTime = uiState.reminderTime,
-            onTimeSelected = { time ->
-                viewModel.updateReminderTime(time)
-                showReminderDialog = false
-            },
-            onDismiss = { showReminderDialog = false }
+            }
         )
     }
 }
@@ -1184,5 +1037,5 @@ private fun getPresetGoals() = listOf(
     PresetGoal(30, "minutes"),
     PresetGoal(20, "pages"),
     PresetGoal(5, "reps"),
-    PresetGoal(1, "hour")
+    PresetGoal(3, "hour")
 )

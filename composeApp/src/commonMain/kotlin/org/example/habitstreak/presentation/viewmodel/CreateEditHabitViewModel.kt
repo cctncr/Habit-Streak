@@ -8,25 +8,44 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
+import org.example.habitstreak.core.util.UuidGenerator
+import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
+import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.CreateHabitUseCase
 import org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
+import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 class CreateEditHabitViewModel(
     private val createHabitUseCase: CreateHabitUseCase,
     private val habitRepository: HabitRepository,
-    private val habitId: String? = null
+    private val categoryRepository: CategoryRepository,
+    private val habitId: String?
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateEditHabitUiState())
     val uiState: StateFlow<CreateEditHabitUiState> = _uiState.asStateFlow()
 
     init {
+        loadCategories()
         habitId?.let { loadHabit(it) }
+    }
+
+    private fun loadCategories() {
+        viewModelScope.launch {
+            categoryRepository.getAllCategories().fold(
+                onSuccess = { categories ->
+                    _uiState.update { it.copy(availableCategories = categories) }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
+            )
+        }
     }
 
     private fun loadHabit(id: String) {
@@ -42,16 +61,26 @@ class CreateEditHabitViewModel(
                             }
                         }
 
-                        _uiState.value = CreateEditHabitUiState(
-                            title = it.title,
-                            description = it.description,
-                            selectedIcon = it.icon,
-                            selectedColor = it.color,
-                            frequency = it.frequency,
-                            reminderTime = reminderTime,
-                            targetCount = it.targetCount,
-                            unit = it.unit,
-                            isEditMode = true
+                        // Load categories for this habit
+                        categoryRepository.getCategoriesForHabit(id).fold(
+                            onSuccess = { categories ->
+                                _uiState.value = CreateEditHabitUiState(
+                                    title = it.title,
+                                    description = it.description,
+                                    selectedIcon = it.icon,
+                                    selectedColor = it.color,
+                                    frequency = it.frequency,
+                                    selectedCategories = categories,
+                                    availableCategories = _uiState.value.availableCategories,
+                                    reminderTime = reminderTime,
+                                    targetCount = it.targetCount,
+                                    unit = it.unit,
+                                    isEditMode = true
+                                )
+                            },
+                            onFailure = { error ->
+                                _uiState.update { it.copy(error = error.message) }
+                            }
                         )
                     }
                 },
@@ -82,6 +111,82 @@ class CreateEditHabitViewModel(
         _uiState.update { it.copy(frequency = frequency) }
     }
 
+    fun toggleCategory(category: Category) {
+        _uiState.update { state ->
+            val currentCategories = state.selectedCategories
+            val newCategories = if (currentCategories.contains(category)) {
+                currentCategories - category
+            } else {
+                currentCategories + category
+            }
+            state.copy(selectedCategories = newCategories)
+        }
+    }
+
+    fun showCustomCategoryDialog() {
+        _uiState.update { it.copy(showCustomCategoryDialog = true) }
+    }
+
+    fun hideCustomCategoryDialog() {
+        _uiState.update { it.copy(showCustomCategoryDialog = false, customCategoryName = "") }
+    }
+
+    fun updateCustomCategoryName(name: String) {
+        _uiState.update { it.copy(customCategoryName = name) }
+    }
+
+    @OptIn(ExperimentalTime::class)
+    fun createCustomCategory() {
+        val categoryName = _uiState.value.customCategoryName.trim()
+        if (categoryName.isBlank()) return
+
+        viewModelScope.launch {
+            // Check if category already exists
+            categoryRepository.getCategoryByName(categoryName).fold(
+                onSuccess = { existingCategory ->
+                    if (existingCategory != null) {
+                        // Category exists, just add it to selected
+                        _uiState.update { state ->
+                            state.copy(
+                                selectedCategories = state.selectedCategories + existingCategory,
+                                showCustomCategoryDialog = false,
+                                customCategoryName = ""
+                            )
+                        }
+                    } else {
+                        // Create new category
+                        val newCategory = Category(
+                            id = UuidGenerator.generateUUID(),
+                            name = categoryName,
+                            isCustom = true,
+                            usageCount = 0,
+                            createdAt = Clock.System.now()
+                        )
+
+                        categoryRepository.createCategory(newCategory).fold(
+                            onSuccess = { createdCategory ->
+                                _uiState.update { state ->
+                                    state.copy(
+                                        selectedCategories = state.selectedCategories + createdCategory,
+                                        availableCategories = state.availableCategories + createdCategory,
+                                        showCustomCategoryDialog = false,
+                                        customCategoryName = ""
+                                    )
+                                }
+                            },
+                            onFailure = { error ->
+                                _uiState.update { it.copy(error = error.message) }
+                            }
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
+            )
+        }
+    }
+
     fun updateTargetCount(count: Int) {
         if (count > 0) {
             _uiState.update { it.copy(targetCount = count) }
@@ -109,6 +214,7 @@ class CreateEditHabitViewModel(
                 habitRepository.getHabitById(habitId).fold(
                     onSuccess = { existingHabit ->
                         existingHabit?.let { habit ->
+                            // Update habit
                             habitRepository.updateHabit(
                                 habit.copy(
                                     title = state.title,
@@ -116,13 +222,28 @@ class CreateEditHabitViewModel(
                                     icon = state.selectedIcon,
                                     color = state.selectedColor,
                                     frequency = state.frequency,
+                                    categories = state.selectedCategories,
                                     reminderTime = state.reminderTime?.toString(),
                                     isReminderEnabled = state.reminderTime != null,
                                     targetCount = state.targetCount,
                                     unit = state.unit
                                 )
                             ).fold(
-                                onSuccess = { onSuccess() },
+                                onSuccess = {
+                                    // Update categories for habit
+                                    categoryRepository.updateHabitCategories(
+                                        habitId,
+                                        state.selectedCategories.map { it.id }
+                                    )
+
+                                    // Update usage counts
+                                    updateCategoryUsageCounts(
+                                        oldCategories = habit.categories,
+                                        newCategories = state.selectedCategories
+                                    )
+
+                                    onSuccess()
+                                },
                                 onFailure = { error ->
                                     _uiState.update { it.copy(error = error.message) }
                                 }
@@ -142,17 +263,50 @@ class CreateEditHabitViewModel(
                         icon = state.selectedIcon,
                         color = state.selectedColor,
                         frequency = state.frequency,
+                        categories = state.selectedCategories,
                         reminderTime = state.reminderTime,
                         targetCount = state.targetCount,
                         unit = state.unit
                     )
                 ).fold(
-                    onSuccess = { onSuccess() },
+                    onSuccess = { habit ->
+                        // Add categories to habit
+                        categoryRepository.updateHabitCategories(
+                            habit.id,
+                            state.selectedCategories.map { it.id }
+                        )
+
+                        // Increment usage counts for new categories
+                        state.selectedCategories.forEach { category ->
+                            categoryRepository.incrementUsageCount(category.id)
+                        }
+
+                        onSuccess()
+                    },
                     onFailure = { error ->
                         _uiState.update { it.copy(error = error.message) }
                     }
                 )
             }
+        }
+    }
+
+    private suspend fun updateCategoryUsageCounts(
+        oldCategories: List<Category>,
+        newCategories: List<Category>
+    ) {
+        val removedCategories = oldCategories.filterNot { old ->
+            newCategories.any { new -> new.id == old.id }
+        }
+        val addedCategories = newCategories.filterNot { new ->
+            oldCategories.any { old -> old.id == new.id }
+        }
+
+        removedCategories.forEach { category ->
+            categoryRepository.decrementUsageCount(category.id)
+        }
+        addedCategories.forEach { category ->
+            categoryRepository.incrementUsageCount(category.id)
         }
     }
 

@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS Category (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL UNIQUE,
+    isCustom INTEGER NOT NULL DEFAULT 0,
+    usageCount INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT NOT NULL
+);
+
+-- Queries
+selectAll:
+SELECT * FROM Category ORDER BY usageCount DESC, name ASC;
+
+selectUsed:
+SELECT DISTINCT c.* FROM Category c
+INNER JOIN HabitCategory hc ON c.id = hc.categoryId
+ORDER BY c.usageCount DESC, c.name ASC;
+
+selectById:
+SELECT * FROM Category WHERE id = ?;
+
+selectByName:
+SELECT * FROM Category WHERE LOWER(name) = LOWER(?);
+
+insert:
+INSERT OR REPLACE INTO Category VALUES ?;
+
+updateUsageCount:
+UPDATE Category SET usageCount = usageCount + 1 WHERE id = ?;
+
+decrementUsageCount:
+UPDATE Category SET usageCount = MAX(0, usageCount - 1) WHERE id = ?;
+
+delete:
+DELETE FROM Category WHERE id = ? AND isCustom = 1;
+
+deleteUnused:
+DELETE FROM Category WHERE usageCount = 0 AND isCustom = 1;

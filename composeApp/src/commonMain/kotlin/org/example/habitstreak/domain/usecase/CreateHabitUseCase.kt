@@ -1,6 +1,7 @@
 package org.example.habitstreak.domain.usecase
 
 import kotlinx.datetime.LocalTime
+import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitFrequency
@@ -21,6 +22,7 @@ class CreateHabitUseCase(
         val icon: HabitIcon,
         val color: HabitColor,
         val frequency: HabitFrequency,
+        val categories: List<Category> = emptyList(),
         val reminderTime: LocalTime? = null,
         val targetCount: Int = 1,
         val unit: String = ""
@@ -29,11 +31,15 @@ class CreateHabitUseCase(
     @OptIn(ExperimentalTime::class)
     override suspend fun invoke(params: Params): Result<Habit> {
         if (params.title.isBlank()) {
-            return Result.failure(IllegalArgumentException("Habit title cannot be empty"))
+            return Result.failure(IllegalArgumentException("Habit başlığı boş olamaz"))
         }
 
         if (params.targetCount < 1) {
-            return Result.failure(IllegalArgumentException("Target count must be at least 1"))
+            return Result.failure(IllegalArgumentException("Hedef sayısı en az 1 olmalıdır"))
+        }
+
+        if (params.categories.isEmpty()) {
+            return Result.failure(IllegalArgumentException("En az bir kategori seçilmelidir"))
         }
 
         val habit = Habit(
@@ -42,6 +48,7 @@ class CreateHabitUseCase(
             icon = params.icon,
             color = params.color,
             frequency = params.frequency,
+            categories = params.categories,
             reminderTime = params.reminderTime?.toString(),
             isReminderEnabled = params.reminderTime != null,
             targetCount = params.targetCount,

@@ -1,0 +1,33 @@
+CREATE TABLE IF NOT EXISTS HabitCategory (
+    habitId TEXT NOT NULL,
+    categoryId TEXT NOT NULL,
+    PRIMARY KEY (habitId, categoryId),
+    FOREIGN KEY (habitId) REFERENCES Habit(id) ON DELETE CASCADE,
+    FOREIGN KEY (categoryId) REFERENCES Category(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_habit_category_habit ON HabitCategory(habitId);
+CREATE INDEX IF NOT EXISTS idx_habit_category_category ON HabitCategory(categoryId);
+
+-- Queries
+selectByHabit:
+SELECT c.* FROM Category c
+INNER JOIN HabitCategory hc ON c.id = hc.categoryId
+WHERE hc.habitId = ?;
+
+selectByCategory:
+SELECT h.* FROM Habit h
+INNER JOIN HabitCategory hc ON h.id = hc.habitId
+WHERE hc.categoryId = ?;
+
+insert:
+INSERT OR IGNORE INTO HabitCategory (habitId, categoryId) VALUES (?, ?);
+
+deleteByHabit:
+DELETE FROM HabitCategory WHERE habitId = ?;
+
+deleteByCategory:
+DELETE FROM HabitCategory WHERE categoryId = ?;
+
+delete:
+DELETE FROM HabitCategory WHERE habitId = ? AND categoryId = ?;

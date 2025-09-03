@@ -13,6 +13,7 @@ import org.example.habitstreak.domain.usecase.*
 import org.example.habitstreak.presentation.viewmodel.*
 import org.koin.dsl.module
 import org.example.habitstreak.data.local.HabitDatabase
+import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.domain.util.DateProviderImpl
 
@@ -48,8 +49,8 @@ val appModule = module {
     factory { ArchiveHabitUseCase(get()) }
 
     // ViewModels
-    factory { HabitsViewModel(get(), get(), get(), get(), get(), get()) }
-    factory { (habitId: String?) -> CreateEditHabitViewModel(get(), get(), habitId) }
+    factory { HabitsViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    factory { (habitId: String?) -> CreateEditHabitViewModel(get(), get(), get(), habitId) }
     factory { StatisticsViewModel(get(), get()) }
     factory { (habitId: String) ->
         HabitDetailViewModel(
@@ -68,5 +69,13 @@ val appModule = module {
             notificationService = getOrNull(),
             habitRepository = get()
         )
+    }
+}
+
+class InitializeCategoriesUseCase(
+    private val categoryRepository: CategoryRepository
+) {
+    suspend operator fun invoke() {
+        categoryRepository.initializePredefinedCategories()
     }
 }
