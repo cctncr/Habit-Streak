@@ -1,6 +1,7 @@
 package org.example.habitstreak.presentation.screen.habits
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -90,6 +91,7 @@ fun HabitsScreen(
 
     val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
     val usedCategories by viewModel.usedCategories.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf<Category?>(null) }
 
     // Calculate stats
     val todayCompleted = habitsWithCompletion.count { it.isCompletedToday }
@@ -203,7 +205,10 @@ fun HabitsScreen(
                                     HabitFilter.ALL to habitsWithCompletion.size,
                                     HabitFilter.COMPLETED to todayCompleted,
                                     HabitFilter.PENDING to (totalHabits - todayCompleted)
-                                )
+                                ),
+                                onCategoryLongClick = { category ->
+                                    showDeleteDialog = category
+                                }
                             )
                         }
 
@@ -211,8 +216,10 @@ fun HabitsScreen(
                             SectionHeader(
                                 title = when {
                                     selectedCategoryId != null -> {
-                                        usedCategories.find { it.id == selectedCategoryId }?.name ?: "Category"
+                                        usedCategories.find { it.id == selectedCategoryId }?.name
+                                            ?: "Category"
                                     }
+
                                     selectedFilter == HabitFilter.ALL -> "All Habits"
                                     selectedFilter == HabitFilter.COMPLETED -> "Completed Today"
                                     selectedFilter == HabitFilter.PENDING -> "Pending Habits"
@@ -227,7 +234,8 @@ fun HabitsScreen(
                             key = { it.habit.id }
                         ) { habitWithCompletion ->
                             val habitId = habitWithCompletion.habit.id
-                            val completionHistory = uiState.completionHistories[habitId] ?: emptyMap()
+                            val completionHistory =
+                                uiState.completionHistories[habitId] ?: emptyMap()
                             val todayProgress = habitWithCompletion.completedCount.toFloat() /
                                     habitWithCompletion.habit.targetCount.coerceAtLeast(1)
 
@@ -304,6 +312,28 @@ fun HabitsScreen(
             onDismiss = { showDatePicker = false }
         )
     }
+
+    // Category Delete Dialog
+    showDeleteDialog?.let { category ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text("Delete Category") },
+            text = { Text("Are you sure you want to delete '${category.name}'? This will remove it from all habits.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteCategory(category.id)
+                    showDeleteDialog = null
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -377,7 +407,8 @@ private fun EnhancedFilterChipsRow(
     selectedCategoryId: String?,
     onCategorySelected: (String?) -> Unit,
     usedCategories: List<Category>,
-    habitsCount: Map<HabitFilter, Int>
+    habitsCount: Map<HabitFilter, Int>,
+    onCategoryLongClick: (Category) -> Unit
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -388,7 +419,7 @@ private fun EnhancedFilterChipsRow(
                 selected = selectedFilter == filter && selectedCategoryId == null,
                 onClick = {
                     onFilterSelected(filter)
-                    onCategorySelected(null) // Category seçimini temizle
+                    onCategorySelected(null)
                 },
                 label = { Text("${filter.label} (${habitsCount[filter] ?: 0})") },
                 leadingIcon = if (selectedFilter == filter && selectedCategoryId == null) {
@@ -424,7 +455,20 @@ private fun EnhancedFilterChipsRow(
             key = { it.id }
         ) { category ->
             FilterChip(
-                selected = selectedCategoryId == category.id,
+                modifier = Modifier.combinedClickable(
+                    onClick = {
+                        if (selectedCategoryId == category.id) {
+                            onCategorySelected(null)
+                        } else {
+                            onCategorySelected(category.id)
+                        }
+                    },
+                    onLongClick = {
+                        if (category.isCustom) {
+                            onCategoryLongClick(category)
+                        }
+                    }
+                ),
                 onClick = {
                     if (selectedCategoryId == category.id) {
                         onCategorySelected(null)
@@ -432,6 +476,7 @@ private fun EnhancedFilterChipsRow(
                         onCategorySelected(category.id)
                     }
                 },
+                selected = selectedCategoryId == category.id,
                 label = {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),

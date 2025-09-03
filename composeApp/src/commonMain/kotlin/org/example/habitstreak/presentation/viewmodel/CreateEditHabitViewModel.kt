@@ -280,6 +280,24 @@ class CreateEditHabitViewModel(
         }
     }
 
+    fun deleteCategory(categoryId: String) {
+        viewModelScope.launch {
+            categoryRepository.deleteCategory(categoryId).fold(
+                onSuccess = {
+                    _uiState.update { state ->
+                        state.copy(
+                            selectedCategories = state.selectedCategories.filter { it.id != categoryId },
+                            availableCategories = state.availableCategories.filter { it.id != categoryId }
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
+            )
+        }
+    }
+
     private suspend fun updateCategoryUsageCounts(
         oldCategories: List<Category>,
         newCategories: List<Category>

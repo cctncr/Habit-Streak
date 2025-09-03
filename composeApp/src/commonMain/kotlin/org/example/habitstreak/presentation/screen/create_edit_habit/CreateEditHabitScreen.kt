@@ -15,6 +15,7 @@ import androidx.compose.animation.with
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -94,6 +95,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
+import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.domain.model.NotificationError
 import org.example.habitstreak.domain.service.PermissionManager
 import org.example.habitstreak.domain.service.PermissionResult
@@ -108,7 +110,11 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalAnimationApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class,
+    ExperimentalAnimationApi::class
+)
 @Composable
 fun CreateEditHabitScreen(
     habitId: String? = null,
@@ -134,6 +140,7 @@ fun CreateEditHabitScreen(
     var showReminderDialog by remember { mutableStateOf(false) }
     var showAdvancedSettings by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf<Category?>(null) }
 
     val isFormValid = uiState.title.isNotBlank()
 
@@ -245,7 +252,10 @@ fun CreateEditHabitScreen(
 
                             1 -> CategorySelectionStep(
                                 uiState = uiState,
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                categoryOnLongClick = { category ->
+                                    showDeleteDialog = category
+                                }
                             )
 
                             2 -> GoalStep(
@@ -387,6 +397,23 @@ fun CreateEditHabitScreen(
                                 )
                             }
                         }
+                    }
+
+                    showDeleteDialog?.let { category ->
+                        AlertDialog(
+                            onDismissRequest = { showDeleteDialog = null },
+                            title = { Text("Delete Category") },
+                            text = { Text("Are you sure you want to delete '${category.name}'?") },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    viewModel.deleteCategory(category.id)
+                                    showDeleteDialog = null
+                                }) { Text("Delete") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDeleteDialog = null }) { Text("Cancel") }
+                            }
+                        )
                     }
                 }
             }
@@ -644,7 +671,8 @@ private fun BasicInfoStep(
 @Composable
 private fun CategorySelectionStep(
     uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
-    viewModel: CreateEditHabitViewModel
+    viewModel: CreateEditHabitViewModel,
+    categoryOnLongClick: (Category) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -688,6 +716,14 @@ private fun CategorySelectionStep(
                     uiState.availableCategories.forEach { category ->
                         val isSelected = uiState.selectedCategories.contains(category)
                         FilterChip(
+                            modifier = Modifier.combinedClickable(
+                                onClick = { viewModel.toggleCategory(category) },
+                                onLongClick = {
+                                    if (category.isCustom) {
+                                        categoryOnLongClick(category)
+                                    }
+                                }
+                            ),
                             selected = isSelected,
                             onClick = { viewModel.toggleCategory(category) },
                             label = {
@@ -714,7 +750,7 @@ private fun CategorySelectionStep(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
                                 selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
-                            )
+                            ),
                         )
                     }
 
@@ -976,40 +1012,6 @@ private fun GoalStep(
                         }
                     }
                 )
-            }
-        }
-
-        // Motivational messages
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Icon(
-                    Icons.Outlined.AutoAwesome,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Pro Tip",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    Text(
-                        text = "Setting a reminder increases habit success rate by 40%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                }
             }
         }
     }

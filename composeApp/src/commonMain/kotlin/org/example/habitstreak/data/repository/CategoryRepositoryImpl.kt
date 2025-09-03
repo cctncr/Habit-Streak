@@ -97,6 +97,13 @@ class CategoryRepositoryImpl(
     override suspend fun deleteCategory(categoryId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             database.transaction {
+                val category = categoryQueries.selectById(categoryId).executeAsOneOrNull()?.toDomain()
+                    ?: throw IllegalArgumentException("Kategori bulunamadı")
+
+                if (!category.isCustom) {
+                    throw IllegalArgumentException("Varsayılan kategoriler silinemez")
+                }
+
                 categoryQueries.delete(categoryId)
             }
             Result.success(Unit)

@@ -254,6 +254,21 @@ class HabitsViewModel(
         }
     }
 
+    fun deleteCategory(categoryId: String) {
+        viewModelScope.launch {
+            categoryRepository.deleteCategory(categoryId).fold(
+                onSuccess = {
+                    if (_selectedCategoryId.value == categoryId) {
+                        _selectedCategoryId.value = null
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
+            )
+        }
+    }
+
     fun selectDate(date: LocalDate) {
         _selectedDate.value = date
     }
