@@ -12,8 +12,8 @@ data class CreateEditHabitUiState(
     val selectedIcon: HabitIcon = HabitIcon.STAR,
     val selectedColor: HabitColor = HabitColor.SKY,
     val frequency: HabitFrequency = HabitFrequency.Daily,
-    val selectedCategories: List<Category> = emptyList(), // Yeni eklendi
-    val availableCategories: List<Category> = emptyList(), // Yeni eklendi
+    val selectedCategories: List<Category> = emptyList(),
+    val availableCategories: List<Category> = emptyList(),
     val reminderTime: LocalTime? = null,
     val targetCount: Int = 1,
     val unit: String = "",
@@ -21,6 +21,6 @@ data class CreateEditHabitUiState(
     val isArchived: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val showCustomCategoryDialog: Boolean = false, // Yeni eklendi
-    val customCategoryName: String = "" // Yeni eklendi
+    val showCustomCategoryDialog: Boolean = false,
+    val customCategoryName: String = ""
 )

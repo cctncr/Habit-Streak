@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import org.example.habitstreak.domain.model.Habit
+import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.HabitType
 import org.example.habitstreak.domain.model.getType
@@ -61,6 +62,7 @@ import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlin.math.roundToInt
 import kotlin.time.ExperimentalTime
 
 enum class ActivityTab(val label: String) {
@@ -1000,150 +1002,24 @@ private fun DateDetailSheet(
                 }
 
                 HabitType.COUNTABLE -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Progress",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Improved counter UX
-                        if (!showDirectInput) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Decrease buttons
-                                FilledTonalIconButton(
-                                    onClick = { if (currentValue >= 10) currentValue -= 10 },
-                                    enabled = currentValue >= 10,
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Text("-10", style = MaterialTheme.typography.labelSmall)
-                                }
-
-                                FilledIconButton(
-                                    onClick = { if (currentValue > 0) currentValue-- },
-                                    enabled = currentValue > 0,
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(Icons.Filled.Remove, contentDescription = "Decrease")
-                                }
-
-                                // Current value (clickable for direct input)
-                                Surface(
-                                    onClick = { showDirectInput = true },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    modifier = Modifier.widthIn(min = 80.dp)
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(
-                                            horizontal = 16.dp,
-                                            vertical = 8.dp
-                                        )
-                                    ) {
-                                        Text(
-                                            text = currentValue.toString(),
-                                            style = MaterialTheme.typography.headlineSmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = "/ ${habit.targetCount} ${habit.unit ?: ""}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-
-                                // Increase buttons
-                                FilledIconButton(
-                                    onClick = { currentValue++ },
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(Icons.Filled.Add, contentDescription = "Increase")
-                                }
-
-                                FilledTonalIconButton(
-                                    onClick = { currentValue += 10 },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Text("+10", style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        } else {
-                            // Direct input mode
-                            OutlinedTextField(
-                                value = currentValue.toString(),
-                                onValueChange = { value ->
-                                    value.toIntOrNull()?.let {
-                                        if (it >= 0) currentValue = it
-                                    }
-                                },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                keyboardActions = KeyboardActions(
-                                    onDone = {
-                                        showDirectInput = false
-                                        keyboardController?.hide()
-                                    }
-                                ),
-                                modifier = Modifier
-                                    .width(120.dp)
-                                    .focusRequester(focusRequester),
-                                singleLine = true,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-
-                            LaunchedEffect(showDirectInput) {
-                                if (showDirectInput) {
-                                    focusRequester.requestFocus()
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Quick preset buttons
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            listOf(
-                                0,
-                                habit.targetCount / 2,
-                                habit.targetCount,
-                                habit.targetCount * 2
-                            )
-                                .distinct()
-                                .filter { it >= 0 }
-                                .forEach { value ->
-                                    AssistChip(
-                                        onClick = { currentValue = value },
-                                        label = { Text(value.toString()) },
-                                        modifier = Modifier.height(32.dp)
-                                    )
-                                }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Progress Bar
-                        LinearProgressIndicator(
-                            progress = (currentValue.toFloat() / habit.targetCount).coerceIn(
-                                0f,
-                                1f
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                        )
-                    }
+                    HabitProgressInputPanel(
+                        currentValue = currentValue,
+                        targetCount = habit.targetCount,
+                        unit = habit.unit,
+                        onValueChange = { newValue ->
+                            currentValue = newValue
+                        },
+                        onReset = {
+                            currentValue = 0
+                        },
+                        onFillDay = {
+                            currentValue = habit.targetCount
+                        },
+                        accentColor = habit.color.composeColor,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
                 }
             }
 
@@ -1258,5 +1134,214 @@ private fun getMonthAbbreviation(month: Int): String {
         11 -> "Nov"
         12 -> "Dec"
         else -> ""
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HabitProgressInputPanel(
+    currentValue: Int,
+    targetCount: Int,
+    unit: String,
+    onValueChange: (Int) -> Unit,
+    onReset: () -> Unit,
+    onFillDay: () -> Unit,
+    modifier: Modifier = Modifier,
+    accentColor: Color = MaterialTheme.colorScheme.primary
+) {
+    var sliderValue by remember(currentValue) { mutableFloatStateOf(currentValue.toFloat()) }
+
+    // Quick select values - sabit değerler
+    val quickSelectValues = listOf(1, 5, 10, 50, 100)
+
+    // Seçili step değeri - varsayılan 1
+    var selectedStep by remember { mutableIntStateOf(1) }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Progress gösterimi - 5 / 10 formatında
+        Text(
+            text = "$currentValue / $targetCount",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        if (unit.isNotEmpty()) {
+            Text(
+                text = unit,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // +/- Buttons ve Slider
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Minus Button
+            FilledIconButton(
+                onClick = {
+                    val newValue = (currentValue - selectedStep).coerceAtLeast(0)
+                    onValueChange(newValue)
+                    sliderValue = newValue.toFloat()
+                },
+                enabled = currentValue > 0,
+                modifier = Modifier.size(48.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Icon(
+                    Icons.Default.Remove,
+                    contentDescription = "Decrease",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Slider - sadece slider, progress bar yok
+            Slider(
+                value = sliderValue,
+                onValueChange = {
+                    sliderValue = it
+                    val newValue = it.roundToInt().coerceIn(0, targetCount)
+                    if (newValue != currentValue) {
+                        onValueChange(newValue)
+                    }
+                },
+                valueRange = 0f..targetCount.toFloat(),
+                colors = SliderDefaults.colors(
+                    thumbColor = accentColor,
+                    activeTrackColor = accentColor.copy(alpha = 0.7f),
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                modifier = Modifier.weight(1f)
+            )
+
+            // Plus Button - target geçse bile enabled kalır
+            FilledIconButton(
+                onClick = {
+                    val newValue = currentValue + selectedStep
+                    onValueChange(newValue)
+                    sliderValue = newValue.coerceAtMost(targetCount).toFloat() // Slider max target'ta kalır
+                },
+                modifier = Modifier.size(48.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = accentColor,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Increase",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Custom Connected Button Group
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(6.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                quickSelectValues.forEachIndexed { index, value ->
+                    val isSelected = selectedStep == value
+                    val isFirst = index == 0
+                    val isLast = index == quickSelectValues.lastIndex
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(
+                                when {
+                                    isFirst -> RoundedCornerShape(
+                                        topStart = 6.dp,
+                                        bottomStart = 6.dp,
+                                        topEnd = 0.dp,
+                                        bottomEnd = 0.dp
+                                    )
+                                    isLast -> RoundedCornerShape(
+                                        topStart = 0.dp,
+                                        bottomStart = 0.dp,
+                                        topEnd = 6.dp,
+                                        bottomEnd = 6.dp
+                                    )
+                                    else -> RoundedCornerShape(0.dp)
+                                }
+                            )
+                            .background(
+                                if (isSelected) accentColor else Color.Transparent
+                            )
+                            .clickable { selectedStep = value },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = value.toString(),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Bottom Action Buttons - daha köşeli
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Sıfırla Button
+            OutlinedButton(
+                onClick = {
+                    onReset()
+                    sliderValue = 0f
+                },
+                modifier = Modifier.weight(1f),
+                enabled = currentValue > 0,
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Text("Sıfırla")
+            }
+
+            // Günü Doldur Button - target geçince disabled
+            FilledTonalButton(
+                onClick = {
+                    onFillDay()
+                    sliderValue = targetCount.toFloat()
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = accentColor
+                ),
+                enabled = currentValue < targetCount,
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Text("Günü Doldur")
+            }
+        }
     }
 }
