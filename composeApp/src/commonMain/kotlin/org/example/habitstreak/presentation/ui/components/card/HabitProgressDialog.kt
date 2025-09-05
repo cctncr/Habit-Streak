@@ -30,13 +30,17 @@ fun HabitProgressDialog(
     targetCount: Int,
     unit: String,
     currentValue: Int?,
+    currentNote: String? = null, // Not için mevcut değer
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (value: Int, note: String) -> Unit // Not parametresi eklendi
 ) {
     if (!show) return
 
     var text by remember(currentValue) {
         mutableStateOf(currentValue?.toString() ?: "")
+    }
+    var note by remember(currentNote) {
+        mutableStateOf(currentNote ?: "")
     }
     var error by remember { mutableStateOf<String?>(null) }
     val focusManager = LocalFocusManager.current
@@ -71,37 +75,53 @@ fun HabitProgressDialog(
                     placeholder = {
                         Text("Enter progress (0-$targetCount)")
                     },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Progress") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = error != null,
-                    supportingText = error?.let { { Text(it) } }
+                    supportingText = {
+                        error?.let { Text(it) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                // Quick select buttons for common values
-                if (targetCount > 1) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                // Not girme alanı
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    placeholder = {
+                        Text("Add a note (optional)")
+                    },
+                    label = { Text("Note") },
+                    maxLines = 3,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Quick buttons for common values
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = { text = "0" },
+                        modifier = Modifier.weight(1f)
                     ) {
-                        listOf(
-                            targetCount / 4,
-                            targetCount / 2,
-                            targetCount * 3 / 4,
-                            targetCount
-                        ).distinct().forEach { value ->
-                            FilledTonalButton(
-                                onClick = { text = value.toString() },
-                                modifier = Modifier.weight(1f).padding(horizontal = 2.dp)
-                            ) {
-                                Text(
-                                    text = value.toString(),
-                                    fontSize = 12.sp
-                                )
-                            }
+                        Text("0", fontSize = 12.sp)
+                    }
+
+                    if (targetCount > 1) {
+                        FilledTonalButton(
+                            onClick = { text = (targetCount / 2).toString() },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("${targetCount / 2}", fontSize = 12.sp)
                         }
+                    }
+
+                    FilledTonalButton(
+                        onClick = { text = targetCount.toString() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("$targetCount", fontSize = 12.sp)
                     }
                 }
             }
@@ -109,20 +129,17 @@ fun HabitProgressDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val parsed = text.toIntOrNull()
-                    when {
-                        parsed == null -> error = "Please enter a valid number"
-                        parsed < 0 -> error = "Value cannot be negative"
-                        parsed > targetCount -> error = "Value exceeds target"
-                        else -> {
-                            focusManager.clearFocus()
-                            onConfirm(parsed)
-                            onDismiss()
-                        }
+                    val value = text.toIntOrNull() ?: 0
+                    if (value > targetCount) {
+                        error = "Value cannot exceed $targetCount"
+                    } else {
+                        focusManager.clearFocus()
+                        onConfirm(value, note)
+                        onDismiss()
                     }
                 }
             ) {
-                Text("Confirm")
+                Text("Save")
             }
         },
         dismissButton = {

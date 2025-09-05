@@ -1,7 +1,10 @@
 package org.example.habitstreak.presentation.ui.components.card
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,11 +16,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.StickyNote2
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +45,12 @@ import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 
+/**
+ * Legacy HabitCard component
+ * Redirects to HabitCardMedium for backward compatibility
+ *
+ * @deprecated Use HabitCardFactory.CreateCard() instead for better flexibility
+ */
 @Composable
 fun HabitCard(
     habit: Habit,
@@ -46,185 +58,23 @@ fun HabitCard(
     todayProgress: Float,
     currentStreak: Int,
     today: LocalDate,
-    todayRecord: HabitRecord?, // Note bilgisi için record eklendi
-    habitRecords: List<HabitRecord> = emptyList(), // Grid için record'lar
-    onUpdateProgress: (LocalDate, Int) -> Unit,
+    todayRecord: HabitRecord?,
+    habitRecords: List<HabitRecord> = emptyList(),
+    onUpdateProgress: (LocalDate, Int, String) -> Unit,
     onCardClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showProgressDialog by remember { mutableStateOf(false) }
-    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
-
-    val isCompleted = todayProgress >= 1f
-    val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
-    val hasNote = todayRecord?.note?.isNotBlank() == true
-
-    Card(
-        onClick = onCardClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Header Row with icon, title and progress button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Icon
-                HabitIconDisplay(
-                    icon = habit.icon,
-                    color = habitColor,
-                    size = 32.dp
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Title and target
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = habit.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (habit.targetCount > 1) {
-                            Text(
-                                text = "${(todayProgress * habit.targetCount).toInt()} / ${habit.targetCount} ${habit.unit}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // Note indicator
-                        if (hasNote) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Outlined.StickyNote2,
-                                    contentDescription = "Has note",
-                                    modifier = Modifier.size(12.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = todayRecord.note.take(20) + if (todayRecord.note.length > 20) "..." else "",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Streak Badge
-                if (currentStreak > 0) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFFFE5B4))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "🔥",
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = currentStreak.toString(),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFF6B35)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-
-                // Progress Button
-                HabitProgressButton(
-                    progress = todayProgress,
-                    isCompleted = isCompleted,
-                    targetCount = habit.targetCount,
-                    unit = habit.unit,
-                    progressColor = habitColor,
-                    buttonSize = 44.dp,
-                    strokeWidth = 3.dp,
-                    onClick = {
-                        selectedDate = today
-                        showProgressDialog = true
-                    }
-                )
-            }
-
-            // Grid - Sabit bir süre geriye git (habit oluşturma tarihinden bağımsız)
-            val gridStartDate = today.minus(DatePeriod(days = 89))
-
-            HabitGrid(
-                completedDates = completionHistory,
-                startDate = gridStartDate,
-                today = today,
-                accentColor = habitColor,
-                rows = 3,
-                boxSize = 28.dp,
-                spacing = 2.dp,
-                cornerRadius = 4.dp,
-                maxHistoryDays = 90L,
-                habitRecords = habitRecords.filter {
-                    it.date >= gridStartDate && it.date <= today
-                }, // Grid için filtrelenmiş records
-                onDateClick = { date ->
-                    selectedDate = date
-                    showProgressDialog = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-            )
-        }
-    }
-
-    // Progress Dialog
-    HabitProgressDialog(
-        show = showProgressDialog,
-        habitTitle = habit.title,
-        targetCount = habit.targetCount,
-        unit = habit.unit,
-        currentValue = selectedDate?.let { date ->
-            val progress = completionHistory[date] ?: 0f
-            (progress * habit.targetCount).toInt()
-        },
-        onDismiss = {
-            showProgressDialog = false
-            selectedDate = null
-        },
-        onConfirm = { value ->
-            selectedDate?.let { date ->
-                onUpdateProgress(date, value)
-            }
-        }
+    // Default to medium view for backward compatibility
+    HabitCardMedium(
+        habit = habit,
+        completionHistory = completionHistory,
+        todayProgress = todayProgress,
+        currentStreak = currentStreak,
+        today = today,
+        todayRecord = todayRecord,
+        habitRecords = habitRecords,
+        onUpdateProgress = onUpdateProgress,
+        onCardClick = onCardClick,
+        modifier = modifier
     )
 }

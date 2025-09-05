@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Settings
@@ -51,6 +52,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,7 +66,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.presentation.ui.components.card.HabitCard
+import org.example.habitstreak.presentation.ui.components.card.HabitCardFactory
+import org.example.habitstreak.presentation.ui.components.common.ViewModeSelector
 import org.example.habitstreak.presentation.ui.components.empty.EmptyHabitsState
+import org.example.habitstreak.presentation.ui.model.ViewMode
 import org.example.habitstreak.presentation.viewmodel.HabitsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -80,47 +85,50 @@ fun HabitsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val habitsWithCompletion by viewModel.habitsWithCompletion.collectAsState()
     val today by viewModel.selectedDate.collectAsState()
+    val usedCategories by viewModel.usedCategories.collectAsState()
+    val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
 
     var selectedFilter by remember { mutableStateOf(HabitFilter.ALL) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf<String?>(null) }
+    var currentViewMode by remember { mutableStateOf<ViewMode>(ViewMode.Medium) }
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val listState = rememberLazyListState()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
-    val usedCategories by viewModel.usedCategories.collectAsState()
-
-    // Calculate stats
-    val todayCompleted = habitsWithCompletion.count { it.isCompletedToday }
-    val totalHabits = habitsWithCompletion.size
-
-    // Calculate daily goal percentage including partial progress
-    val completionPercentage = if (totalHabits > 0) {
-        val totalProgress = habitsWithCompletion.sumOf { habitWithCompletion ->
-            val progress = habitWithCompletion.completedCount.toFloat() /
-                    habitWithCompletion.habit.targetCount.coerceAtLeast(1)
-            progress.coerceAtMost(1f).toDouble()
+    // Detect scroll direction
+    val isScrollingUp by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 ||
+                    listState.firstVisibleItemScrollOffset < 100
         }
-        (totalProgress / totalHabits * 100).toInt()
-    } else 0
+    }
 
-    // Filter habits
     val filteredHabits = remember(habitsWithCompletion, selectedFilter, selectedCategoryId) {
         var filtered = when (selectedFilter) {
             HabitFilter.ALL -> habitsWithCompletion
-            HabitFilter.COMPLETED -> habitsWithCompletion.filter { it.isCompletedToday }
-            HabitFilter.PENDING -> habitsWithCompletion.filter { !it.isCompletedToday }
+            HabitFilter.COMPLETED -> habitsWithCompletion.filter {
+                it.completedCount >= it.habit.targetCount
+            }
+            HabitFilter.PENDING -> habitsWithCompletion.filter {
+                it.completedCount < it.habit.targetCount
+            }
         }
 
-        if (selectedCategoryId != null) {
+        selectedCategoryId?.let { categoryId ->
             filtered = filtered.filter { habitWithCompletion ->
-                habitWithCompletion.habit.categories.any { it.id == selectedCategoryId }
+                habitWithCompletion.habit.categories.any { it.id == categoryId }
             }
         }
 
         filtered
     }
+
+    val todayCompleted = filteredHabits.count { it.completedCount >= it.habit.targetCount }
+    val totalHabits = filteredHabits.size
+    val completionPercentage = if (totalHabits > 0) {
+        (todayCompleted * 100) / totalHabits
+    } else 0
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -128,8 +136,7 @@ fun HabitsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "HabitStreak",
-                        style = MaterialTheme.typography.headlineSmall,
+                        "Habits",
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -145,16 +152,11 @@ fun HabitsScreen(
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(Icons.Outlined.CalendarMonth, contentDescription = "Calendar")
                     }
+                    IconButton(onClick = onNavigateToCreateHabit) {
+                        Icon(Icons.Outlined.Add, contentDescription = "Add Habit")
+                    }
                 },
                 scrollBehavior = scrollBehavior
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNavigateToCreateHabit,
-                expanded = listState.firstVisibleItemIndex == 0,
-                icon = { Icon(Icons.Default.Add, contentDescription = "Add") },
-                text = { Text("New Habit") }
             )
         }
     ) { paddingValues ->
@@ -169,8 +171,19 @@ fun HabitsScreen(
                 else -> {
                     LazyColumn(
                         state = listState,
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 16.dp,
+                            bottom = 100.dp // Space for bottom selector
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(
+                            when (currentViewMode) {
+                                is ViewMode.Large -> 16.dp
+                                is ViewMode.Medium -> 12.dp
+                                is ViewMode.Compact -> 8.dp
+                            }
+                        )
                     ) {
                         item(key = "progress") {
                             ProgressOverviewCard(
@@ -181,47 +194,48 @@ fun HabitsScreen(
                         }
 
                         item(key = "filters") {
-                            EnhancedFilterChipsRow(
-                                selectedFilter = selectedFilter,
-                                onFilterSelected = { filter ->
-                                    selectedFilter = filter
-                                    // Filter değiştiğinde category seçimini temizle
-                                    if (filter != HabitFilter.ALL) {
-                                        viewModel.selectCategory(null)
-                                    }
-                                },
-                                selectedCategoryId = selectedCategoryId,
-                                onCategorySelected = { categoryId ->
-                                    viewModel.selectCategory(categoryId)
-                                    // Category seçildiğinde filter'ı ALL yap
-                                    if (categoryId != null) {
-                                        selectedFilter = HabitFilter.ALL
-                                    }
-                                },
-                                usedCategories = usedCategories,
-                                habitsCount = mapOf(
-                                    HabitFilter.ALL to habitsWithCompletion.size,
-                                    HabitFilter.COMPLETED to todayCompleted,
-                                    HabitFilter.PENDING to (totalHabits - todayCompleted)
-                                )
-                            )
-                        }
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Spacer(modifier = Modifier.height(8.dp))
 
-                        stickyHeader(key = "header") {
-                            SectionHeader(
-                                title = when {
-                                    selectedCategoryId != null -> {
-                                        usedCategories.find { it.id == selectedCategoryId }?.name
-                                            ?: "Category"
+                                // Filter chips
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(HabitFilter.entries) { filter ->
+                                        FilterChip(
+                                            selected = selectedFilter == filter,
+                                            onClick = { selectedFilter = filter },
+                                            label = { Text(filter.label) }
+                                        )
                                     }
+                                }
 
-                                    selectedFilter == HabitFilter.ALL -> "All Habits"
-                                    selectedFilter == HabitFilter.COMPLETED -> "Completed Today"
-                                    selectedFilter == HabitFilter.PENDING -> "Pending Habits"
-                                    else -> "Habits"
-                                },
-                                count = filteredHabits.size
-                            )
+                                // Category filter if categories exist
+                                if (usedCategories.isNotEmpty()) {
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        item {
+                                            FilterChip(
+                                                selected = selectedCategoryId == null,
+                                                onClick = { viewModel.clearCategoryFilter() },
+                                                label = { Text("All Categories") }
+                                            )
+                                        }
+                                        items(usedCategories) { category ->
+                                            FilterChip(
+                                                selected = selectedCategoryId == category.id,
+                                                onClick = { viewModel.selectCategory(category.id) },
+                                                label = { Text(category.name) }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
                         }
 
                         items(
@@ -229,21 +243,21 @@ fun HabitsScreen(
                             key = { it.habit.id }
                         ) { habitWithCompletion ->
                             val habitId = habitWithCompletion.habit.id
-                            val completionHistory =
-                                uiState.completionHistories[habitId] ?: emptyMap()
+                            val completionHistory = uiState.completionHistories[habitId] ?: emptyMap()
                             val todayProgress = habitWithCompletion.completedCount.toFloat() /
                                     habitWithCompletion.habit.targetCount.coerceAtLeast(1)
 
-                            HabitCard(
+                            HabitCardFactory.CreateCard(
+                                viewMode = currentViewMode,
                                 habit = habitWithCompletion.habit,
                                 completionHistory = completionHistory,
                                 todayProgress = todayProgress,
                                 currentStreak = uiState.streaks[habitId] ?: 0,
                                 today = today,
-                                todayRecord = habitWithCompletion.todayRecord, // Eklendi
-                                habitRecords = uiState.allRecords.filter { it.habitId == habitId }, // Bu habit'ın tüm records'ları
-                                onUpdateProgress = { date, value ->
-                                    viewModel.updateHabitProgress(habitId, date, value)
+                                todayRecord = habitWithCompletion.todayRecord,
+                                habitRecords = uiState.allRecords.filter { it.habitId == habitId },
+                                onUpdateProgress = { date, value, note ->
+                                    viewModel.updateHabitProgress(habitId, date, value, note)
                                 },
                                 onCardClick = {
                                     onNavigateToHabitDetail(habitId)
@@ -251,11 +265,19 @@ fun HabitsScreen(
                                 modifier = Modifier.animateItem()
                             )
                         }
-
-                        item { Spacer(modifier = Modifier.height(80.dp)) }
                     }
                 }
             }
+
+            // View Mode Selector at bottom
+            ViewModeSelector(
+                currentMode = currentViewMode,
+                isVisible = !isScrollingUp && filteredHabits.isNotEmpty(),
+                onModeSelected = { mode ->
+                    currentViewMode = mode
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
 
             uiState.error?.let { error ->
                 Snackbar(
@@ -348,13 +370,14 @@ private fun ProgressOverviewCard(
                 if (totalHabits > 0) {
                     AssistChip(
                         onClick = { },
-                        label = { Text("$todayCompleted of $totalHabits habits completed") },
+                        label = {
+                            Text("$todayCompleted / $totalHabits")
+                        },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Check,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     )
@@ -365,10 +388,20 @@ private fun ProgressOverviewCard(
                 progress = { completionPercentage / 100f },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .height(8.dp),
+                strokeCap = androidx.compose.material3.ProgressIndicatorDefaults.LinearStrokeCap
             )
         }
+    }
+}
+
+@Composable
+private fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
     }
 }
 
@@ -495,13 +528,6 @@ private fun SectionHeader(title: String, count: Int) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun LoadingState() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
     }
 }
 

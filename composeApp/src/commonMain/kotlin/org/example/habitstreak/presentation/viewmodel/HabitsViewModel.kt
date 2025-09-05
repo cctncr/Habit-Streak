@@ -51,6 +51,9 @@ class HabitsViewModel(
     private val _selectedCategoryId = MutableStateFlow<String?>(null)
     val selectedCategoryId: StateFlow<String?> = _selectedCategoryId.asStateFlow()
 
+    private val _currentViewMode = MutableStateFlow<Int>(1) // Default: Medium
+    val currentViewMode: StateFlow<Int> = _currentViewMode.asStateFlow()
+
     private val _usedCategories = MutableStateFlow<List<Category>>(emptyList())
     val usedCategories: StateFlow<List<Category>> = _usedCategories.asStateFlow()
 
@@ -106,6 +109,10 @@ class HabitsViewModel(
 
     fun clearCategoryFilter() {
         _selectedCategoryId.value = null
+    }
+
+    fun setViewMode(modeOrdinal: Int) {
+        _currentViewMode.value = modeOrdinal
     }
 
     // Yeni eklenen fonksiyon - Tüm habit records'larını observe ediyor
@@ -191,9 +198,9 @@ class HabitsViewModel(
         }
     }
 
-    fun updateHabitProgress(habitId: String, date: LocalDate, value: Int) {
+    fun updateHabitProgress(habitId: String, date: LocalDate, value: Int, note: String = "") {
         viewModelScope.launch {
-            if (value == 0) {
+            if (value == 0 && note.isBlank()) {
                 habitRecordRepository.markHabitAsIncomplete(habitId, date).fold(
                     onSuccess = {
                         // Auto-update through observeAllRecordsForHistoryUpdate
@@ -203,7 +210,7 @@ class HabitsViewModel(
                     }
                 )
             } else {
-                habitRecordRepository.markHabitAsComplete(habitId, date, value).fold(
+                habitRecordRepository.markHabitAsComplete(habitId, date, value, note).fold(
                     onSuccess = {
                         // Auto-update through observeAllRecordsForHistoryUpdate
                     },
