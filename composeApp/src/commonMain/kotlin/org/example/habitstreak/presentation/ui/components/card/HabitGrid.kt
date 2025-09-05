@@ -23,8 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.datetime.*
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import org.example.habitstreak.domain.model.HabitRecord
 
 @Composable
@@ -39,8 +39,8 @@ fun HabitGrid(
     cornerRadius: Dp = 3.dp,
     maxHistoryDays: Long = 365L,
     accentColor: Color = MaterialTheme.colorScheme.primary,
-    habitRecords: List<HabitRecord> = emptyList(), // Note bilgisi için eklendi
-    onDateClick: (LocalDate) -> Unit = {}
+    habitRecords: List<HabitRecord> = emptyList(),
+    onDateClick: ((LocalDate) -> Unit)? = null // Opsiyonel yapıldı
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -92,13 +92,13 @@ fun HabitGrid(
                         DateCell(
                             date = date,
                             progress = completedDates[date] ?: 0f,
-                            hasNote = hasNote, // Eklendi
+                            hasNote = hasNote,
                             isToday = date == today,
                             isFirstOfMonth = date.day == 1,
                             accentColor = accentColor,
                             boxSize = boxSize,
                             cornerRadius = cornerRadius,
-                            onClick = { onDateClick(date) }
+                            onClick = onDateClick?.let { { it(date) } }
                         )
                     } else if (date > today) {
                         FutureDateCell(
@@ -118,13 +118,13 @@ fun HabitGrid(
 private fun DateCell(
     date: LocalDate,
     progress: Float,
-    hasNote: Boolean = false, // Eklendi
+    hasNote: Boolean = false,
     isToday: Boolean,
     isFirstOfMonth: Boolean,
     accentColor: Color,
     boxSize: Dp,
     cornerRadius: Dp,
-    onClick: () -> Unit
+    onClick: (() -> Unit)? = null
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = when {
@@ -132,60 +132,58 @@ private fun DateCell(
             progress >= 0.75f -> accentColor.copy(alpha = 0.8f)
             progress >= 0.5f -> accentColor.copy(alpha = 0.6f)
             progress > 0f -> accentColor.copy(alpha = 0.4f)
-            hasNote -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f) // Note indicator
-            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            hasNote -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         },
-        label = "bg_color"
+        label = "backgroundColor"
     )
 
-    val borderColor = if (isToday) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        Color.Transparent
+    val borderColor = when {
+        isToday -> MaterialTheme.colorScheme.primary
+        isFirstOfMonth -> MaterialTheme.colorScheme.outline
+        else -> Color.Transparent
     }
 
     Box(
-        contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(boxSize)
             .clip(RoundedCornerShape(cornerRadius))
             .background(backgroundColor)
-            .border(
-                width = if (isToday) 1.5.dp else 0.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(cornerRadius)
+            .then(
+                if (isToday || isFirstOfMonth) {
+                    Modifier.border(
+                        width = if (isToday) 2.dp else 1.dp,
+                        color = borderColor,
+                        shape = RoundedCornerShape(cornerRadius)
+                    )
+                } else Modifier
             )
-            .clickable { onClick() }
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable { onClick() }
+                } else Modifier
+            ),
+        contentAlignment = Alignment.Center
     ) {
         when {
-            isFirstOfMonth -> {
-                Text(
-                    text = getMonthAbbreviation(date.month.number),
-                    fontSize = (boxSize.value * 0.20).sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (progress >= 0.5f) Color.White
-                    else MaterialTheme.colorScheme.onSurface
-                )
-            }
             progress >= 1f -> {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    modifier = Modifier.size(boxSize * 0.45f),
+                    modifier = Modifier.size(boxSize * 0.5f),
                     tint = Color.White
                 )
             }
-            progress > 0f -> {
+            isFirstOfMonth && progress == 0f && !hasNote -> {
                 Text(
-                    text = "${(progress * 100).toInt()}%",
-                    fontSize = (boxSize.value * 0.22).sp,
+                    text = getMonthAbbreviation(date.month.number).take(1),
+                    fontSize = (boxSize.value * 0.3).sp,
                     fontWeight = FontWeight.Bold,
                     color = if (progress >= 0.5f) Color.White
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             hasNote -> {
-                // Note indicator
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.StickyNote2,
                     contentDescription = null,

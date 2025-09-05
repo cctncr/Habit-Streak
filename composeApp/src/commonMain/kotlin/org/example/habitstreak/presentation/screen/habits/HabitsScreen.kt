@@ -51,6 +51,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -87,22 +88,19 @@ fun HabitsScreen(
     val today by viewModel.selectedDate.collectAsState()
     val usedCategories by viewModel.usedCategories.collectAsState()
     val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
+    val viewModeOrdinal by viewModel.currentViewMode.collectAsState()
 
     var selectedFilter by remember { mutableStateOf(HabitFilter.ALL) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf<String?>(null) }
-    var currentViewMode by remember { mutableStateOf<ViewMode>(ViewMode.Medium) }
+    val currentViewMode = ViewMode.fromOrdinal(viewModeOrdinal)
 
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    // Detect scroll direction
-    val isScrollingUp by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex == 0 ||
-                    listState.firstVisibleItemScrollOffset < 100
-        }
-    }
+    var previousScrollIndex by remember { mutableStateOf(0) }
+    var previousScrollOffset by remember { mutableStateOf(0) }
+    var isScrollingUp by remember { mutableStateOf(true) }
 
     val filteredHabits = remember(habitsWithCompletion, selectedFilter, selectedCategoryId) {
         var filtered = when (selectedFilter) {
@@ -124,11 +122,38 @@ fun HabitsScreen(
         filtered
     }
 
+    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        val currentIndex = listState.firstVisibleItemIndex
+        val currentOffset = listState.firstVisibleItemScrollOffset
+
+        isScrollingUp = when {
+            currentIndex < previousScrollIndex -> true
+            currentIndex > previousScrollIndex -> false
+            currentOffset < previousScrollOffset -> true
+            currentOffset > previousScrollOffset -> false
+            else -> isScrollingUp
+        }
+
+        previousScrollIndex = currentIndex
+        previousScrollOffset = currentOffset
+    }
+
     val todayCompleted = filteredHabits.count { it.completedCount >= it.habit.targetCount }
     val totalHabits = filteredHabits.size
-    val completionPercentage = if (totalHabits > 0) {
-        (todayCompleted * 100) / totalHabits
-    } else 0
+
+    // Daily Goal hesaplaması - Tüm habitler üzerinden, filter'dan bağımsız
+    val dailyGoalPercentage = remember(habitsWithCompletion) {
+        if (habitsWithCompletion.isEmpty()) {
+            0
+        } else {
+            val totalProgress = habitsWithCompletion.sumOf { habitWithCompletion ->
+                val progress = habitWithCompletion.completedCount.toFloat() /
+                        habitWithCompletion.habit.targetCount.coerceAtLeast(1)
+                (progress.coerceIn(0f, 1f) * 100).toInt()
+            }
+            (totalProgress / habitsWithCompletion.size).coerceIn(0, 100)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -187,54 +212,74 @@ fun HabitsScreen(
                     ) {
                         item(key = "progress") {
                             ProgressOverviewCard(
-                                completionPercentage = completionPercentage,
-                                todayCompleted = todayCompleted,
-                                totalHabits = totalHabits
+                                completionPercentage = dailyGoalPercentage,
+                                todayCompleted = habitsWithCompletion.count {
+                                    it.completedCount >= it.habit.targetCount
+                                },
+                                totalHabits = habitsWithCompletion.size
                             )
                         }
 
                         item(key = "filters") {
                             Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
 
-                                // Filter chips
+                                // Compact Filter chips
                                 LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     items(HabitFilter.entries) { filter ->
                                         FilterChip(
                                             selected = selectedFilter == filter,
                                             onClick = { selectedFilter = filter },
-                                            label = { Text(filter.label) }
+                                            label = {
+                                                Text(
+                                                    filter.label,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            },
+                                            modifier = Modifier.height(32.dp)
                                         )
                                     }
                                 }
 
-                                // Category filter if categories exist
+                                // Compact Category filter
                                 if (usedCategories.isNotEmpty()) {
                                     LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         item {
                                             FilterChip(
                                                 selected = selectedCategoryId == null,
                                                 onClick = { viewModel.clearCategoryFilter() },
-                                                label = { Text("All Categories") }
+                                                label = {
+                                                    Text(
+                                                        "All",
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                },
+                                                modifier = Modifier.height(28.dp)
                                             )
                                         }
                                         items(usedCategories) { category ->
                                             FilterChip(
                                                 selected = selectedCategoryId == category.id,
                                                 onClick = { viewModel.selectCategory(category.id) },
-                                                label = { Text(category.name) }
+                                                label = {
+                                                    Text(
+                                                        category.name,
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                },
+                                                modifier = Modifier.height(28.dp)
                                             )
                                         }
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
                             }
                         }
 
@@ -272,9 +317,15 @@ fun HabitsScreen(
             // View Mode Selector at bottom
             ViewModeSelector(
                 currentMode = currentViewMode,
-                isVisible = !isScrollingUp && filteredHabits.isNotEmpty(),
+                isVisible = isScrollingUp,
                 onModeSelected = { mode ->
-                    currentViewMode = mode
+                    viewModel.setViewMode(
+                        when (mode) {
+                            is ViewMode.Large -> 0
+                            is ViewMode.Medium -> 1
+                            is ViewMode.Compact -> 2
+                        }
+                    )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
@@ -402,132 +453,6 @@ private fun LoadingState() {
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator()
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-private fun EnhancedFilterChipsRow(
-    selectedFilter: HabitFilter,
-    onFilterSelected: (HabitFilter) -> Unit,
-    selectedCategoryId: String?,
-    onCategorySelected: (String?) -> Unit,
-    usedCategories: List<Category>,
-    habitsCount: Map<HabitFilter, Int>
-) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Mevcut filter chips
-        items(HabitFilter.entries) { filter ->
-            FilterChip(
-                selected = selectedFilter == filter && selectedCategoryId == null,
-                onClick = {
-                    onFilterSelected(filter)
-                    onCategorySelected(null)
-                },
-                label = { Text("${filter.label} (${habitsCount[filter] ?: 0})") },
-                leadingIcon = if (selectedFilter == filter && selectedCategoryId == null) {
-                    {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null
-            )
-        }
-
-        // Divider
-        if (usedCategories.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.width(8.dp))
-                VerticalDivider(
-                    modifier = Modifier
-                        .height(32.dp)
-                        .padding(horizontal = 4.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-        }
-
-        // Category chips
-        items(
-            items = usedCategories,
-            key = { it.id }
-        ) { category ->
-            FilterChip(
-                onClick = {
-                    if (selectedCategoryId == category.id) {
-                        onCategorySelected(null)
-                    } else {
-                        onCategorySelected(category.id)
-                    }
-                },
-                selected = selectedCategoryId == category.id,
-                label = {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(category.name)
-                        if (category.usageCount > 0) {
-                            Badge(
-                                containerColor = if (selectedCategoryId == category.id) {
-                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)
-                                } else {
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                }
-                            ) {
-                                Text(
-                                    text = category.usageCount.toString(),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                    }
-                },
-                leadingIcon = if (selectedCategoryId == category.id) {
-                    {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun SectionHeader(title: String, count: Int) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                "$count habits",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 

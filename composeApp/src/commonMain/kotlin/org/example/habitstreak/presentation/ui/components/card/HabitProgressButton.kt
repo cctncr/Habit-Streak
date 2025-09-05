@@ -1,9 +1,7 @@
 package org.example.habitstreak.presentation.ui.components.card
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -18,34 +16,29 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun HabitProgressButton(
-    progress: Float, // 0f to 1f
-    isCompleted: Boolean,
-    targetCount: Int = 1,
-    unit: String = "",
-    onClick: () -> Unit,
-    buttonSize: Dp = 48.dp,
-    strokeWidth: Dp = 4.dp,
-    progressColor: Color = MaterialTheme.colorScheme.primary,
-    backgroundStrokeColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-    modifier: Modifier = Modifier
+progress: Float, // 0f to 1f
+isCompleted: Boolean,
+targetCount: Int = 1,
+unit: String = "",
+onClick: () -> Unit,
+buttonSize: Dp = 48.dp,
+strokeWidth: Dp = 4.dp,
+progressColor: Color = MaterialTheme.colorScheme.primary,
+backgroundStrokeColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+modifier: Modifier = Modifier
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
@@ -53,23 +46,11 @@ fun HabitProgressButton(
         label = "progress"
     )
 
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "scale"
-    )
-
     Box(
         modifier = modifier
             .size(buttonSize)
-            .scale(scale)
             .clip(CircleShape)
-            .clickable {
-                isPressed = true
-                onClick()
-                isPressed = false
-            },
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Canvas(
