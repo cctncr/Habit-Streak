@@ -1,4 +1,4 @@
-package org.example.habitstreak.data.repositor
+package org.example.habitstreak.data.repository
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
