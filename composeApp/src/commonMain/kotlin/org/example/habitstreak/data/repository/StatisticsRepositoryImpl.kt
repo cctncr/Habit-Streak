@@ -40,7 +40,7 @@ class StatisticsRepositoryImpl(
     override suspend fun getAllStatistics(): Result<List<HabitStatistics>> {
         return try {
             val habits = habitRepository.observeActiveHabits().first()
-            val statistics = habits.mapNotNull { habit ->
+            val statistics = habits.map { habit ->
                 val records = recordRepository.getRecordsForHabit(habit.id).getOrNull() ?: emptyList()
                 // Only count fully completed days
                 val fullyCompletedDates = records.filter { record ->

@@ -54,7 +54,7 @@ class HabitRepositoryImpl(
     override suspend fun updateHabit(habit: Habit): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             database.transaction {
-                val existing = queries.selectById(habit.id).executeAsOneOrNull()
+                queries.selectById(habit.id).executeAsOneOrNull()
                     ?: throw IllegalArgumentException("Habit not found")
 
                 val existingHabits = queries.selectAll().executeAsList()

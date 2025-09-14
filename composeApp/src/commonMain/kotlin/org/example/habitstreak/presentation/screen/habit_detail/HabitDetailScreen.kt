@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
+import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitRecord
@@ -735,13 +736,13 @@ private fun ActivityItem(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = record.date.dayOfMonth.toString(),
+                        text = record.date.day.toString(),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = getMonthAbbreviation(record.date.monthNumber),
+                        text = getMonthAbbreviation(record.date.month.number),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 10.sp
@@ -756,7 +757,7 @@ private fun ActivityItem(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
-                if (!record.note.isNullOrBlank()) {
+                if (record.note.isNotBlank()) {
                     Text(
                         text = record.note,
                         style = MaterialTheme.typography.bodySmall,
@@ -876,7 +877,7 @@ private fun NoteItem(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = record.note ?: "",
+                    text = record.note,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis

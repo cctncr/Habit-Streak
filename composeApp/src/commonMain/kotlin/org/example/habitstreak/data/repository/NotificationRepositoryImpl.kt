@@ -7,17 +7,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.LocalTime
 import org.example.habitstreak.data.local.HabitDatabase
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.repository.NotificationRepository
-import kotlinx.datetime.LocalTime
 
 /**
  * Implementation of NotificationRepository using SQLDelight
  * Following Single Responsibility - only manages notification data
  */
 class NotificationRepositoryImpl(
-    private val database: HabitDatabase
+    database: HabitDatabase
 ) : NotificationRepository {
 
     private val queries = database.notificationConfigQueries

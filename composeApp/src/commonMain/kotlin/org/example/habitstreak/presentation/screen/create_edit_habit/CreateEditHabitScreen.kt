@@ -1064,28 +1064,6 @@ private fun ColorSelectionContent(
     }
 }
 
-@Composable
-private fun Chip(
-    onClick: () -> Unit,
-    label: @Composable () -> Unit,
-    trailingIcon: (@Composable () -> Unit)? = null
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            label()
-            trailingIcon?.invoke()
-        }
-    }
-}
-
 private data class PresetGoal(val count: Int, val unit: String)
 
 private fun getPresetGoals() = listOf(

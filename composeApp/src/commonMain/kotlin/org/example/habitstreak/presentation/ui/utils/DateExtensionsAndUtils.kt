@@ -49,12 +49,11 @@ object DateFormatter {
     }
 
     fun formatRelativeDate(date: LocalDate, today: LocalDate): String {
-        val daysDiff = date.toEpochDays() - today.toEpochDays() // Sıralamayı değiştirdik
+        val daysDiff = date.toEpochDays() - today.toEpochDays()
 
         return when {
             daysDiff == 0L -> "Today"
 
-            // Gelecek tarihler (pozitif daysDiff)
             daysDiff == 1L -> "Tomorrow"
             daysDiff in 2..6 -> "In $daysDiff days"
             daysDiff in 7..13 -> "Next week"

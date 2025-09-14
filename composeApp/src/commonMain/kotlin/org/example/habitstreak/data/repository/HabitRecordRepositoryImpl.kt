@@ -16,10 +16,9 @@ import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.core.util.UuidGenerator
 import kotlin.time.ExperimentalTime
-import org.example.habitstreak.data.local.HabitRecord as DataHabitRecord
 
 class HabitRecordRepositoryImpl(
-    private val database: HabitDatabase,
+    database: HabitDatabase,
     private val dateProvider: DateProvider
 ) : HabitRecordRepository {
 
@@ -43,7 +42,7 @@ class HabitRecordRepositoryImpl(
                     date = date,
                     completedCount = count,
                     note = note.ifEmpty { existing.note },
-                    completedAt = dateProvider.now() // Use Instant
+                    completedAt = dateProvider.now()
                 )
             } else {
                 HabitRecord(
@@ -52,7 +51,7 @@ class HabitRecordRepositoryImpl(
                     date = date,
                     completedCount = count,
                     note = note,
-                    completedAt = dateProvider.now() // Use Instant
+                    completedAt = dateProvider.now()
                 )
             }
 

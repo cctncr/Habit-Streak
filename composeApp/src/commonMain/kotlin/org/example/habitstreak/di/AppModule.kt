@@ -74,7 +74,8 @@ val appModule = module {
     }
     single<CategoryRepository> {
         CategoryRepositoryImpl(
-            database = get()
+            database = get(),
+            dateProvider = get()
         )
     }
 }

@@ -13,11 +13,12 @@ import org.example.habitstreak.data.mapper.toData
 import org.example.habitstreak.data.mapper.toDomain
 import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.domain.repository.CategoryRepository
-import kotlin.time.Clock
+import org.example.habitstreak.domain.util.DateProvider
 import kotlin.time.ExperimentalTime
 
 class CategoryRepositoryImpl(
-    private val database: HabitDatabase
+    private val database: HabitDatabase,
+    private val dateProvider: DateProvider
 ) : CategoryRepository {
 
     private val categoryQueries = database.categoryQueries
@@ -217,7 +218,7 @@ class CategoryRepositoryImpl(
                             name = categoryName,
                             isCustom = false,
                             usageCount = 0,
-                            createdAt = Clock.System.now()
+                            createdAt = dateProvider.now()
                         )
                         categoryQueries.insert(category.toData())
                     }

@@ -1,12 +1,14 @@
 package org.example.habitstreak.presentation.model
 
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /**
- * Simple model for representing Year and Month
+ * Model for representing Year and Month
  */
 data class YearMonth(
     val year: Int,
@@ -20,11 +22,11 @@ data class YearMonth(
         @OptIn(ExperimentalTime::class)
         fun current(): YearMonth {
             val now = Clock.System.now()
-                .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                .toLocalDateTime(TimeZone.currentSystemDefault())
             return YearMonth(now.year, now.month.number)
         }
 
-        fun from(date: kotlinx.datetime.LocalDate): YearMonth {
+        fun from(date: LocalDate): YearMonth {
             return YearMonth(date.year, date.month.number)
         }
     }

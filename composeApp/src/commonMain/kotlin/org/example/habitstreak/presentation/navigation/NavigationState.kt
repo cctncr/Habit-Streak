@@ -25,7 +25,6 @@ class NavigationState {
 
     fun navigateBack(): Boolean {
         if (_backStack.size > 1) {
-            // removeLast() yerine removeAt kullanıyoruz (API level uyumluluğu için)
             _backStack.removeAt(_backStack.size - 1)
             return true
         }
