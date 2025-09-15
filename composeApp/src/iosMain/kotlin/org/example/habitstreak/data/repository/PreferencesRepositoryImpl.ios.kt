@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import platform.Foundation.NSUserDefaults
 import org.example.habitstreak.domain.repository.PreferencesRepository
+import org.example.habitstreak.core.util.SystemLocaleProvider
 
 actual class PreferencesRepositoryImpl : PreferencesRepository {
 
@@ -34,7 +35,7 @@ actual class PreferencesRepositoryImpl : PreferencesRepository {
             userDefaults.setObject("system", THEME)
         }
         if (userDefaults.objectForKey(LOCALE) == null) {
-            userDefaults.setObject("en", LOCALE)
+            userDefaults.setObject(SystemLocaleProvider.getSystemLocaleCode(), LOCALE)
         }
         userDefaults.synchronize()
     }
@@ -53,7 +54,7 @@ actual class PreferencesRepositoryImpl : PreferencesRepository {
         userDefaults.objectForKey(THEME) as? String ?: "system"
     )
     private val _locale = MutableStateFlow(
-        userDefaults.objectForKey(LOCALE) as? String ?: "en"
+        userDefaults.objectForKey(LOCALE) as? String ?: SystemLocaleProvider.getSystemLocaleCode()
     )
 
     override suspend fun setNotificationsEnabled(enabled: Boolean) {

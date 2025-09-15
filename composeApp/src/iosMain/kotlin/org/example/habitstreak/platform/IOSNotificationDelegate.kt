@@ -6,9 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import platform.UserNotifications.*
 import platform.darwin.NSObject
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.usecase.habit.ToggleHabitCompletionUseCase
 import org.example.habitstreak.domain.service.NotificationService
 import kotlinx.datetime.*
 import kotlin.time.Clock
@@ -16,10 +15,11 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalForeignApi::class)
-class IOSNotificationDelegate : NSObject(), UNUserNotificationCenterDelegateProtocol, KoinComponent {
-
-    private val habitRepository: HabitRepository by inject()
-    private val notificationService: NotificationService by inject()
+class IOSNotificationDelegate(
+    private val habitRepository: HabitRepository,
+    private val notificationService: NotificationService,
+    private val toggleHabitCompletionUseCase: ToggleHabitCompletionUseCase
+) : NSObject(), UNUserNotificationCenterDelegateProtocol {
 
     override fun userNotificationCenter(
         center: UNUserNotificationCenter,
@@ -62,7 +62,8 @@ class IOSNotificationDelegate : NSObject(), UNUserNotificationCenterDelegateProt
     private fun handleCompleteHabit(habitId: String) {
         CoroutineScope(Dispatchers.Main).launch {
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-            habitRepository.markHabitComplete(habitId, today, 1)
+            val params = ToggleHabitCompletionUseCase.Params(habitId, today, 1)
+            toggleHabitCompletionUseCase(params)
         }
     }
 

@@ -15,7 +15,7 @@ import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
 import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.repository.HabitRepository
-import org.example.habitstreak.domain.usecase.CreateHabitUseCase
+import org.example.habitstreak.domain.usecase.habit.CreateHabitUseCase
 import org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime

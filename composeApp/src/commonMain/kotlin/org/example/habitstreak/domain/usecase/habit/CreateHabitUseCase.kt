@@ -1,4 +1,4 @@
-package org.example.habitstreak.domain.usecase
+package org.example.habitstreak.domain.usecase.habit
 
 import kotlinx.datetime.LocalTime
 import org.example.habitstreak.domain.model.Category

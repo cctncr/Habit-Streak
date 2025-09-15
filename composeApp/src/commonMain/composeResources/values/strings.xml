@@ -296,4 +296,144 @@
     <string name="notification_snoozed">Snoozed</string>
     <string name="notification_channel_name">Habit Reminders</string>
     <string name="notification_channel_desc">Daily reminders for your habits</string>
+
+    <!-- Screen specific strings -->
+    <string name="screen_habits">Habits</string>
+    <string name="daily_goal">Daily Goal</string>
+    <string name="content_desc_settings">Settings</string>
+    <string name="content_desc_statistics">Statistics</string>
+    <string name="content_desc_calendar">Calendar</string>
+    <string name="content_desc_add_habit">Add Habit</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="archive_habit_title">Archive Habit?</string>
+    <string name="archive_habit_message">This will hide the habit but keep all your data.</string>
+    <string name="select">Select</string>
+    <string name="filter_all_habits">All</string>
+    <string name="filter_done">Done</string>
+    <string name="filter_todo">Todo</string>
+    <string name="create_first_habit">Create your first habit</string>
+
+    <!-- More screen strings -->
+    <string name="create_habit">Create Habit</string>
+    <string name="edit_habit">Edit Habit</string>
+    <string name="habit_details">Habit Details</string>
+    <string name="settings">Settings</string>
+    <string name="archived_habits">Archived Habits</string>
+    <string name="general">General</string>
+    <string name="notifications">Notifications</string>
+    <string name="about">About</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="language">Language</string>
+    <string name="version">Version</string>
+    <string name="no_habits_found">No habits found</string>
+    <string name="empty_state_message">Start building great habits!</string>
+    <string name="continue_action">Continue</string>
+    <string name="back">Back</string>
+    <string name="done">Done</string>
+    <string name="next">Next</string>
+    <string name="finish">Finish</string>
+
+    <!-- Create/Edit Habit Screen -->
+    <string name="create_habit_title">Create Habit</string>
+    <string name="edit_habit_title">Edit Habit</string>
+    <string name="step_indicator">Step %1$d of %2$d</string>
+    <string name="close">Close</string>
+    <string name="save">Save</string>
+    <string name="previous">Previous</string>
+    <string name="create_habit_button">Create Habit</string>
+    <string name="advanced_settings">Advanced Settings</string>
+    <string name="archive_habit">Archive Habit</string>
+    <string name="archive_habit_description">Hide this habit without deleting data</string>
+    <string name="notification_permission_required">Notification Permission Required</string>
+    <string name="notification_permission_message">To receive habit reminders, please grant notification permission in settings.</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="lets_start_with_basics">Let's start with the basics</string>
+    <string name="habit_name_label">Habit Name</string>
+    <string name="habit_name_placeholder">e.g., Drink Water, Read, Exercise</string>
+    <string name="habit_description_label">Description (Optional)</string>
+    <string name="habit_description_placeholder">Add a description for your habit</string>
+    <string name="habit_type">Habit Type</string>
+    <string name="simple_habit">Simple</string>
+    <string name="measurable_habit">Measurable</string>
+    <string name="target_amount">Target Amount</string>
+    <string name="unit">Unit</string>
+    <string name="reminder_time">Reminder Time</string>
+    <string name="no_reminder">No Reminder</string>
+    <string name="choose_categories">Choose Categories</string>
+    <string name="choose_icon">Choose Icon</string>
+    <string name="choose_color">Choose Color</string>
+    <string name="frequency">Frequency</string>
+    <string name="daily">Daily</string>
+    <string name="weekly">Weekly</string>
+    <string name="monthly">Monthly</string>
+    <string name="start_date">Start Date</string>
+    <string name="enable_notifications">Enable Notifications</string>
+    <string name="notification_time">Notification Time</string>
+    <string name="days_of_week">Days of Week</string>
+    <string name="monday">Monday</string>
+    <string name="tuesday">Tuesday</string>
+    <string name="wednesday">Wednesday</string>
+    <string name="thursday">Thursday</string>
+    <string name="friday">Friday</string>
+    <string name="saturday">Saturday</string>
+    <string name="sunday">Sunday</string>
+    <string name="confirm">Confirm</string>
+    <string name="habit_name_error">Please enter a habit name</string>
+    <string name="target_amount_error">Please enter a valid target amount</string>
+    <string name="create_new_category">Create New Category</string>
+    <string name="category_name">Category Name</string>
+    <string name="category_name_placeholder">Enter category name</string>
+    <string name="select_icon">Select Icon</string>
+    <string name="select_color">Select Color</string>
+    <string name="reset_to_default">Reset to Default</string>
+
+    <!-- Habit Detail Screen -->
+    <string name="history">History</string>
+    <string name="notes">Notes</string>
+    <string name="delete_habit_title">Delete Habit?</string>
+    <string name="delete_habit_message">This will permanently delete the habit and all its records.</string>
+    <string name="content_desc_back">Back</string>
+    <string name="content_desc_edit">Edit</string>
+    <string name="content_desc_more">More</string>
+    <string name="streak_days">%d days</string>
+    <string name="completion_rate">%d%% completion</string>
+    <string name="last_completed">Last completed: %s</string>
+    <string name="never_completed">Never completed</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="days_ago">%d days ago</string>
+    <string name="add_note">Add note</string>
+    <string name="note_placeholder">Add a note for today...</string>
+    <string name="save_note">Save Note</string>
+    <string name="delete_note">Delete Note</string>
+
+    <!-- Settings Components -->
+    <string name="app_title">HabitStreak Pro</string>
+    <string name="app_subtitle">Track your habits with ease</string>
+    <string name="choose_theme">Choose Theme</string>
+    <string name="choose_language">Choose Language</string>
+    <string name="system_default">System default</string>
+    <string name="light_theme">Light</string>
+    <string name="dark_theme">Dark</string>
+    <string name="english">English</string>
+    <string name="turkish">Türkçe</string>
+    <string name="notification_settings">Notification Settings</string>
+    <string name="enable_habit_reminders">Enable Habit Reminders</string>
+    <string name="reminder_sound">Reminder Sound</string>
+    <string name="vibration">Vibration</string>
+    <string name="data_export">Data Export</string>
+    <string name="export_all_data">Export All Data</string>
+    <string name="backup_data">Backup Data</string>
+    <string name="restore_data">Restore Data</string>
+    <string name="app_info">App Info</string>
+    <string name="app_version">App Version</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="terms_of_service">Terms of Service</string>
+    <string name="contact_support">Contact Support</string>
+    <string name="rate_app">Rate App</string>
+
+    <!-- Empty States -->
+    <string name="start_your_journey">Start Your Journey</string>
+    <string name="empty_habits_subtitle">Create your first habit and begin\nbuilding a better version of yourself</string>
+    <string name="create_first_habit_button">Create First Habit</string>
 </resources>

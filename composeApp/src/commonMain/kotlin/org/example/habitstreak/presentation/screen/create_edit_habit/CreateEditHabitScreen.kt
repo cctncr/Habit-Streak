@@ -72,6 +72,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -98,6 +99,9 @@ import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 import org.example.habitstreak.presentation.ui.utils.navigationBarsPadding
 import org.example.habitstreak.presentation.viewmodel.CreateEditHabitViewModel
 import org.koin.compose.koinInject
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -110,7 +114,7 @@ import org.koin.core.parameter.parametersOf
 fun CreateEditHabitScreen(
     habitId: String? = null,
     onNavigateBack: () -> Unit,
-    viewModel: CreateEditHabitViewModel = koinViewModel { parametersOf(habitId) },
+    viewModel: CreateEditHabitViewModel = koinViewModel(key = habitId) { parametersOf(habitId) },
     permissionManager: PermissionManager? = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -140,12 +144,12 @@ fun CreateEditHabitScreen(
                 title = {
                     Column {
                         Text(
-                            text = if (uiState.isEditMode) "Edit Habit" else "Create Habit",
+                            text = if (uiState.isEditMode) stringResource(Res.string.edit_habit_title) else stringResource(Res.string.create_habit_title),
                             style = MaterialTheme.typography.titleLarge
                         )
                         if (!uiState.isEditMode) {
                             Text(
-                                text = "Step ${currentStep + 1} of $totalSteps",
+                                text = stringResource(Res.string.step_indicator, currentStep + 1, totalSteps),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -157,7 +161,7 @@ fun CreateEditHabitScreen(
                         focusManager.clearFocus()
                         onNavigateBack()
                     }) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.close))
                     }
                 },
                 actions = {
@@ -174,7 +178,7 @@ fun CreateEditHabitScreen(
                             )
                         } else {
                             Text(
-                                text = if (uiState.isEditMode) "Save" else "Create",
+                                text = if (uiState.isEditMode) stringResource(Res.string.save) else stringResource(Res.string.action_create),
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -335,7 +339,7 @@ fun CreateEditHabitScreen(
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Previous")
+                                Text(stringResource(Res.string.previous))
                             }
 
                             Button(
@@ -348,7 +352,7 @@ fun CreateEditHabitScreen(
                                 },
                                 enabled = isFormValid
                             ) {
-                                Text(if (currentStep < totalSteps - 1) "Next" else "Create Habit")
+                                Text(if (currentStep < totalSteps - 1) stringResource(Res.string.next) else stringResource(Res.string.create_habit_button))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(
                                     if (currentStep < totalSteps - 1) Icons.AutoMirrored.Filled.ArrowForward
@@ -435,9 +439,9 @@ fun CreateEditHabitScreen(
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
-            title = { Text("Notification Permission Required") },
+            title = { Text(stringResource(Res.string.notification_permission_required)) },
             text = {
-                Text("To receive habit reminders, please grant notification permission in settings.")
+                Text(stringResource(Res.string.notification_permission_message))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -446,12 +450,12 @@ fun CreateEditHabitScreen(
                         permissionManager?.openAppSettings()
                     }
                 }) {
-                    Text("Open Settings")
+                    Text(stringResource(Res.string.open_settings))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(Res.string.action_cancel))
                 }
             }
         )
@@ -560,7 +564,7 @@ private fun BasicInfoStep(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Let's start with the basics",
+            text = stringResource(Res.string.lets_start_with_basics),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
@@ -568,8 +572,8 @@ private fun BasicInfoStep(
         OutlinedTextField(
             value = uiState.title,
             onValueChange = viewModel::updateTitle,
-            label = { Text("Habit Name") },
-            placeholder = { Text("e.g., Drink Water, Read, Exercise") },
+            label = { Text(stringResource(Res.string.habit_name_label)) },
+            placeholder = { Text(stringResource(Res.string.habit_name_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             isError = uiState.error != null && uiState.title.isBlank(),
             singleLine = true,
@@ -582,8 +586,8 @@ private fun BasicInfoStep(
         OutlinedTextField(
             value = uiState.description,
             onValueChange = viewModel::updateDescription,
-            label = { Text("Description (Optional)") },
-            placeholder = { Text("Why is this habit important to you?") },
+            label = { Text(stringResource(Res.string.habit_description_label)) },
+            placeholder = { Text(stringResource(Res.string.habit_description_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 2,
             maxLines = 3,

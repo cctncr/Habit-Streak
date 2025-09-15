@@ -17,6 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
 import androidx.compose.ui.unit.sp
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 
@@ -40,7 +43,7 @@ fun EmptyHabitsState(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Start Your Journey",
+            text = stringResource(Res.string.start_your_journey),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = HabitStreakTheme.primaryTextColor
@@ -49,7 +52,7 @@ fun EmptyHabitsState(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Create your first habit and begin\nbuilding a better version of yourself",
+            text = stringResource(Res.string.empty_habits_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = HabitStreakTheme.secondaryTextColor,
             textAlign = TextAlign.Center
@@ -65,7 +68,7 @@ fun EmptyHabitsState(
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
-                text = "Create First Habit",
+                text = stringResource(Res.string.create_first_habit_button),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
         }

@@ -65,6 +65,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
 import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.presentation.ui.components.card.HabitCard
 import org.example.habitstreak.presentation.ui.components.card.HabitCardFactory
@@ -161,24 +164,24 @@ fun HabitsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Habits",
+                        stringResource(Res.string.screen_habits),
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Outlined.Settings, contentDescription = "Settings")
+                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(Res.string.content_desc_settings))
                     }
                 },
                 actions = {
                     IconButton(onClick = onNavigateToStatistics) {
-                        Icon(Icons.Outlined.Analytics, contentDescription = "Statistics")
+                        Icon(Icons.Outlined.Analytics, contentDescription = stringResource(Res.string.content_desc_statistics))
                     }
-                    IconButton(onClick = { showDatePicker = true }) {
-                        Icon(Icons.Outlined.CalendarMonth, contentDescription = "Calendar")
-                    }
+//                    IconButton(onClick = { showDatePicker = true }) {
+//                        Icon(Icons.Outlined.CalendarMonth, contentDescription = stringResource(Res.string.content_desc_calendar))
+//                    }
                     IconButton(onClick = onNavigateToCreateHabit) {
-                        Icon(Icons.Outlined.Add, contentDescription = "Add Habit")
+                        Icon(Icons.Outlined.Add, contentDescription = stringResource(Res.string.content_desc_add_habit))
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -236,7 +239,7 @@ fun HabitsScreen(
                                             onClick = { selectedFilter = filter },
                                             label = {
                                                 Text(
-                                                    filter.label,
+                                                    filter.getLabel(),
                                                     style = MaterialTheme.typography.bodySmall
                                                 )
                                             },
@@ -256,7 +259,7 @@ fun HabitsScreen(
                                                 onClick = { viewModel.clearCategoryFilter() },
                                                 label = {
                                                     Text(
-                                                        "All",
+                                                        stringResource(Res.string.filter_all_habits),
                                                         style = MaterialTheme.typography.bodySmall
                                                     )
                                                 },
@@ -335,7 +338,7 @@ fun HabitsScreen(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     action = {
                         TextButton(onClick = { viewModel.clearError() }) {
-                            Text("Dismiss")
+                            Text(stringResource(Res.string.dismiss))
                         }
                     }
                 ) {
@@ -349,8 +352,8 @@ fun HabitsScreen(
     showDeleteConfirmation?.let { habitId ->
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = null },
-            title = { Text("Archive Habit?") },
-            text = { Text("This will hide the habit but keep all your data.") },
+            title = { Text(stringResource(Res.string.archive_habit_title)) },
+            text = { Text(stringResource(Res.string.archive_habit_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -358,12 +361,12 @@ fun HabitsScreen(
                         showDeleteConfirmation = null
                     }
                 ) {
-                    Text("Archive", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(Res.string.action_archive), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = null }) {
-                    Text("Cancel")
+                    Text(stringResource(Res.string.action_cancel))
                 }
             }
         )
@@ -412,7 +415,7 @@ private fun ProgressOverviewCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Daily Goal",
+                        text = stringResource(Res.string.daily_goal),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
@@ -479,12 +482,12 @@ private fun DatePickerModal(
                     }
                 }
             ) {
-                Text("Select")
+                Text(stringResource(Res.string.select))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(Res.string.action_cancel))
             }
         }
     ) {
@@ -492,8 +495,15 @@ private fun DatePickerModal(
     }
 }
 
-enum class HabitFilter(val label: String) {
-    ALL("All"),
-    COMPLETED("Done"),
-    PENDING("Todo")
+enum class HabitFilter {
+    ALL,
+    COMPLETED,
+    PENDING
+}
+
+@Composable
+fun HabitFilter.getLabel(): String = when (this) {
+    HabitFilter.ALL -> stringResource(Res.string.filter_all_habits)
+    HabitFilter.COMPLETED -> stringResource(Res.string.filter_done)
+    HabitFilter.PENDING -> stringResource(Res.string.filter_todo)
 }

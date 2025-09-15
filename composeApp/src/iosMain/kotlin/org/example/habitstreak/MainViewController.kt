@@ -1,19 +1,24 @@
 package org.example.habitstreak
 
 import androidx.compose.ui.window.ComposeUIViewController
-import org.example.habitstreak.di.appModule
+import androidx.compose.material3.Text
+import org.example.habitstreak.app.di.appModule
 import org.example.habitstreak.di.platformModule
 import org.example.habitstreak.platform.IOSNotificationSetup
 import org.koin.core.context.startKoin
 
 fun MainViewController() = ComposeUIViewController {
     initKoin()
-    IOSNotificationSetup.initialize()
     App()
 }
 
 private fun initKoin() {
-    startKoin {
-        modules(appModule, platformModule())
+    try {
+        startKoin {
+            modules(appModule, platformModule())
+        }
+    } catch (e: Exception) {
+        // Koin might already be started, ignore
+        println("Koin already initialized or failed to initialize: ${e.message}")
     }
 }

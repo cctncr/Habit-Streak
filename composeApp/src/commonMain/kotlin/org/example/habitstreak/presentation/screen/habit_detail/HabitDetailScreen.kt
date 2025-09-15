@@ -63,10 +63,19 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.time.ExperimentalTime
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
 
-enum class ActivityTab(val label: String) {
-    HISTORY("History"),
-    NOTES("Notes")
+enum class ActivityTab {
+    HISTORY,
+    NOTES
+}
+
+@Composable
+fun ActivityTab.getLabel(): String = when (this) {
+    ActivityTab.HISTORY -> stringResource(Res.string.history)
+    ActivityTab.NOTES -> stringResource(Res.string.notes)
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
@@ -196,7 +205,7 @@ fun HabitDetailScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = tab.label,
+                                            text = tab.getLabel(),
                                             style = MaterialTheme.typography.labelLarge,
                                             fontWeight = if (selectedActivityTab == tab)
                                                 FontWeight.Bold else FontWeight.Normal
@@ -297,8 +306,8 @@ fun HabitDetailScreen(
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Habit?") },
-                text = { Text("This will permanently delete the habit and all its records.") },
+                title = { Text(stringResource(Res.string.delete_habit_title)) },
+                text = { Text(stringResource(Res.string.delete_habit_message)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -306,12 +315,12 @@ fun HabitDetailScreen(
                             onNavigateBack()
                         }
                     ) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(Res.string.action_delete), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(Res.string.action_cancel))
                     }
                 }
             )
@@ -352,7 +361,7 @@ private fun MinimalTopBar(
             IconButton(onClick = onNavigateBack) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back"
+                    contentDescription = stringResource(Res.string.content_desc_back)
                 )
             }
         },

@@ -53,48 +53,49 @@ fun ArchivedHabitsScreen(
     var archivedHabits by remember { mutableStateOf(listOf<Habit>()) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(Res.string.archived_habits_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(
-                            Res.string.nav_back))
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(Res.string.archived_habits_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(
+                                Res.string.nav_back))
+                        }
                     }
-                }
-            )
-        }
-    ) { paddingValues ->
-        if (archivedHabits.isEmpty()) {
-            EmptyArchivedState(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(archivedHabits) { habit ->
-                    ArchivedHabitCard(
-                        habit = habit,
-                        onRestore = { onRestoreHabit(habit.id) }
-                    )
+                )
+            }
+        ) { paddingValues ->
+            if (archivedHabits.isEmpty()) {
+                EmptyArchivedState(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(32.dp)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(archivedHabits) { habit ->
+                        ArchivedHabitCard(
+                            habit = habit,
+                            onRestore = { onRestoreHabit(habit.id) }
+                        )
+                    }
                 }
             }
         }
     }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,23 +113,18 @@ private fun ArchivedHabitCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = habit.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (habit.description.isNotBlank()) {
                     Text(
-                        text = habit.icon.emoji,
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = habit.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                habit.description.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = habit.description,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

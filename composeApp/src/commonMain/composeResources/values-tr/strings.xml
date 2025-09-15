@@ -296,4 +296,144 @@
     <string name="notification_snoozed">Ertelendi</string>
     <string name="notification_channel_name">Alışkanlık Hatırlatıcıları</string>
     <string name="notification_channel_desc">Alışkanlıklarınız için günlük hatırlatıcılar</string>
+
+    <!-- Screen specific strings -->
+    <string name="screen_habits">Alışkanlıklar</string>
+    <string name="daily_goal">Günlük Hedef</string>
+    <string name="content_desc_settings">Ayarlar</string>
+    <string name="content_desc_statistics">İstatistikler</string>
+    <string name="content_desc_calendar">Takvim</string>
+    <string name="content_desc_add_habit">Alışkanlık Ekle</string>
+    <string name="dismiss">Kapat</string>
+    <string name="archive_habit_title">Alışkanlığı Arşivle?</string>
+    <string name="archive_habit_message">Bu alışkanlığı gizleyecek ancak tüm verilerinizi koruyacak.</string>
+    <string name="select">Seç</string>
+    <string name="filter_all_habits">Tümü</string>
+    <string name="filter_done">Tamamlandı</string>
+    <string name="filter_todo">Yapılacak</string>
+    <string name="create_first_habit">İlk alışkanlığınızı oluşturun</string>
+
+    <!-- More screen strings -->
+    <string name="create_habit">Alışkanlık Oluştur</string>
+    <string name="edit_habit">Alışkanlığı Düzenle</string>
+    <string name="habit_details">Alışkanlık Detayları</string>
+    <string name="settings">Ayarlar</string>
+    <string name="archived_habits">Arşivlenmiş Alışkanlıklar</string>
+    <string name="general">Genel</string>
+    <string name="notifications">Bildirimler</string>
+    <string name="about">Hakkında</string>
+    <string name="dark_mode">Koyu Mod</string>
+    <string name="language">Dil</string>
+    <string name="version">Sürüm</string>
+    <string name="no_habits_found">Alışkanlık bulunamadı</string>
+    <string name="empty_state_message">Harika alışkanlıklar geliştirmeye başlayın!</string>
+    <string name="continue_action">Devam</string>
+    <string name="back">Geri</string>
+    <string name="done">Tamam</string>
+    <string name="next">İleri</string>
+    <string name="finish">Bitir</string>
+
+    <!-- Create/Edit Habit Screen -->
+    <string name="create_habit_title">Alışkanlık Oluştur</string>
+    <string name="edit_habit_title">Alışkanlığı Düzenle</string>
+    <string name="step_indicator">Adım %1$d / %2$d</string>
+    <string name="close">Kapat</string>
+    <string name="save">Kaydet</string>
+    <string name="previous">Önceki</string>
+    <string name="create_habit_button">Alışkanlık Oluştur</string>
+    <string name="advanced_settings">Gelişmiş Ayarlar</string>
+    <string name="archive_habit">Alışkanlığı Arşivle</string>
+    <string name="archive_habit_description">Veri silmeden bu alışkanlığı gizle</string>
+    <string name="notification_permission_required">Bildirim İzni Gerekli</string>
+    <string name="notification_permission_message">Alışkanlık hatırlatıcıları almak için lütfen ayarlardan bildirim izni verin.</string>
+    <string name="open_settings">Ayarları Aç</string>
+    <string name="lets_start_with_basics">Temellerle başlayalım</string>
+    <string name="habit_name_label">Alışkanlık Adı</string>
+    <string name="habit_name_placeholder">ör. Su İç, Oku, Egzersiz Yap</string>
+    <string name="habit_description_label">Açıklama (İsteğe Bağlı)</string>
+    <string name="habit_description_placeholder">Alışkanlığınız için açıklama ekleyin</string>
+    <string name="habit_type">Alışkanlık Türü</string>
+    <string name="simple_habit">Basit</string>
+    <string name="measurable_habit">Ölçülebilir</string>
+    <string name="target_amount">Hedef Miktar</string>
+    <string name="unit">Birim</string>
+    <string name="reminder_time">Hatırlatma Zamanı</string>
+    <string name="no_reminder">Hatırlatma Yok</string>
+    <string name="choose_categories">Kategorileri Seç</string>
+    <string name="choose_icon">İkon Seç</string>
+    <string name="choose_color">Renk Seç</string>
+    <string name="frequency">Sıklık</string>
+    <string name="daily">Günlük</string>
+    <string name="weekly">Haftalık</string>
+    <string name="monthly">Aylık</string>
+    <string name="start_date">Başlangıç Tarihi</string>
+    <string name="enable_notifications">Bildirimleri Etkinleştir</string>
+    <string name="notification_time">Bildirim Zamanı</string>
+    <string name="days_of_week">Haftanın Günleri</string>
+    <string name="monday">Pazartesi</string>
+    <string name="tuesday">Salı</string>
+    <string name="wednesday">Çarşamba</string>
+    <string name="thursday">Perşembe</string>
+    <string name="friday">Cuma</string>
+    <string name="saturday">Cumartesi</string>
+    <string name="sunday">Pazar</string>
+    <string name="confirm">Onayla</string>
+    <string name="habit_name_error">Lütfen bir alışkanlık adı girin</string>
+    <string name="target_amount_error">Lütfen geçerli bir hedef miktar girin</string>
+    <string name="create_new_category">Yeni Kategori Oluştur</string>
+    <string name="category_name">Kategori Adı</string>
+    <string name="category_name_placeholder">Kategori adını girin</string>
+    <string name="select_icon">İkon Seç</string>
+    <string name="select_color">Renk Seç</string>
+    <string name="reset_to_default">Varsayılana Sıfırla</string>
+
+    <!-- Habit Detail Screen -->
+    <string name="history">Geçmiş</string>
+    <string name="notes">Notlar</string>
+    <string name="delete_habit_title">Alışkanlığı Sil?</string>
+    <string name="delete_habit_message">Bu işlem alışkanlığı ve tüm kayıtlarını kalıcı olarak silecek.</string>
+    <string name="content_desc_back">Geri</string>
+    <string name="content_desc_edit">Düzenle</string>
+    <string name="content_desc_more">Daha Fazla</string>
+    <string name="streak_days">%d gün</string>
+    <string name="completion_rate">%%%d tamamlanma</string>
+    <string name="last_completed">Son tamamlanma: %s</string>
+    <string name="never_completed">Hiç tamamlanmadı</string>
+    <string name="today">Bugün</string>
+    <string name="yesterday">Dün</string>
+    <string name="days_ago">%d gün önce</string>
+    <string name="add_note">Not ekle</string>
+    <string name="note_placeholder">Bugün için not ekleyin...</string>
+    <string name="save_note">Notu Kaydet</string>
+    <string name="delete_note">Notu Sil</string>
+
+    <!-- Settings Components -->
+    <string name="app_title">HabitStreak Pro</string>
+    <string name="app_subtitle">Alışkanlıklarınızı kolayca takip edin</string>
+    <string name="choose_theme">Tema Seç</string>
+    <string name="choose_language">Dil Seç</string>
+    <string name="system_default">Sistem varsayılanı</string>
+    <string name="light_theme">Açık</string>
+    <string name="dark_theme">Koyu</string>
+    <string name="english">English</string>
+    <string name="turkish">Türkçe</string>
+    <string name="notification_settings">Bildirim Ayarları</string>
+    <string name="enable_habit_reminders">Alışkanlık Hatırlatıcılarını Etkinleştir</string>
+    <string name="reminder_sound">Hatırlatma Sesi</string>
+    <string name="vibration">Titreşim</string>
+    <string name="data_export">Veri Dışa Aktarma</string>
+    <string name="export_all_data">Tüm Verileri Dışa Aktar</string>
+    <string name="backup_data">Veriyi Yedekle</string>
+    <string name="restore_data">Veriyi Geri Yükle</string>
+    <string name="app_info">Uygulama Bilgisi</string>
+    <string name="app_version">Uygulama Sürümü</string>
+    <string name="privacy_policy">Gizlilik Politikası</string>
+    <string name="terms_of_service">Hizmet Şartları</string>
+    <string name="contact_support">Destek İletişim</string>
+    <string name="rate_app">Uygulamayı Oyla</string>
+
+    <!-- Empty States -->
+    <string name="start_your_journey">Yolculuğunuza Başlayın</string>
+    <string name="empty_habits_subtitle">İlk alışkanlığınızı oluşturun ve kendinizin\ndaha iyi bir versiyonunu inşa etmeye başlayın</string>
+    <string name="create_first_habit_button">İlk Alışkanlığı Oluştur</string>
 </resources>

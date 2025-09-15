@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.key
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -83,7 +84,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     val currentAppLocale = AppLocale.current()
-                    val settingsText = Strings.nav_settings()
+                    val settingsText = stringResource(Res.string.nav_settings)
                     println("📱 SettingsScreen: Title recomposing with locale ${currentAppLocale.code}, text: '$settingsText'")
                     Text(
                         text = settingsText,
@@ -92,7 +93,7 @@ fun SettingsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Strings.nav_back())
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.nav_back))
                     }
                 }
             )
@@ -100,29 +101,24 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
+                LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Profile Section
-                item {
-                    ProfileSection()
-                }
-
                 // General Settings
                 item {
-                    SettingsSection(title = Strings.section_general()) {
+                    SettingsSection(title = stringResource(Res.string.section_general)) {
                         SettingsItem(
                             icon = Icons.Outlined.Palette,
-                            title = Strings.settings_theme(),
+                            title = stringResource(Res.string.settings_theme),
                             subtitle = when(uiState.theme) {
-                                "system" -> Strings.theme_system()
-                                "light" -> Strings.theme_light()
-                                "dark" -> Strings.theme_dark()
-                                else -> Strings.theme_system()
+                                "system" -> stringResource(Res.string.theme_system)
+                                "light" -> stringResource(Res.string.theme_light)
+                                "dark" -> stringResource(Res.string.theme_dark)
+                                else -> stringResource(Res.string.theme_system)
                             },
                             onClick = { showThemeDialog = true }
                         )

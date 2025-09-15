@@ -22,6 +22,7 @@ class HabitRepositoryImpl(
 
     private val queries = database.habitQueries
     private val habitCategoryQueries = database.habitCategoryQueries
+    private val categoryQueries = database.categoryQueries
 
     @OptIn(ExperimentalTime::class)
     override suspend fun createHabit(habit: Habit): Result<Habit> = withContext(Dispatchers.IO) {
@@ -93,8 +94,18 @@ class HabitRepositoryImpl(
     override suspend fun deleteHabit(habitId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             database.transaction {
-                queries.selectById(habitId).executeAsOneOrNull()
+                val habit = queries.selectById(habitId).executeAsOneOrNull()
                     ?: throw IllegalArgumentException("Habit not found")
+
+                // Get categories for this habit before deletion to update usage counts
+                val habitCategories = habitCategoryQueries.selectByHabit(habitId).executeAsList()
+
+                // Decrement usage count for each category
+                habitCategories.forEach { categoryEntity ->
+                    categoryQueries.decrementUsageCount(categoryEntity.id)
+                }
+
+                // Delete the habit (HabitCategory relationships will be deleted by CASCADE)
                 queries.delete(habitId)
             }
             Result.success(Unit)

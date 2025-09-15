@@ -1,4 +1,4 @@
-package org.example.habitstreak.domain.usecase
+package org.example.habitstreak.domain.usecase.habit
 
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.util.UseCase

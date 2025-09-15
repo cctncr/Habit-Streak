@@ -13,7 +13,7 @@ import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.domain.service.PermissionResult
-import org.example.habitstreak.domain.usecase.CalculateStreakUseCase
+import org.example.habitstreak.domain.usecase.habit.CalculateStreakUseCase
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.ui.state.HabitDetailUiState

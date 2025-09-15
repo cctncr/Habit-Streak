@@ -2,7 +2,7 @@ package org.example.habitstreak.presentation.ui.state
 
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.HabitRecord
-import org.example.habitstreak.domain.usecase.GetHabitsWithCompletionUseCase
+import org.example.habitstreak.domain.usecase.habit.GetHabitsWithCompletionUseCase
 
 data class HabitsUiState(
     val isLoading: Boolean = false,

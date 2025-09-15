@@ -1,14 +1,20 @@
 package org.example.habitstreak.core.util
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 @Composable
 fun getLocalizedString(englishText: String, turkishText: String): String {
-    val currentLocale = AppLocale.current()
-    return when (currentLocale) {
+    // Use StateFlow directly instead of CompositionLocal for stronger recomposition trigger
+    val currentLocale by LocaleManager.currentLocale.collectAsState()
+    val result = when (currentLocale) {
         AppLocale.ENGLISH -> englishText
         AppLocale.TURKISH -> turkishText
     }
+    // Debug for locale issues
+    println("🔤 getLocalizedString: Locale=${currentLocale.code}, EN='$englishText', TR='$turkishText', Result='$result'")
+    return result
 }
 
 object Strings {

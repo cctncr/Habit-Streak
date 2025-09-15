@@ -3,19 +3,40 @@ package org.example.habitstreak.platform
 import platform.UIKit.UIApplication
 import platform.UIKit.registerForRemoteNotifications
 import platform.UserNotifications.UNUserNotificationCenter
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.service.NotificationService
+import org.example.habitstreak.domain.usecase.habit.ToggleHabitCompletionUseCase
 
 @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
-object IOSNotificationSetup {
+object IOSNotificationSetup : KoinComponent {
+
+    private var isInitialized = false
 
     fun initialize() {
-        val scheduler = IOSNotificationScheduler()
-        scheduler.setupNotificationCategories()
+        if (isInitialized) return
 
-        val delegate = IOSNotificationDelegate()
-        UNUserNotificationCenter.currentNotificationCenter().delegate = delegate
+        try {
+            val habitRepository: HabitRepository by inject()
+            val notificationService: NotificationService by inject()
+            val toggleHabitCompletionUseCase: ToggleHabitCompletionUseCase by inject()
 
-        // Request permission on first launch
-        // This should be called from your iOS app delegate
+            val scheduler = IOSNotificationScheduler()
+            scheduler.setupNotificationCategories()
+
+            val delegate = IOSNotificationDelegate(
+                habitRepository = habitRepository,
+                notificationService = notificationService,
+                toggleHabitCompletionUseCase = toggleHabitCompletionUseCase
+            )
+            UNUserNotificationCenter.currentNotificationCenter().delegate = delegate
+
+            isInitialized = true
+        } catch (e: Exception) {
+            println("IOSNotificationSetup initialization failed: ${e.message}")
+            // Don't mark as initialized so we can retry later
+        }
     }
 
     fun registerForRemoteNotifications() {

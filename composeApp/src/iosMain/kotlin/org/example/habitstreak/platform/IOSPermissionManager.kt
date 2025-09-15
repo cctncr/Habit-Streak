@@ -8,6 +8,7 @@ import org.example.habitstreak.domain.service.PermissionResult
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDefaults
 import platform.UIKit.UIApplication
+import platform.UIKit.UIApplicationOpenSettingsURLString
 import platform.UserNotifications.UNAuthorizationOptionAlert
 import platform.UserNotifications.UNAuthorizationOptionBadge
 import platform.UserNotifications.UNAuthorizationOptionSound
@@ -115,7 +116,7 @@ class IOSPermissionManager : PermissionManager {
 
     override suspend fun openAppSettings(): Boolean {
         return try {
-            val settingsUrl = UIApplication.openSettingsURLString
+            val settingsUrl = UIApplicationOpenSettingsURLString
             val url = NSURL.URLWithString(settingsUrl)
 
             if (url != null && UIApplication.sharedApplication.canOpenURL(url)) {

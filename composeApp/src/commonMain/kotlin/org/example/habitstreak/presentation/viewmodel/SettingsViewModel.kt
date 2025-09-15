@@ -82,14 +82,14 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        message = if (enabled) "Notifications enabled" else "Notifications disabled"
+                        message = if (enabled) "Notifications enabled" else "Notifications disabled" // TODO: Use string resources
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        message = "Failed to update notifications: ${e.message}"
+                        message = "Failed to update notifications: ${e.message}" // TODO: Use string resources
                     )
                 }
             }
@@ -107,7 +107,7 @@ class SettingsViewModel(
                     notificationService.enableNotification(
                         habitId = habit.id,
                         time = time,
-                        message = "Time to ${habit.title}"
+                        message = "Time to ${habit.title}" // TODO: Use string resources
                     )
                 } catch (e: Exception) {
                     // Log error but continue with other habits
@@ -150,11 +150,16 @@ class SettingsViewModel(
 
     fun setLocale(locale: AppLocale) {
         println("⚙️ SettingsViewModel.setLocale: Called with ${locale.code}")
+        println("📱 SettingsViewModel.setLocale: Current LocaleManager locale: ${LocaleManager.getCurrentLocale().code}")
         viewModelScope.launch {
+            println("🔄 SettingsViewModel.setLocale: Setting LocaleManager locale to ${locale.code}")
             LocaleManager.setLocale(locale)
+            println("💾 SettingsViewModel.setLocale: Saving locale ${locale.code} to preferences")
             preferencesRepository.setLocale(locale.code)
+            println("🔄 SettingsViewModel.setLocale: Updating UI state with locale ${locale.code}")
             _uiState.update { it.copy(locale = locale) }
             println("✅ SettingsViewModel.setLocale: Completed for ${locale.code}")
+            println("📱 SettingsViewModel.setLocale: Final LocaleManager locale: ${LocaleManager.getCurrentLocale().code}")
         }
     }
 

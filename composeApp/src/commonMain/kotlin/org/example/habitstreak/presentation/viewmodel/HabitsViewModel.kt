@@ -22,10 +22,10 @@ import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.repository.HabitRecordRepository
-import org.example.habitstreak.domain.usecase.ArchiveHabitUseCase
-import org.example.habitstreak.domain.usecase.CalculateStreakUseCase
-import org.example.habitstreak.domain.usecase.GetHabitsWithCompletionUseCase
-import org.example.habitstreak.domain.usecase.ToggleHabitCompletionUseCase
+import org.example.habitstreak.domain.usecase.habit.ArchiveHabitUseCase
+import org.example.habitstreak.domain.usecase.habit.CalculateStreakUseCase
+import org.example.habitstreak.domain.usecase.habit.GetHabitsWithCompletionUseCase
+import org.example.habitstreak.domain.usecase.habit.ToggleHabitCompletionUseCase
 import org.example.habitstreak.presentation.ui.state.HabitsUiState
 import org.example.habitstreak.domain.util.DateProvider
 import kotlin.collections.plus

@@ -9,7 +9,11 @@ import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.NotificationRepository
 import org.example.habitstreak.domain.repository.StatisticsRepository
 import org.example.habitstreak.domain.service.NotificationService
-import org.example.habitstreak.domain.usecase.*
+import org.example.habitstreak.domain.usecase.InitializeCategoriesUseCase
+import org.example.habitstreak.domain.usecase.habit.CreateHabitUseCase
+import org.example.habitstreak.domain.usecase.habit.ToggleHabitCompletionUseCase
+import org.example.habitstreak.domain.usecase.habit.GetHabitsWithCompletionUseCase
+import org.example.habitstreak.domain.usecase.habit.ArchiveHabitUseCase
 import org.example.habitstreak.presentation.viewmodel.*
 import org.koin.dsl.module
 import org.example.habitstreak.data.local.HabitDatabase
@@ -46,7 +50,7 @@ val appModule = module {
     factory { CreateHabitUseCase(get(), get(), get()) }
     factory { ToggleHabitCompletionUseCase(get()) }
     factory { GetHabitsWithCompletionUseCase(get(), get()) }
-    factory { CalculateStreakUseCase(get(), get(), get()) }
+    factory { org.example.habitstreak.domain.usecase.habit.CalculateStreakUseCase(get(), get(), get()) }
     factory { ArchiveHabitUseCase(get()) }
     factory { InitializeCategoriesUseCase(get()) }
 

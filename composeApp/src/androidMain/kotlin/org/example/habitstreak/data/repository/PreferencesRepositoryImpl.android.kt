@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.example.habitstreak.domain.repository.PreferencesRepository
+import org.example.habitstreak.core.util.SystemLocaleProvider
 import java.io.IOException
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
@@ -122,6 +123,6 @@ actual class PreferencesRepositoryImpl(
                 }
             }
             .map { preferences ->
-                preferences[LOCALE] ?: "en"
+                preferences[LOCALE] ?: SystemLocaleProvider.getSystemLocaleCode()
             }
 }

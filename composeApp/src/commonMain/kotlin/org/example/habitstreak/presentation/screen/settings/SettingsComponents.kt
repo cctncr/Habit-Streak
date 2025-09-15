@@ -12,6 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
 
 @Composable
 fun ProfileSection() {
@@ -34,12 +37,12 @@ fun ProfileSection() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "HabitStreak Pro",
+                text = stringResource(Res.string.app_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Track your habits with ease",
+                text = stringResource(Res.string.app_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
             )
@@ -139,14 +142,14 @@ fun ThemeSelectionDialog(
     onThemeSelected: (String) -> Unit
 ) {
     val themes = listOf(
-        "system" to "System default",
-        "light" to "Light",
-        "dark" to "Dark"
+        "system" to stringResource(Res.string.system_default),
+        "light" to stringResource(Res.string.light_theme),
+        "dark" to stringResource(Res.string.dark_theme)
     )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose Theme") },
+        title = { Text(stringResource(Res.string.choose_theme)) },
         text = {
             Column {
                 themes.forEach { (value, label) ->
@@ -170,7 +173,7 @@ fun ThemeSelectionDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(Res.string.action_cancel))
             }
         }
     )

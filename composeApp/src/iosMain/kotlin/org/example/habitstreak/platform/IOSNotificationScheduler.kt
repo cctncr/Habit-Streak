@@ -18,11 +18,17 @@ class IOSNotificationScheduler : NotificationScheduler {
 
     private val notificationCenter = UNUserNotificationCenter.currentNotificationCenter()
 
-    init {
-        setupNotificationCategories()
+    private var categoriesSetup = false
+
+    private fun ensureCategoriesSetup() {
+        if (!categoriesSetup) {
+            setupNotificationCategories()
+            categoriesSetup = true
+        }
     }
 
     override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
+        ensureCategoriesSetup()
         return try {
             val content = UNMutableNotificationContent().apply {
                 setTitle("Habit Reminder")
@@ -108,7 +114,7 @@ class IOSNotificationScheduler : NotificationScheduler {
         }
     }
 
-    private fun setupNotificationCategories() {
+    fun setupNotificationCategories() {
         val completeAction = UNNotificationAction.actionWithIdentifier(
             identifier = "COMPLETE_ACTION",
             title = "Mark Complete",
