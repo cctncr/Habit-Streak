@@ -176,9 +176,12 @@ class HabitsViewModel(
             }
         }
 
-        // History'leri güncelle
+        // History'leri ve allRecords'ı güncelle
         _uiState.update { state ->
-            state.copy(completionHistories = newHistories.toMap())
+            state.copy(
+                completionHistories = newHistories.toMap(),
+                allRecords = allRecords // CRITICAL FIX: allRecords'ı da güncelle!
+            )
         }
     }
 

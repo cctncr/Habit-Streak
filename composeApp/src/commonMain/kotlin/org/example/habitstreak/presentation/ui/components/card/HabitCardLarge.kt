@@ -28,6 +28,8 @@ import kotlinx.datetime.minus
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
+import org.example.habitstreak.presentation.ui.components.input.SimpleCheckHabitInputPanel
+import org.example.habitstreak.presentation.ui.components.input.CountableHabitInputPanel
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 
 /**
@@ -52,21 +54,8 @@ fun HabitCardLarge(
     var showProgressSheet by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
-    var currentValue by remember(selectedDate) {
-        mutableIntStateOf(
-            selectedDate?.let { date ->
-                habitRecords.find { it.date == date }?.completedCount ?: 0
-            } ?: 0
-        )
-    }
-
-    var currentNote by remember(selectedDate) {
-        mutableStateOf(
-            selectedDate?.let { date ->
-                habitRecords.find { it.date == date }?.note ?: ""
-            } ?: ""
-        )
-    }
+    var currentValue by remember { mutableIntStateOf(0) }
+    var currentNote by remember { mutableStateOf("") }
 
     val isCompleted = todayProgress >= 1f
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
@@ -308,22 +297,34 @@ fun HabitCardLarge(
                     )
                 }
 
-                // Progress Input Panel
-                org.example.habitstreak.presentation.ui.components.HabitProgressInputPanel(
-                    currentValue = currentValue,
-                    targetCount = habit.targetCount,
-                    unit = habit.unit,
-                    onValueChange = { value ->
-                        currentValue = value
-                    },
-                    onReset = {
-                        currentValue = 0
-                    },
-                    onFillDay = {
-                        currentValue = habit.targetCount
-                    },
-                    accentColor = habitColor
-                )
+                // Progress Input Panel - different for simple check vs countable habits
+                if (habit.targetCount == 1) {
+                    // Simple check habit - using common panel same as HabitDetailScreen
+                    SimpleCheckHabitInputPanel(
+                        isCompleted = currentValue >= 1,
+                        onToggle = { isCompleted ->
+                            currentValue = if (isCompleted) 1 else 0
+                        },
+                        accentColor = habitColor
+                    )
+                } else {
+                    // Countable habit - using common panel
+                    CountableHabitInputPanel(
+                        currentValue = currentValue,
+                        targetCount = habit.targetCount,
+                        unit = habit.unit,
+                        onValueChange = { value ->
+                            currentValue = value
+                        },
+                        onReset = {
+                            currentValue = 0
+                        },
+                        onFillDay = {
+                            currentValue = habit.targetCount
+                        },
+                        accentColor = habitColor
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

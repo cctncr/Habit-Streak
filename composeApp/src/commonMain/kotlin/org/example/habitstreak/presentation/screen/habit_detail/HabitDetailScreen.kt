@@ -55,7 +55,8 @@ import org.example.habitstreak.domain.model.HabitType
 import org.example.habitstreak.domain.model.getType
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.model.YearMonth
-import org.example.habitstreak.presentation.ui.components.HabitProgressInputPanel
+import org.example.habitstreak.presentation.ui.components.input.SimpleCheckHabitInputPanel
+import org.example.habitstreak.presentation.ui.components.input.CountableHabitInputPanel
 import org.example.habitstreak.presentation.ui.components.NotificationSettingsCard
 import org.example.habitstreak.presentation.ui.theme.AppTheme
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
@@ -975,42 +976,18 @@ private fun DateDetailSheet(
         if (!isFuture) {
             when (habit.getType()) {
                 HabitType.YES_NO -> {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (currentValue > 0)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    currentValue = if (currentValue > 0) 0 else 1
-                                }
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (currentValue > 0) "Completed" else "Not Completed",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Switch(
-                                checked = currentValue > 0,
-                                onCheckedChange = { checked ->
-                                    currentValue = if (checked) 1 else 0
-                                }
-                            )
-                        }
-                    }
+                    SimpleCheckHabitInputPanel(
+                        isCompleted = currentValue > 0,
+                        onToggle = { isCompleted ->
+                            currentValue = if (isCompleted) 1 else 0
+                        },
+                        accentColor = habit.color.composeColor,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 HabitType.COUNTABLE -> {
-                    HabitProgressInputPanel(
+                    CountableHabitInputPanel(
                         currentValue = currentValue,
                         targetCount = habit.targetCount,
                         unit = habit.unit,

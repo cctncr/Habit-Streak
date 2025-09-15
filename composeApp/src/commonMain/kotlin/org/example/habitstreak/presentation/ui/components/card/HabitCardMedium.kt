@@ -50,6 +50,8 @@ import kotlinx.datetime.minus
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
+import org.example.habitstreak.presentation.ui.components.input.SimpleCheckHabitInputPanel
+import org.example.habitstreak.presentation.ui.components.input.CountableHabitInputPanel
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 
 /**
@@ -72,12 +74,8 @@ fun HabitCardMedium(
 ) {
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showProgressSheet by remember { mutableStateOf(false) }
-    var currentValue by remember(todayRecord) {
-        mutableIntStateOf(todayRecord?.completedCount ?: 0)
-    }
-    var currentNote by remember(todayRecord) {
-        mutableStateOf(todayRecord?.note ?: "")
-    }
+    var currentValue by remember { mutableIntStateOf(0) }
+    var currentNote by remember { mutableStateOf("") }
 
     val isCompleted = todayProgress >= 1f
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
@@ -175,6 +173,9 @@ fun HabitCardMedium(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = ripple(bounded = false, radius = 22.dp)
                         ) {
+                            val record = habitRecords.find { it.date == today }
+                            currentValue = record?.completedCount ?: 0
+                            currentNote = record?.note ?: ""
                             showProgressSheet = true
                         }
                 ) {
@@ -187,6 +188,9 @@ fun HabitCardMedium(
                         buttonSize = 44.dp,
                         strokeWidth = 3.dp,
                         onClick = {
+                            val record = habitRecords.find { it.date == today }
+                            currentValue = record?.completedCount ?: 0
+                            currentNote = record?.note ?: ""
                             showProgressSheet = true
                         }
                     )
@@ -238,22 +242,34 @@ fun HabitCardMedium(
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                // Progress Input Panel
-                org.example.habitstreak.presentation.ui.components.HabitProgressInputPanel(
-                    currentValue = currentValue,
-                    targetCount = habit.targetCount,
-                    unit = habit.unit,
-                    onValueChange = { value ->
-                        currentValue = value
-                    },
-                    onReset = {
-                        currentValue = 0
-                    },
-                    onFillDay = {
-                        currentValue = habit.targetCount
-                    },
-                    accentColor = habitColor
-                )
+                // Progress Input Panel - different for simple check vs countable habits
+                if (habit.targetCount == 1) {
+                    // Simple check habit - using common panel same as HabitDetailScreen
+                    SimpleCheckHabitInputPanel(
+                        isCompleted = currentValue >= 1,
+                        onToggle = { isCompleted ->
+                            currentValue = if (isCompleted) 1 else 0
+                        },
+                        accentColor = habitColor
+                    )
+                } else {
+                    // Countable habit - using common panel
+                    CountableHabitInputPanel(
+                        currentValue = currentValue,
+                        targetCount = habit.targetCount,
+                        unit = habit.unit,
+                        onValueChange = { value ->
+                            currentValue = value
+                        },
+                        onReset = {
+                            currentValue = 0
+                        },
+                        onFillDay = {
+                            currentValue = habit.targetCount
+                        },
+                        accentColor = habitColor
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
