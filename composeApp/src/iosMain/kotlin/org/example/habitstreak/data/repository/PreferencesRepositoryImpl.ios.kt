@@ -15,6 +15,7 @@ actual class PreferencesRepositoryImpl : PreferencesRepository {
         const val SOUND_ENABLED = "sound_enabled"
         const val VIBRATION_ENABLED = "vibration_enabled"
         const val THEME = "theme"
+        const val LOCALE = "locale"
     }
 
     // Initialize with stored values or defaults
@@ -32,6 +33,9 @@ actual class PreferencesRepositoryImpl : PreferencesRepository {
         if (userDefaults.objectForKey(THEME) == null) {
             userDefaults.setObject("system", THEME)
         }
+        if (userDefaults.objectForKey(LOCALE) == null) {
+            userDefaults.setObject("en", LOCALE)
+        }
         userDefaults.synchronize()
     }
 
@@ -47,6 +51,9 @@ actual class PreferencesRepositoryImpl : PreferencesRepository {
     )
     private val _theme = MutableStateFlow(
         userDefaults.objectForKey(THEME) as? String ?: "system"
+    )
+    private val _locale = MutableStateFlow(
+        userDefaults.objectForKey(LOCALE) as? String ?: "en"
     )
 
     override suspend fun setNotificationsEnabled(enabled: Boolean) {
@@ -87,4 +94,13 @@ actual class PreferencesRepositoryImpl : PreferencesRepository {
 
     override fun getTheme(): Flow<String> =
         _theme.asStateFlow()
+
+    override suspend fun setLocale(locale: String) {
+        userDefaults.setObject(locale, LOCALE)
+        userDefaults.synchronize()
+        _locale.value = locale
+    }
+
+    override fun getLocale(): Flow<String> =
+        _locale.asStateFlow()
 }

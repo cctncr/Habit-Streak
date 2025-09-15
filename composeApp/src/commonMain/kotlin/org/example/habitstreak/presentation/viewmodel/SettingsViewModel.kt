@@ -9,6 +9,8 @@ import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.presentation.ui.state.SettingsUiState
+import org.example.habitstreak.core.util.AppLocale
+import org.example.habitstreak.core.util.LocaleManager
 
 class SettingsViewModel(
     private val preferencesRepository: PreferencesRepository,
@@ -46,6 +48,14 @@ class SettingsViewModel(
             launch {
                 preferencesRepository.getTheme().collect { theme ->
                     _uiState.update { it.copy(theme = theme) }
+                }
+            }
+
+            launch {
+                preferencesRepository.getLocale().collect { localeCode ->
+                    val locale = AppLocale.fromCode(localeCode)
+                    LocaleManager.setLocale(locale)
+                    _uiState.update { it.copy(locale = locale) }
                 }
             }
         }
@@ -135,6 +145,16 @@ class SettingsViewModel(
     fun setTheme(theme: String) {
         viewModelScope.launch {
             preferencesRepository.setTheme(theme)
+        }
+    }
+
+    fun setLocale(locale: AppLocale) {
+        println("⚙️ SettingsViewModel.setLocale: Called with ${locale.code}")
+        viewModelScope.launch {
+            LocaleManager.setLocale(locale)
+            preferencesRepository.setLocale(locale.code)
+            _uiState.update { it.copy(locale = locale) }
+            println("✅ SettingsViewModel.setLocale: Completed for ${locale.code}")
         }
     }
 

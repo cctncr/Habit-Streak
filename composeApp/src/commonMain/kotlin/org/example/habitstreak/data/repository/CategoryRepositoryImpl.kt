@@ -102,7 +102,7 @@ class CategoryRepositoryImpl(
                     ?: throw IllegalArgumentException("Kategori bulunamadı")
 
                 if (!category.isCustom) {
-                    throw IllegalArgumentException("Varsayılan kategoriler silinemez")
+                    throw org.example.habitstreak.core.error.DefaultCategoryDeleteException()
                 }
 
                 categoryQueries.delete(categoryId)

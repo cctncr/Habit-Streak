@@ -35,7 +35,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.action_restore
+import habitstreak.composeapp.generated.resources.archived_habits_title
+import habitstreak.composeapp.generated.resources.archived_no_habits
+import habitstreak.composeapp.generated.resources.archived_no_habits_desc
+import habitstreak.composeapp.generated.resources.nav_back
 import org.example.habitstreak.domain.model.Habit
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,14 +57,15 @@ fun ArchivedHabitsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Archived Habits",
+                        text = stringResource(Res.string.archived_habits_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(
+                            Res.string.nav_back))
                     }
                 }
             )
@@ -127,7 +135,7 @@ private fun ArchivedHabitCard(
             }
 
             FilledTonalButton(onClick = onRestore) {
-                Text("Restore")
+                Text(stringResource(Res.string.action_restore))
             }
         }
     }
@@ -150,12 +158,12 @@ private fun EmptyArchivedState(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No Archived Habits",
+            text = stringResource(Res.string.archived_no_habits),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Archived habits will appear here",
+            text = stringResource(Res.string.archived_no_habits_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center

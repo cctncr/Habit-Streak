@@ -4,18 +4,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
 
 sealed class ViewMode(
     val icon: ImageVector,
-    val label: String,
     val rows: Int,
     val isGridClickable: Boolean,
     val cardHeightMultiplier: Float
 ) {
     object Large : ViewMode(
         icon = Icons.Outlined.GridView,
-        label = "Large Grid",
         rows = 5,
         isGridClickable = true,
         cardHeightMultiplier = 1.4f
@@ -23,7 +25,6 @@ sealed class ViewMode(
 
     object Medium : ViewMode(
         icon = Icons.Outlined.ViewAgenda,
-        label = "Medium Grid",
         rows = 3,
         isGridClickable = false,
         cardHeightMultiplier = 1.0f
@@ -31,11 +32,17 @@ sealed class ViewMode(
 
     object Compact : ViewMode(
         icon = Icons.AutoMirrored.Outlined.ViewList,
-        label = "Compact",
         rows = 1,
         isGridClickable = false,
         cardHeightMultiplier = 0.6f
     )
+
+    @Composable
+    fun getLabel(): String = when (this) {
+        Large -> stringResource(Res.string.view_mode_large)
+        Medium -> stringResource(Res.string.view_mode_medium)
+        Compact -> stringResource(Res.string.view_mode_compact)
+    }
 
     companion object {
         fun values() = listOf(Large, Medium, Compact)

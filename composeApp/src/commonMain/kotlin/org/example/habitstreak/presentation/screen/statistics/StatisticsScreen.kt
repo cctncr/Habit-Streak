@@ -1,11 +1,7 @@
 package org.example.habitstreak.presentation.screen.statistics
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -42,43 +38,34 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.action_cancel
+import habitstreak.composeapp.generated.resources.action_export
+import habitstreak.composeapp.generated.resources.nav_back
+import habitstreak.composeapp.generated.resources.nav_statistics
+import habitstreak.composeapp.generated.resources.stat_active_habits
+import habitstreak.composeapp.generated.resources.stat_activity_heatmap
+import habitstreak.composeapp.generated.resources.stat_all_time
+import habitstreak.composeapp.generated.resources.stat_avg_completion
+import habitstreak.composeapp.generated.resources.stat_best_streak
+import habitstreak.composeapp.generated.resources.stat_completion_trend
+import habitstreak.composeapp.generated.resources.stat_export_statistics
+import habitstreak.composeapp.generated.resources.stat_predictions
+import habitstreak.composeapp.generated.resources.stat_progress_trends
+import habitstreak.composeapp.generated.resources.stat_streak_distribution
+import habitstreak.composeapp.generated.resources.stat_this_period
+import habitstreak.composeapp.generated.resources.stat_top_performers
+import habitstreak.composeapp.generated.resources.stat_total_checks
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
-import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.HabitStatistics
 import org.example.habitstreak.presentation.viewmodel.StatisticsViewModel
+import org.example.habitstreak.presentation.screen.statistics.model.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
-import kotlin.math.*
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-
-// Data classes for better organization (Single Responsibility)
-data class ChartData(
-    val label: String,
-    val value: Float,
-    val date: LocalDate
-)
-
-data class StreakData(
-    val range: String,
-    val count: Int,
-    val percentage: Float
-)
-
-enum class TimePeriod(val label: String, val days: Int) {
-    WEEK("Week", 7),
-    MONTH("Month", 30),
-    QUARTER("3 Months", 90),
-    YEAR("Year", 365)
-}
-
-enum class StatTab(val label: String, val icon: ImageVector) {
-    OVERVIEW("Overview", Icons.Outlined.Dashboard),
-    HABITS("Habits", Icons.Outlined.CheckCircle),
-    INSIGHTS("Insights", Icons.Outlined.Lightbulb),
-    TRENDS("Trends", Icons.Outlined.TrendingUp)
-}
 
 // Main Screen Component
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -178,18 +165,18 @@ private fun StatisticsTopBar(
     TopAppBar(
         title = {
             Text(
-                "Statistics",
+                stringResource(Res.string.nav_statistics),
                 fontWeight = FontWeight.Bold
             )
         },
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.nav_back))
             }
         },
         actions = {
             IconButton(onClick = onExportClick) {
-                Icon(Icons.Outlined.Share, "Export")
+                Icon(Icons.Outlined.Share, stringResource(Res.string.action_export))
             }
         }
     )
@@ -209,7 +196,7 @@ private fun PeriodSelector(
             FilterChip(
                 selected = selectedPeriod == period,
                 onClick = { onPeriodSelected(period) },
-                label = { Text(period.label) },
+                label = { Text(period.getLabel()) },
                 leadingIcon = if (selectedPeriod == period) {
                     { Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
                 } else null
@@ -229,7 +216,7 @@ private fun StatisticsTabs(
             Tab(
                 selected = selectedTab == index,
                 onClick = { onTabSelected(index) },
-                text = { Text(tab.label) },
+                text = { Text(tab.getLabel()) },
                 icon = { Icon(tab.icon, contentDescription = null) }
             )
         }
@@ -282,7 +269,7 @@ private fun SummaryCardsGrid(statistics: List<HabitStatistics>) {
         ) {
             MetricCard(
                 modifier = Modifier.weight(1f),
-                title = "Active Habits",
+                title = stringResource(Res.string.stat_active_habits),
                 value = "${metrics.activeHabits}",
                 subtitle = "of ${metrics.totalHabits}",
                 icon = Icons.Outlined.CheckCircle,
@@ -290,9 +277,9 @@ private fun SummaryCardsGrid(statistics: List<HabitStatistics>) {
             )
             MetricCard(
                 modifier = Modifier.weight(1f),
-                title = "Avg Completion",
+                title = stringResource(Res.string.stat_avg_completion),
                 value = "${metrics.avgCompletionRate}%",
-                subtitle = "This period",
+                subtitle = stringResource(Res.string.stat_this_period),
                 icon = Icons.Outlined.Analytics,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -303,15 +290,15 @@ private fun SummaryCardsGrid(statistics: List<HabitStatistics>) {
         ) {
             MetricCard(
                 modifier = Modifier.weight(1f),
-                title = "Total Checks",
+                title = stringResource(Res.string.stat_total_checks),
                 value = "${metrics.totalCompletions}",
-                subtitle = "All time",
+                subtitle = stringResource(Res.string.stat_all_time),
                 icon = Icons.Outlined.Done,
                 color = MaterialTheme.colorScheme.tertiary
             )
             MetricCard(
                 modifier = Modifier.weight(1f),
-                title = "Best Streak",
+                title = stringResource(Res.string.stat_best_streak),
                 value = "${metrics.longestStreak}",
                 subtitle = "days",
                 icon = Icons.Outlined.LocalFireDepartment,
@@ -383,7 +370,7 @@ private fun CompletionChartCard(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Completion Trend",
+                text = stringResource(Res.string.stat_completion_trend),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -521,7 +508,7 @@ private fun StreakDistributionCard(statistics: List<HabitStatistics>) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "Streak Distribution",
+                text = stringResource(Res.string.stat_streak_distribution),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -610,7 +597,7 @@ private fun BestPerformersCard(statistics: List<HabitStatistics>) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Top Performers",
+                    text = stringResource(Res.string.stat_top_performers),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -909,7 +896,7 @@ private fun HeatmapCard(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Activity Heatmap",
+                text = stringResource(Res.string.stat_activity_heatmap),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -984,7 +971,7 @@ private fun ProgressTrendsCard(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Progress Trends",
+                text = stringResource(Res.string.stat_progress_trends),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -1063,7 +1050,7 @@ private fun PredictionsCard(statistics: List<HabitStatistics>) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Predictions",
+                    text = stringResource(Res.string.stat_predictions),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -1148,7 +1135,7 @@ private fun ExportDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Export Statistics") },
+        title = { Text(stringResource(Res.string.stat_export_statistics)) },
         text = {
             Column {
                 Text("Choose export format:")
@@ -1168,7 +1155,7 @@ private fun ExportDialog(
                         )
                         Column {
                             Text(
-                                text = format.label,
+                                text = format.name,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
@@ -1184,7 +1171,7 @@ private fun ExportDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(Res.string.action_cancel))
             }
         }
     )

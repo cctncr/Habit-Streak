@@ -1,0 +1,23 @@
+package org.example.habitstreak.core.util
+
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.example.habitstreak.domain.util.DateProvider
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
+
+class DateProviderImpl : DateProvider {
+    @OptIn(ExperimentalTime::class)
+    override fun today(): LocalDate {
+        return Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault())
+            .date
+    }
+
+    @OptIn(ExperimentalTime::class)
+    override fun now(): Instant {
+        return Clock.System.now()
+    }
+}

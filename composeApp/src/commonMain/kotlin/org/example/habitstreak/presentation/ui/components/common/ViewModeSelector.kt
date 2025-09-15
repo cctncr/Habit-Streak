@@ -110,7 +110,7 @@ private fun ViewModeButton(
     ) {
         Icon(
             imageVector = mode.icon,
-            contentDescription = mode.label,
+            contentDescription = mode.getLabel(),
             modifier = Modifier.size(24.dp)
         )
     }

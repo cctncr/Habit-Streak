@@ -7,6 +7,7 @@ import org.example.habitstreak.domain.model.NotificationError
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.NotificationRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
+import org.example.habitstreak.core.error.*
 
 /**
  * Notification service following SOLID principles
@@ -176,9 +177,3 @@ class NotificationService(
     }
 }
 
-// Custom exceptions
-class NotificationPermissionDeniedException : Exception("Notification permission denied")
-class HabitNotFoundException(habitId: String) : Exception("Habit not found: $habitId")
-class NotificationNotFoundException(habitId: String) :
-    Exception("Notification config not found for habit: $habitId")
-class NotificationsDisabledException : Exception("Notifications are globally disabled")

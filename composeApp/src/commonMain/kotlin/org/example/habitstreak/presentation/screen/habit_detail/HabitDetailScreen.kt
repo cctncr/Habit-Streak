@@ -47,8 +47,9 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.datetime.LocalDate
+import org.example.habitstreak.core.extensions.formatLong
+import org.example.habitstreak.core.extensions.formatRelative
 import org.example.habitstreak.domain.model.Habit
-import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.HabitType
 import org.example.habitstreak.domain.model.getType
@@ -57,14 +58,10 @@ import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.ui.components.HabitProgressInputPanel
 import org.example.habitstreak.presentation.ui.components.NotificationSettingsCard
 import org.example.habitstreak.presentation.ui.theme.AppTheme
-import org.example.habitstreak.presentation.ui.utils.formatShort
-import org.example.habitstreak.presentation.ui.utils.formatLong
-import org.example.habitstreak.presentation.ui.utils.formatRelative
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import kotlin.math.roundToInt
 import kotlin.time.ExperimentalTime
 
 enum class ActivityTab(val label: String) {

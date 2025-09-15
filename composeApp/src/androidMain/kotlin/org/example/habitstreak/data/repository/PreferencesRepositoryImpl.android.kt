@@ -24,6 +24,7 @@ actual class PreferencesRepositoryImpl(
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val VIBRATION_ENABLED = booleanPreferencesKey("vibration_enabled")
         val THEME = stringPreferencesKey("theme")
+        val LOCALE = stringPreferencesKey("locale")
     }
 
     override suspend fun setNotificationsEnabled(enabled: Boolean) {
@@ -103,5 +104,24 @@ actual class PreferencesRepositoryImpl(
             }
             .map { preferences ->
                 preferences[THEME] ?: "system"
+            }
+
+    override suspend fun setLocale(locale: String) {
+        context.dataStore.edit { preferences ->
+            preferences[LOCALE] = locale
+        }
+    }
+
+    override fun getLocale(): Flow<String> =
+        context.dataStore.data
+            .catch { exception ->
+                if (exception is IOException) {
+                    emit(emptyPreferences())
+                } else {
+                    throw exception
+                }
+            }
+            .map { preferences ->
+                preferences[LOCALE] ?: "en"
             }
 }

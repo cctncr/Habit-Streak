@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App General -->
+    <string name="app_name">Habit Streak</string>
+
+    <!-- Navigation -->
+    <string name="nav_habits">Alışkanlıklar</string>
+    <string name="nav_statistics">İstatistikler</string>
+    <string name="nav_settings">Ayarlar</string>
+    <string name="nav_back">Geri</string>
+
+    <!-- Date and Time -->
+    <string name="month_jan">Oca</string>
+    <string name="month_feb">Şub</string>
+    <string name="month_mar">Mar</string>
+    <string name="month_apr">Nis</string>
+    <string name="month_may">May</string>
+    <string name="month_jun">Haz</string>
+    <string name="month_jul">Tem</string>
+    <string name="month_aug">Ağu</string>
+    <string name="month_sep">Eyl</string>
+    <string name="month_oct">Eki</string>
+    <string name="month_nov">Kas</string>
+    <string name="month_dec">Ara</string>
+
+    <string name="time_am">ÖÖ</string>
+    <string name="time_pm">ÖS</string>
+
+    <string name="date_today">Bugün</string>
+    <string name="date_tomorrow">Yarın</string>
+    <string name="date_yesterday">Dün</string>
+    <string name="date_next_week">Gelecek hafta</string>
+    <string name="date_last_week">Geçen hafta</string>
+    <string name="date_next_year">Gelecek yıl</string>
+    <string name="date_last_year">Geçen yıl</string>
+    <string name="date_in_days">%d gün sonra</string>
+    <string name="date_days_ago">%d gün önce</string>
+    <string name="date_in_weeks">%d hafta sonra</string>
+    <string name="date_weeks_ago">%d hafta önce</string>
+    <string name="date_in_months">%d ay sonra</string>
+    <string name="date_months_ago">%d ay önce</string>
+    <string name="date_in_years">%d yıl sonra</string>
+    <string name="date_years_ago">%d yıl önce</string>
+
+    <!-- Week Days Short -->
+    <string name="day_mon_short">P</string>
+    <string name="day_tue_short">S</string>
+    <string name="day_wed_short">Ç</string>
+    <string name="day_thu_short">P</string>
+    <string name="day_fri_short">C</string>
+    <string name="day_sat_short">C</string>
+    <string name="day_sun_short">P</string>
+
+    <!-- Time Periods -->
+    <string name="period_week">Hafta</string>
+    <string name="period_month">Ay</string>
+    <string name="period_quarter">3 Ay</string>
+    <string name="period_year">Yıl</string>
+
+    <!-- Statistics Tabs -->
+    <string name="stat_tab_overview">Genel Bakış</string>
+    <string name="stat_tab_habits">Alışkanlıklar</string>
+    <string name="stat_tab_insights">İçgörüler</string>
+    <string name="stat_tab_trends">Trendler</string>
+
+    <!-- Activity Tabs -->
+    <string name="activity_tab_calendar">Takvim</string>
+    <string name="activity_tab_history">Geçmiş</string>
+
+    <!-- View Modes -->
+    <string name="view_mode_large">Büyük Izgara</string>
+    <string name="view_mode_medium">Orta Izgara</string>
+    <string name="view_mode_compact">Kompakt</string>
+
+    <!-- Habit Forms -->
+    <string name="habit_name">Alışkanlık Adı</string>
+    <string name="habit_description">Açıklama (İsteğe Bağlı)</string>
+    <string name="habit_target_amount">Hedef Miktar</string>
+    <string name="habit_unit">Birim</string>
+    <string name="habit_note">Not</string>
+
+    <!-- Habit Types -->
+    <string name="habit_type_simple">Basit İşaretleme</string>
+    <string name="habit_type_countable">Sayılabilir</string>
+
+    <!-- Filter -->
+    <string name="filter_all">Tümü</string>
+    <string name="filter_today">Bugün</string>
+    <string name="filter_weekly">Haftalık</string>
+    <string name="filter_archived">Arşivlenmiş</string>
+
+    <!-- Actions -->
+    <string name="action_save">Kaydet</string>
+    <string name="action_cancel">İptal</string>
+    <string name="action_delete">Sil</string>
+    <string name="action_edit">Düzenle</string>
+    <string name="action_archive">Arşivle</string>
+    <string name="action_restore">Geri Yükle</string>
+    <string name="action_export">Dışa Aktar</string>
+    <string name="action_create">Oluştur</string>
+    <string name="action_complete">Tamamla</string>
+    <string name="action_add">Ekle</string>
+
+    <!-- Labels -->
+    <string name="label_created">Oluşturuldu</string>
+    <string name="label_progress">İlerleme</string>
+    <string name="label_streak">Seri</string>
+    <string name="label_completion_rate">Tamamlanma Oranı</string>
+    <string name="label_current_streak">Mevcut Seri</string>
+    <string name="label_longest_streak">En Uzun Seri</string>
+    <string name="label_total_completions">Toplam Tamamlanma</string>
+
+    <!-- Units -->
+    <string name="unit_days">gün</string>
+    <string name="unit_times">kez</string>
+    <string name="unit_minutes">dakika</string>
+    <string name="unit_hours">saat</string>
+    <string name="unit_glasses">bardak</string>
+    <string name="unit_pages">sayfa</string>
+    <string name="unit_steps">adım</string>
+
+    <!-- Insights -->
+    <string name="insight_best_streak">En İyi Seri</string>
+    <string name="insight_best_streak_desc">En uzun alışkanlık seriniz</string>
+    <string name="insight_consistency">Genel Tutarlılık</string>
+    <string name="insight_consistency_desc">Ortalama tamamlanma oranınız</string>
+    <string name="insight_total_completions">Toplam Tamamlanma</string>
+    <string name="insight_total_completions_desc">Toplam alışkanlık tamamlanmaları</string>
+
+    <!-- Predictions -->
+    <string name="prediction_excellent">mükemmel ilerleme</string>
+    <string name="prediction_continue">devam edecek gibi</string>
+    <string name="prediction_attention">dikkat gerekli</string>
+    <string name="prediction_improvement">iyileştirme gerekli</string>
+
+    <!-- Export Formats -->
+    <string name="export_csv">CSV</string>
+    <string name="export_json">JSON</string>
+    <string name="export_pdf">PDF</string>
+
+    <!-- Empty States -->
+    <string name="empty_habits">Henüz alışkanlık yok</string>
+    <string name="empty_habits_desc">Başlamak için ilk alışkanlığınızı oluşturun</string>
+    <string name="empty_archived">Arşivlenmiş alışkanlık yok</string>
+    <string name="empty_statistics">Henüz veri yok</string>
+
+    <!-- Error Messages -->
+    <string name="error_habit_not_found">Alışkanlık bulunamadı</string>
+    <string name="error_notification_permission">Bildirim izni reddedildi</string>
+    <string name="error_notifications_disabled">Bildirimler genel olarak devre dışı</string>
+    <string name="error_notification_config_not_found">Alışkanlık için bildirim yapılandırması bulunamadı</string>
+    <string name="error_default_categories_delete">Varsayılan kategoriler silinemez</string>
+    <string name="error_habit_title_exists">Bu başlığa sahip bir alışkanlık zaten mevcut</string>
+    <string name="error_failed_load_categories">Kategoriler yüklenemedi</string>
+    <string name="error_occurred">Bir hata oluştu</string>
+    <string name="error_failed_archive_habit">Alışkanlık arşivlenemedi</string>
+    <string name="error_no_navigator">Navigatör sağlanmadı</string>
+
+    <!-- Success Messages -->
+    <string name="success_habit_created">Alışkanlık başarıyla oluşturuldu</string>
+    <string name="success_habit_updated">Alışkanlık başarıyla güncellendi</string>
+    <string name="success_habit_deleted">Alışkanlık başarıyla silindi</string>
+    <string name="success_habit_archived">Alışkanlık başarıyla arşivlendi</string>
+    <string name="success_habit_restored">Alışkanlık başarıyla geri yüklendi</string>
+    <string name="success_notifications_enabled">Bildirimler etkinleştirildi</string>
+    <string name="success_notifications_disabled">Bildirimler devre dışı bırakıldı</string>
+
+    <!-- Settings -->
+    <string name="settings_notifications">Bildirimler</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_language">Dil</string>
+    <string name="settings_about">Hakkında</string>
+
+    <!-- Language Options -->
+    <string name="language_english">English</string>
+    <string name="language_turkish">Türkçe</string>
+
+    <!-- Confirmation Dialogs -->
+    <string name="confirm_delete_habit">Bu alışkanlığı silmek istediğinizden emin misiniz?</string>
+    <string name="confirm_archive_habit">Bu alışkanlığı arşivlemek istediğinizden emin misiniz?</string>
+    <string name="confirm_restore_habit">Bu alışkanlığı geri yüklemek istediğinizden emin misiniz?</string>
+
+    <!-- Placeholders -->
+    <string name="placeholder_habit_name">Alışkanlık adını girin</string>
+    <string name="placeholder_description">Açıklama girin</string>
+    <string name="placeholder_search">Alışkanlık ara</string>
+
+    <!-- Categories -->
+    <string name="category_health">Sağlık</string>
+    <string name="category_fitness">Fitness</string>
+    <string name="category_learning">Öğrenme</string>
+    <string name="category_productivity">Verimlilik</string>
+    <string name="category_lifestyle">Yaşam Tarzı</string>
+    <string name="category_mindfulness">Farkındalık</string>
+
+    <!-- Frequency -->
+    <string name="frequency_daily">Günlük</string>
+    <string name="frequency_weekly">Haftalık</string>
+    <string name="frequency_monthly">Aylık</string>
+
+    <!-- Common -->
+    <string name="yes">Evet</string>
+    <string name="no">Hayır</string>
+    <string name="ok">Tamam</string>
+    <string name="loading">Yükleniyor...</string>
+    <string name="retry">Tekrar Dene</string>
+
+    <!-- Theme options -->
+    <string name="theme_system">Sistem varsayılanı</string>
+    <string name="theme_light">Açık</string>
+    <string name="theme_dark">Koyu</string>
+
+    <!-- Sections -->
+    <string name="section_general">Genel</string>
+    <string name="section_notifications">Bildirimler</string>
+    <string name="section_data_privacy">Veri ve Gizlilik</string>
+    <string name="section_about">Hakkında</string>
+
+    <!-- Settings items -->
+    <string name="setting_push_notifications">Bildirimler</string>
+    <string name="setting_push_notifications_desc">Alışkanlıklarınız için hatırlatma alın</string>
+    <string name="setting_sound">Ses</string>
+    <string name="setting_sound_desc">Bildirimlerle ses çal</string>
+    <string name="setting_vibration">Titreşim</string>
+    <string name="setting_vibration_desc">Bildirimlerle titreşim</string>
+    <string name="setting_backup_restore">Yedekleme ve Geri Yükleme</string>
+    <string name="setting_backup_restore_desc">Verilerinizi buluta yedekleyin</string>
+    <string name="setting_export_data">Veri Dışa Aktarma</string>
+    <string name="setting_export_data_desc">CSV veya JSON olarak dışa aktar</string>
+    <string name="setting_archived_habits">Arşivlenmiş Alışkanlıklar</string>
+    <string name="setting_archived_habits_desc">Arşivlenmiş alışkanlıkları görüntüle ve geri yükle</string>
+    <string name="setting_version">Sürüm 1.0.0</string>
+
+    <!-- Statistics -->
+    <string name="stat_active_habits">Aktif Alışkanlıklar</string>
+    <string name="stat_avg_completion">Ortalama Tamamlanma</string>
+    <string name="stat_this_period">Bu dönem</string>
+    <string name="stat_total_checks">Toplam İşaretleme</string>
+    <string name="stat_all_time">Tüm zamanlar</string>
+    <string name="stat_best_streak">En İyi Seri</string>
+    <string name="stat_completion_trend">Tamamlanma Trendi</string>
+    <string name="stat_streak_distribution">Seri Dağılımı</string>
+    <string name="stat_top_performers">En İyi Performanslar</string>
+    <string name="stat_activity_heatmap">Aktivite Isı Haritası</string>
+    <string name="stat_progress_trends">İlerleme Trendleri</string>
+    <string name="stat_predictions">Tahminler</string>
+    <string name="stat_export_statistics">İstatistikleri Dışa Aktar</string>
+
+    <!-- Export formats descriptions -->
+    <string name="export_pdf_desc">Biçimlendirilmiş rapor</string>
+    <string name="export_csv_desc">Analiz için ham veri</string>
+    <string name="export_json_desc">Geliştirici formatı</string>
+
+    <!-- Insights titles and actions -->
+    <string name="insight_top_performer">En İyi Performans</string>
+    <string name="insight_keep_momentum">Momentumu koruyun</string>
+    <string name="insight_room_for_growth">Gelişim Alanı</string>
+    <string name="insight_try_reminders">Hatırlatıcı ayarlamayı deneyin</string>
+    <string name="insight_your_pattern">Deseniniz</string>
+    <string name="insight_overall_completion">Genel Tamamlanma</string>
+    <string name="insight_average_streak">Ortalama Seri</string>
+    <string name="insight_habit_count">Alışkanlık Sayısı</string>
+
+    <!-- Days of week -->
+    <string name="day_monday">Pzt</string>
+    <string name="day_tuesday">Sal</string>
+    <string name="day_wednesday">Çar</string>
+    <string name="day_thursday">Per</string>
+    <string name="day_friday">Cum</string>
+    <string name="day_saturday">Cmt</string>
+    <string name="day_sunday">Paz</string>
+
+    <!-- Additional categories -->
+    <string name="category_nutrition">Beslenme</string>
+    <string name="category_finance">Finans</string>
+    <string name="category_art">Sanat</string>
+    <string name="category_social">Sosyal</string>
+    <string name="category_work">İş</string>
+    <string name="category_business">İş</string>
+    <string name="category_morning">Sabah</string>
+    <string name="category_evening">Akşam</string>
+    <string name="category_afternoon">Öğleden Sonra</string>
+    <string name="category_other">Diğer</string>
+    <string name="category_creativity">Yaratıcılık</string>
+
+    <!-- Archived habits -->
+    <string name="archived_habits_title">Arşivlenmiş Alışkanlıklar</string>
+    <string name="archived_no_habits">Arşivlenmiş Alışkanlık Yok</string>
+    <string name="archived_no_habits_desc">Arşivlenmiş alışkanlıklar burada görünecek</string>
+
+    <!-- Notification messages -->
+    <string name="notification_habit_reminder">Alışkanlık Hatırlatıcısı</string>
+    <string name="notification_mark_complete">Tamamla</string>
+    <string name="notification_snooze">Ertele</string>
+    <string name="notification_completed_from_notification">Bildirimden tamamlandı</string>
+    <string name="notification_snoozed">Ertelendi</string>
+    <string name="notification_channel_name">Alışkanlık Hatırlatıcıları</string>
+    <string name="notification_channel_desc">Alışkanlıklarınız için günlük hatırlatıcılar</string>
+</resources>

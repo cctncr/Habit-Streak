@@ -15,4 +15,7 @@ interface PreferencesRepository {
 
     suspend fun setTheme(theme: String)
     fun getTheme(): Flow<String>
+
+    suspend fun setLocale(locale: String)
+    fun getLocale(): Flow<String>
 }

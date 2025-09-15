@@ -1,4 +1,4 @@
-package org.example.habitstreak.di
+package org.example.habitstreak.app.di
 
 import org.example.habitstreak.data.repository.HabitRecordRepositoryImpl
 import org.example.habitstreak.data.repository.HabitRepositoryImpl
@@ -16,7 +16,7 @@ import org.example.habitstreak.data.local.HabitDatabase
 import org.example.habitstreak.data.repository.CategoryRepositoryImpl
 import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.util.DateProvider
-import org.example.habitstreak.domain.util.DateProviderImpl
+import org.example.habitstreak.core.util.DateProviderImpl
 
 val appModule = module {
     // Core utilities
@@ -77,13 +77,5 @@ val appModule = module {
             database = get(),
             dateProvider = get()
         )
-    }
-}
-
-class InitializeCategoriesUseCase(
-    private val categoryRepository: CategoryRepository
-) {
-    suspend operator fun invoke() {
-        categoryRepository.initializePredefinedCategories()
     }
 }

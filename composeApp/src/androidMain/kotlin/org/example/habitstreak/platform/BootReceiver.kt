@@ -6,11 +6,8 @@ import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.example.habitstreak.di.appModule
-import org.example.habitstreak.di.androidModule
 import org.example.habitstreak.domain.service.NotificationService
 import org.koin.core.context.GlobalContext
-import org.koin.core.context.startKoin
 
 /**
  * Reschedules notifications after device reboot

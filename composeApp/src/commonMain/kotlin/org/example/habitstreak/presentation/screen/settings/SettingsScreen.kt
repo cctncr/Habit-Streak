@@ -19,11 +19,19 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -41,6 +49,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.example.habitstreak.presentation.viewmodel.SettingsViewModel
 import org.koin.compose.viewmodel.koinViewModel
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
+import org.example.habitstreak.core.util.AppLocale
+import org.example.habitstreak.core.util.Strings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +62,7 @@ fun SettingsScreen(
     onNavigateToAbout: () -> Unit,
     onNavigateToBackup: () -> Unit,
     onNavigateToArchivedHabits: () -> Unit,
+    onLocaleChanged: (org.example.habitstreak.core.util.AppLocale) -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -68,14 +82,17 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = {
+                    val currentAppLocale = AppLocale.current()
+                    val settingsText = Strings.nav_settings()
+                    println("📱 SettingsScreen: Title recomposing with locale ${currentAppLocale.code}, text: '$settingsText'")
                     Text(
-                        text = "Settings",
+                        text = settingsText,
                         style = MaterialTheme.typography.headlineMedium
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Strings.nav_back())
                     }
                 }
             )
@@ -97,28 +114,29 @@ fun SettingsScreen(
 
                 // General Settings
                 item {
-                    SettingsSection(title = "General") {
+                    SettingsSection(title = Strings.section_general()) {
                         SettingsItem(
                             icon = Icons.Outlined.Palette,
-                            title = "Theme",
+                            title = Strings.settings_theme(),
                             subtitle = when(uiState.theme) {
-                                "system" -> "System default"
-                                "light" -> "Light"
-                                "dark" -> "Dark"
-                                else -> "System default"
+                                "system" -> Strings.theme_system()
+                                "light" -> Strings.theme_light()
+                                "dark" -> Strings.theme_dark()
+                                else -> Strings.theme_system()
                             },
                             onClick = { showThemeDialog = true }
                         )
-                        SettingsItem(
-                            icon = Icons.Outlined.Language,
-                            title = "Language",
-                            subtitle = "English",
-                            onClick = { }
+                        LanguageSettingsItem(
+                            currentLocale = uiState.locale,
+                            onLocaleChanged = { locale ->
+                                println("🎛️ SettingsScreen: User selected locale ${locale.code}")
+                                viewModel.setLocale(locale)
+                            }
                         )
                         SettingsItem(
                             icon = Icons.Outlined.Archive,
-                            title = "Archived Habits",
-                            subtitle = "View and restore archived habits",
+                            title = stringResource(Res.string.setting_archived_habits),
+                            subtitle = stringResource(Res.string.setting_archived_habits_desc),
                             onClick = onNavigateToArchivedHabits
                         )
                     }
@@ -126,11 +144,11 @@ fun SettingsScreen(
 
                 // Notifications Section
                 item {
-                    SettingsSection(title = "Notifications") {
+                    SettingsSection(title = stringResource(Res.string.section_notifications)) {
                         SettingsSwitchItem(
                             icon = Icons.Outlined.Notifications,
-                            title = "Push Notifications",
-                            subtitle = "Get reminders for your habits",
+                            title = stringResource(Res.string.setting_push_notifications),
+                            subtitle = stringResource(Res.string.setting_push_notifications_desc),
                             checked = uiState.notificationsEnabled,
                             onCheckedChange = { enabled ->
                                 viewModel.toggleNotifications(enabled)
@@ -142,16 +160,16 @@ fun SettingsScreen(
                             Column {
                                 SettingsSwitchItem(
                                     icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                                    title = "Sound",
-                                    subtitle = "Play sound with notifications",
+                                    title = stringResource(Res.string.setting_sound),
+                                    subtitle = stringResource(Res.string.setting_sound_desc),
                                     checked = uiState.soundEnabled,
                                     onCheckedChange = { viewModel.toggleSound(it) },
                                     enabled = !uiState.isLoading
                                 )
                                 SettingsSwitchItem(
                                     icon = Icons.Outlined.Vibration,
-                                    title = "Vibration",
-                                    subtitle = "Vibrate with notifications",
+                                    title = stringResource(Res.string.setting_vibration),
+                                    subtitle = stringResource(Res.string.setting_vibration_desc),
                                     checked = uiState.vibrationEnabled,
                                     onCheckedChange = { viewModel.toggleVibration(it) },
                                     enabled = !uiState.isLoading
@@ -163,17 +181,17 @@ fun SettingsScreen(
 
                 // Data & Privacy
                 item {
-                    SettingsSection(title = "Data & Privacy") {
+                    SettingsSection(title = stringResource(Res.string.section_data_privacy)) {
                         SettingsItem(
                             icon = Icons.Outlined.CloudUpload,
-                            title = "Backup & Restore",
-                            subtitle = "Backup your data to cloud",
+                            title = stringResource(Res.string.setting_backup_restore),
+                            subtitle = stringResource(Res.string.setting_backup_restore_desc),
                             onClick = onNavigateToBackup
                         )
                         SettingsItem(
                             icon = Icons.Outlined.FileDownload,
-                            title = "Export Data",
-                            subtitle = "Export as CSV or JSON",
+                            title = stringResource(Res.string.setting_export_data),
+                            subtitle = stringResource(Res.string.setting_export_data_desc),
                             onClick = { }
                         )
                     }
@@ -181,11 +199,11 @@ fun SettingsScreen(
 
                 // About Section
                 item {
-                    SettingsSection(title = "About") {
+                    SettingsSection(title = stringResource(Res.string.section_about)) {
                         SettingsItem(
                             icon = Icons.Outlined.Info,
-                            title = "About",
-                            subtitle = "Version 1.0.0",
+                            title = stringResource(Res.string.settings_about),
+                            subtitle = stringResource(Res.string.setting_version),
                             onClick = onNavigateToAbout
                         )
                     }
@@ -215,4 +233,70 @@ fun SettingsScreen(
             }
         )
     }
+}
+
+@Composable
+private fun LanguageSettingsItem(
+    currentLocale: AppLocale,
+    onLocaleChanged: (AppLocale) -> Unit
+) {
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    SettingsItem(
+        icon = Icons.Outlined.Language,
+        title = stringResource(Res.string.settings_language),
+        subtitle = currentLocale.displayName,
+        onClick = { showLanguageDialog = true }
+    )
+
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            currentLocale = currentLocale,
+            onDismiss = { showLanguageDialog = false },
+            onLocaleSelected = { locale ->
+                onLocaleChanged(locale)
+                showLanguageDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun LanguageSelectionDialog(
+    currentLocale: AppLocale,
+    onDismiss: () -> Unit,
+    onLocaleSelected: (AppLocale) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.settings_language)) },
+        text = {
+            Column {
+                AppLocale.entries.forEach { locale ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onLocaleSelected(locale) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentLocale == locale,
+                            onClick = { onLocaleSelected(locale) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = locale.displayName,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.action_cancel))
+            }
+        }
+    )
 }

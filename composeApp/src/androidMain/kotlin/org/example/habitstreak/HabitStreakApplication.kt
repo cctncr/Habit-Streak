@@ -1,8 +1,8 @@
 package org.example.habitstreak
 
 import android.app.Application
+import org.example.habitstreak.app.di.appModule
 import org.example.habitstreak.di.androidModule
-import org.example.habitstreak.di.appModule
 import org.example.habitstreak.di.platformModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
