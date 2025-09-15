@@ -117,3 +117,9 @@ trace_*.log
 # Temporary string resource files
 **/temp_strings.xml
 **/backup_strings.xml
+
+# Claude documentation and configuration files
+CLAUDE.md
+claude.md
+.claude/
+claude_*.md
