@@ -320,4 +320,12 @@ class CreateEditHabitViewModel(
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
+
+    fun resetForm() {
+        if (!_uiState.value.isEditMode) {
+            _uiState.value = CreateEditHabitUiState(
+                availableCategories = _uiState.value.availableCategories
+            )
+        }
+    }
 }

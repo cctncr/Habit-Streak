@@ -436,4 +436,33 @@
     <string name="start_your_journey">Start Your Journey</string>
     <string name="empty_habits_subtitle">Create your first habit and begin\nbuilding a better version of yourself</string>
     <string name="create_first_habit_button">Create First Habit</string>
+
+    <!-- Create Habit Screen Steps -->
+    <string name="icon_selection_title">Icon</string>
+    <string name="color_selection_title">Color</string>
+    <string name="choose_categories_title">Choose Categories</string>
+    <string name="select_one_or_more_categories">Select one or more categories for your habit</string>
+    <string name="available_categories">Available Categories</string>
+    <string name="add_custom_category">Add Custom</string>
+    <string name="selected_categories">Selected Categories</string>
+    <string name="tap_to_remove_category">Tap on a selected category to remove it</string>
+    <string name="set_your_goal">Set your goal</string>
+    <string name="how_much_to_achieve">How much do you want to achieve each time?</string>
+    <string name="simple_check">Simple Check</string>
+    <string name="countable">Countable</string>
+    <string name="target_amount_label">Target Amount</string>
+    <string name="target_amount_hint">e.g., 8</string>
+    <string name="unit_label">Unit</string>
+    <string name="unit_hint">e.g., glasses, pages, minutes</string>
+    <string name="daily_reminder">Daily Reminder</string>
+    <string name="reminder_at_time">At %s</string>
+    <string name="get_notified_to_complete">Get notified to complete your habit</string>
+    <string name="choose_icon_title">Choose Icon</string>
+    <string name="choose_color_title">Choose Color</string>
+    <string name="preset_glasses">glasses</string>
+    <string name="preset_steps">steps</string>
+    <string name="preset_minutes">minutes</string>
+    <string name="preset_pages">pages</string>
+    <string name="preset_reps">reps</string>
+    <string name="preset_hour">hour</string>
 </resources>

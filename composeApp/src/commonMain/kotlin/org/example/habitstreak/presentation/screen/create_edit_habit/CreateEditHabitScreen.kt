@@ -122,7 +122,7 @@ fun CreateEditHabitScreen(
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
 
-    var currentStep by remember { mutableStateOf(0) }
+    var currentStep by remember(habitId) { mutableStateOf(0) }
     val totalSteps = 3
     val stepProgress by animateFloatAsState(
         targetValue = (currentStep + 1) / totalSteps.toFloat(),
@@ -137,6 +137,7 @@ fun CreateEditHabitScreen(
     var showPermissionDialog by remember { mutableStateOf(false) }
 
     val isFormValid = uiState.title.isNotBlank()
+
 
     Scaffold(
         topBar = {
@@ -159,15 +160,25 @@ fun CreateEditHabitScreen(
                 navigationIcon = {
                     IconButton(onClick = {
                         focusManager.clearFocus()
-                        onNavigateBack()
+                        if (!uiState.isEditMode && currentStep > 0) {
+                            currentStep--
+                        } else {
+                            onNavigateBack()
+                        }
                     }) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.close))
+                        Icon(
+                            if (!uiState.isEditMode && currentStep > 0) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
+                            contentDescription = if (!uiState.isEditMode && currentStep > 0) stringResource(Res.string.previous) else stringResource(Res.string.close)
+                        )
                     }
                 },
                 actions = {
                     TextButton(
                         onClick = {
-                            viewModel.saveHabit(onSuccess = onNavigateBack)
+                            viewModel.saveHabit(onSuccess = {
+                                viewModel.resetForm()
+                                onNavigateBack()
+                            })
                         },
                         enabled = isFormValid && !uiState.isLoading
                     ) {
@@ -281,7 +292,7 @@ fun CreateEditHabitScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Advanced Settings",
+                                    text = stringResource(Res.string.advanced_settings),
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Icon(
@@ -308,11 +319,11 @@ fun CreateEditHabitScreen(
                                     ) {
                                         Column {
                                             Text(
-                                                text = "Archive Habit",
+                                                text = stringResource(Res.string.archive_habit),
                                                 style = MaterialTheme.typography.titleSmall
                                             )
                                             Text(
-                                                text = "Hide this habit without deleting data",
+                                                text = stringResource(Res.string.archive_habit_description),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onErrorContainer
                                             )
@@ -347,7 +358,10 @@ fun CreateEditHabitScreen(
                                     if (currentStep < totalSteps - 1) {
                                         currentStep++
                                     } else {
-                                        viewModel.saveHabit(onSuccess = onNavigateBack)
+                                        viewModel.saveHabit(onSuccess = {
+                                            viewModel.resetForm()
+                                            onNavigateBack()
+                                        })
                                     }
                                 },
                                 enabled = isFormValid
@@ -603,7 +617,7 @@ private fun BasicInfoStep(
         ) {
             SelectionCard(
                 modifier = Modifier.weight(1f),
-                title = "Icon",
+                title = stringResource(Res.string.icon_selection_title),
                 onClick = onShowIconSheet
             ) {
                 Box(
@@ -625,7 +639,7 @@ private fun BasicInfoStep(
 
             SelectionCard(
                 modifier = Modifier.weight(1f),
-                title = "Color",
+                title = stringResource(Res.string.color_selection_title),
                 onClick = onShowColorSheet
             ) {
                 Box(
@@ -652,13 +666,13 @@ private fun CategorySelectionStep(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = "Choose Categories",
+            text = stringResource(Res.string.choose_categories_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
         Text(
-            text = "Select one or more categories for your habit",
+            text = stringResource(Res.string.select_one_or_more_categories),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -675,7 +689,7 @@ private fun CategorySelectionStep(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Available Categories",
+                    text = stringResource(Res.string.available_categories),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -728,7 +742,7 @@ private fun CategorySelectionStep(
                         onClick = viewModel::showCustomCategoryDialog,
                         label = {
                             Text(
-                                "Add Custom",
+                                stringResource(Res.string.add_custom_category),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },
@@ -769,7 +783,7 @@ private fun CategorySelectionStep(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Selected Categories",
+                        text = stringResource(Res.string.selected_categories),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -806,7 +820,7 @@ private fun CategorySelectionStep(
                     }
 
                     Text(
-                        text = "Tap on a selected category to remove it",
+                        text = stringResource(Res.string.tap_to_remove_category),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -824,13 +838,13 @@ private fun GoalStep(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Set your goal",
+            text = stringResource(Res.string.set_your_goal),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
         Text(
-            text = "How much do you want to achieve each time?",
+            text = stringResource(Res.string.how_much_to_achieve),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -849,7 +863,7 @@ private fun GoalStep(
                     viewModel.updateTargetCount(1)
                     viewModel.updateUnit("")
                 },
-                label = { Text("Simple Check") },
+                label = { Text(stringResource(Res.string.simple_check)) },
                 leadingIcon = if (!isCountable) {
                     {
                         Icon(
@@ -865,7 +879,7 @@ private fun GoalStep(
             FilterChip(
                 selected = isCountable,
                 onClick = { isCountable = true },
-                label = { Text("Countable") },
+                label = { Text(stringResource(Res.string.countable)) },
                 leadingIcon = if (isCountable) {
                     {
                         Icon(
@@ -893,8 +907,8 @@ private fun GoalStep(
                                 if (it > 0) viewModel.updateTargetCount(it)
                             }
                         },
-                        label = { Text("Target Amount") },
-                        placeholder = { Text("e.g., 8") },
+                        label = { Text(stringResource(Res.string.target_amount_label)) },
+                        placeholder = { Text(stringResource(Res.string.target_amount_hint)) },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
@@ -903,18 +917,19 @@ private fun GoalStep(
                     OutlinedTextField(
                         value = uiState.unit,
                         onValueChange = viewModel::updateUnit,
-                        label = { Text("Unit") },
-                        placeholder = { Text("e.g., glasses, pages, minutes") },
+                        label = { Text(stringResource(Res.string.unit_label)) },
+                        placeholder = { Text(stringResource(Res.string.unit_hint)) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                 }
 
                 // Preset suggestions
+                val presetGoals = getPresetGoals()
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(getPresetGoals()) { preset ->
+                    items(presetGoals) { preset ->
                         SuggestionChip(
                             onClick = {
                                 viewModel.updateTargetCount(preset.count)
@@ -957,14 +972,14 @@ private fun GoalStep(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Daily Reminder",
+                            text = stringResource(Res.string.daily_reminder),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
                             text = if (uiState.reminderTime != null)
-                                "At ${formatTime(uiState.reminderTime)}"
+                                stringResource(Res.string.reminder_at_time, formatTime(uiState.reminderTime))
                             else
-                                "Get notified to complete your habit",
+                                stringResource(Res.string.get_notified_to_complete),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1027,7 +1042,7 @@ private fun IconSelectionContent(
             .navigationBarsPadding()
     ) {
         Text(
-            text = "Choose Icon",
+            text = stringResource(Res.string.choose_icon_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -1054,7 +1069,7 @@ private fun ColorSelectionContent(
             .navigationBarsPadding()
     ) {
         Text(
-            text = "Choose Color",
+            text = stringResource(Res.string.choose_color_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -1070,18 +1085,22 @@ private fun ColorSelectionContent(
 
 private data class PresetGoal(val count: Int, val unit: String)
 
-private fun getPresetGoals() = listOf(
-    PresetGoal(8, "glasses"),
-    PresetGoal(10000, "steps"),
-    PresetGoal(30, "minutes"),
-    PresetGoal(20, "pages"),
-    PresetGoal(5, "reps"),
-    PresetGoal(3, "hour")
-)
+@Composable
+private fun getPresetGoals(): List<PresetGoal> {
+    return listOf(
+        PresetGoal(8, stringResource(Res.string.preset_glasses)),
+        PresetGoal(10000, stringResource(Res.string.preset_steps)),
+        PresetGoal(30, stringResource(Res.string.preset_minutes)),
+        PresetGoal(20, stringResource(Res.string.preset_pages)),
+        PresetGoal(5, stringResource(Res.string.preset_reps)),
+        PresetGoal(3, stringResource(Res.string.preset_hour))
+    )
+}
 
+@Composable
 private fun formatTime(time: LocalTime): String {
     val hour = if (time.hour == 0) 12 else if (time.hour > 12) time.hour - 12 else time.hour
     val minute = time.minute.toString().padStart(2, '0')
-    val amPm = if (time.hour < 12) "AM" else "PM"
+    val amPm = if (time.hour < 12) stringResource(Res.string.time_am) else stringResource(Res.string.time_pm)
     return "$hour:$minute $amPm"
 }

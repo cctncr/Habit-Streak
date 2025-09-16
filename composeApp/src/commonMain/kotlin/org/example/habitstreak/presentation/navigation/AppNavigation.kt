@@ -51,6 +51,26 @@ fun AppNavigation() {
                     )
                 }
 
+                targetState is Screen.Settings && initialState is Screen.Habits -> {
+                    slideInHorizontally(
+                        initialOffsetX = { width -> -width },
+                        animationSpec = tween(300)
+                    ) togetherWith slideOutHorizontally(
+                        targetOffsetX = { width -> width / 3 },
+                        animationSpec = tween(300)
+                    )
+                }
+
+                targetState is Screen.Habits && initialState is Screen.Settings -> {
+                    slideInHorizontally(
+                        initialOffsetX = { width -> width / 3 },
+                        animationSpec = tween(300)
+                    ) togetherWith slideOutHorizontally(
+                        targetOffsetX = { width -> -width },
+                        animationSpec = tween(300)
+                    )
+                }
+
                 else -> {
                     slideInHorizontally(animationSpec = tween(300)) togetherWith
                             slideOutHorizontally(animationSpec = tween(300))

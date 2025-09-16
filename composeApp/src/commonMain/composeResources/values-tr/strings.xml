@@ -436,4 +436,33 @@
     <string name="start_your_journey">Yolculuğunuza Başlayın</string>
     <string name="empty_habits_subtitle">İlk alışkanlığınızı oluşturun ve kendinizin\ndaha iyi bir versiyonunu inşa etmeye başlayın</string>
     <string name="create_first_habit_button">İlk Alışkanlığı Oluştur</string>
+
+    <!-- Create Habit Screen Steps -->
+    <string name="icon_selection_title">İkon</string>
+    <string name="color_selection_title">Renk</string>
+    <string name="choose_categories_title">Kategorileri Seç</string>
+    <string name="select_one_or_more_categories">Alışkanlığınız için bir veya daha fazla kategori seçin</string>
+    <string name="available_categories">Mevcut Kategoriler</string>
+    <string name="add_custom_category">Özel Ekle</string>
+    <string name="selected_categories">Seçilen Kategoriler</string>
+    <string name="tap_to_remove_category">Kaldırmak için seçili kategoriyi dokunun</string>
+    <string name="set_your_goal">Hedefinizi belirleyin</string>
+    <string name="how_much_to_achieve">Her seferinde ne kadar başarmak istiyorsunuz?</string>
+    <string name="simple_check">Basit İşaretleme</string>
+    <string name="countable">Sayılabilir</string>
+    <string name="target_amount_label">Hedef Miktar</string>
+    <string name="target_amount_hint">ör. 8</string>
+    <string name="unit_label">Birim</string>
+    <string name="unit_hint">ör. bardak, sayfa, dakika</string>
+    <string name="daily_reminder">Günlük Hatırlatma</string>
+    <string name="reminder_at_time">Saat %s</string>
+    <string name="get_notified_to_complete">Alışkanlığınızı tamamlamak için bildirim alın</string>
+    <string name="choose_icon_title">İkon Seç</string>
+    <string name="choose_color_title">Renk Seç</string>
+    <string name="preset_glasses">bardak</string>
+    <string name="preset_steps">adım</string>
+    <string name="preset_minutes">dakika</string>
+    <string name="preset_pages">sayfa</string>
+    <string name="preset_reps">tekrar</string>
+    <string name="preset_hour">saat</string>
 </resources>
