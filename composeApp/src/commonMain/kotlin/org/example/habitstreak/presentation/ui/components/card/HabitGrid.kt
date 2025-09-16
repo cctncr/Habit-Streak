@@ -40,7 +40,7 @@ fun HabitGrid(
     maxHistoryDays: Long = 365L,
     accentColor: Color = MaterialTheme.colorScheme.primary,
     habitRecords: List<HabitRecord> = emptyList(),
-    onDateClick: ((LocalDate) -> Unit)? = null // Opsiyonel yapıldı
+    onDateClick: ((LocalDate) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -58,9 +58,9 @@ fun HabitGrid(
     }
 
     LaunchedEffect(totalColumns) {
-        if (totalColumns > 8) {
+        if (totalColumns > 8 && !listState.isScrollInProgress) {
             coroutineScope.launch {
-                delay(100)
+                delay(200)
                 val targetIndex = (totalColumns - 8).coerceAtLeast(0)
                 listState.scrollToItem(targetIndex)
             }
@@ -89,17 +89,19 @@ fun HabitGrid(
                     if (date <= today && date >= gridStartDate) {
                         val hasNote = habitRecords.any { it.date == date && it.note.isNotBlank() }
 
-                        DateCell(
-                            date = date,
-                            progress = completedDates[date] ?: 0f,
-                            hasNote = hasNote,
-                            isToday = date == today,
-                            isFirstOfMonth = date.day == 1,
-                            accentColor = accentColor,
-                            boxSize = boxSize,
-                            cornerRadius = cornerRadius,
-                            onClick = onDateClick?.let { { it(date) } }
-                        )
+                        key(date) {
+                            DateCell(
+                                date = date,
+                                progress = completedDates[date] ?: 0f,
+                                hasNote = hasNote,
+                                isToday = date == today,
+                                isFirstOfMonth = date.day == 1,
+                                accentColor = accentColor,
+                                boxSize = boxSize,
+                                cornerRadius = cornerRadius,
+                                onClick = onDateClick?.let { { it(date) } }
+                            )
+                        }
                     } else if (date > today) {
                         FutureDateCell(
                             boxSize = boxSize,

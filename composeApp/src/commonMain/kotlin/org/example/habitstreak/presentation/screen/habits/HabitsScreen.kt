@@ -75,6 +75,7 @@ import org.example.habitstreak.presentation.ui.components.common.ViewModeSelecto
 import org.example.habitstreak.presentation.ui.components.empty.EmptyHabitsState
 import org.example.habitstreak.presentation.ui.model.ViewMode
 import org.example.habitstreak.presentation.viewmodel.HabitsViewModel
+import org.example.habitstreak.domain.usecase.habit.GetHabitsWithCompletionUseCase
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -106,23 +107,22 @@ fun HabitsScreen(
     var isScrollingUp by remember { mutableStateOf(true) }
 
     val filteredHabits = remember(habitsWithCompletion, selectedFilter, selectedCategoryId) {
-        var filtered = when (selectedFilter) {
-            HabitFilter.ALL -> habitsWithCompletion
-            HabitFilter.COMPLETED -> habitsWithCompletion.filter {
-                it.completedCount >= it.habit.targetCount
+        derivedStateOf {
+            val filterPredicate: (GetHabitsWithCompletionUseCase.HabitWithCompletion) -> Boolean = when (selectedFilter) {
+                HabitFilter.ALL -> { _ -> true }
+                HabitFilter.COMPLETED -> { habitWithCompletion -> habitWithCompletion.completedCount >= habitWithCompletion.habit.targetCount }
+                HabitFilter.PENDING -> { habitWithCompletion -> habitWithCompletion.completedCount < habitWithCompletion.habit.targetCount }
             }
-            HabitFilter.PENDING -> habitsWithCompletion.filter {
-                it.completedCount < it.habit.targetCount
-            }
-        }
 
-        selectedCategoryId?.let { categoryId ->
-            filtered = filtered.filter { habitWithCompletion ->
-                habitWithCompletion.habit.categories.any { it.id == categoryId }
-            }
-        }
+            val categoryPredicate: (GetHabitsWithCompletionUseCase.HabitWithCompletion) -> Boolean =
+                selectedCategoryId?.let { categoryId ->
+                    { habitWithCompletion -> habitWithCompletion.habit.categories.any { category -> category.id == categoryId } }
+                } ?: { _ -> true }
 
-        filtered
+            habitsWithCompletion.filter { habitWithCompletion ->
+                filterPredicate(habitWithCompletion) && categoryPredicate(habitWithCompletion)
+            }
+        }.value
     }
 
     LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
@@ -145,16 +145,18 @@ fun HabitsScreen(
     val totalHabits = filteredHabits.size
 
     // Daily Goal hesaplaması - Tüm habitler üzerinden, filter'dan bağımsız
-    val dailyGoalPercentage = remember(habitsWithCompletion) {
-        if (habitsWithCompletion.isEmpty()) {
-            0
-        } else {
-            val totalProgress = habitsWithCompletion.sumOf { habitWithCompletion ->
-                val progress = habitWithCompletion.completedCount.toFloat() /
-                        habitWithCompletion.habit.targetCount.coerceAtLeast(1)
-                (progress.coerceIn(0f, 1f) * 100).toInt()
+    val dailyGoalPercentage by remember {
+        derivedStateOf {
+            if (habitsWithCompletion.isEmpty()) {
+                0
+            } else {
+                val totalProgress = habitsWithCompletion.sumOf { habitWithCompletion ->
+                    val progress = habitWithCompletion.completedCount.toFloat() /
+                            habitWithCompletion.habit.targetCount.coerceAtLeast(1)
+                    (progress.coerceIn(0f, 1f) * 100).toInt()
+                }
+                (totalProgress / habitsWithCompletion.size).coerceIn(0, 100)
             }
-            (totalProgress / habitsWithCompletion.size).coerceIn(0, 100)
         }
     }
 

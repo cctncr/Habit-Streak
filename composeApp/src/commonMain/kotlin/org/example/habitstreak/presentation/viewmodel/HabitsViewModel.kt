@@ -118,16 +118,15 @@ class HabitsViewModel(
     // Yeni eklenen fonksiyon - Tüm habit records'larını observe ediyor
     private fun observeAllRecordsForHistoryUpdate() {
         viewModelScope.launch {
-            // Tüm records'ları observe et ve değişiklikleri completion history'ye yansıt
             combine(
                 habitRecordRepository.observeAllRecords(),
                 habitsWithCompletion
             ) { allRecords, habits ->
                 allRecords to habits
             }
-                .debounce(300) // 300ms debounce ile sık güncellemeyi engelle
+                .debounce(500) // Debounce artırıldı
                 .collect { (allRecords, habits) ->
-                    if (habits.isNotEmpty()) {
+                    if (habits.isNotEmpty() && allRecords.isNotEmpty()) {
                         updateCompletionHistoriesFromRecords(allRecords, habits.map { it.habit })
                     }
                 }
@@ -140,48 +139,52 @@ class HabitsViewModel(
         habits: List<Habit>
     ) {
         val today = dateProvider.today()
-        val startDate = today.minus(DatePeriod(days = 364))
+        val startDate = today.minus(DatePeriod(days = 180)) // 1 yıldan 6 aya düşürüldü
 
-        // Sadece son 1 yıl içindeki records'ları filtrele
         val recentRecords = allRecords.filter {
             it.date >= startDate && it.date <= today
         }
 
+        if (recentRecords.isEmpty()) return
+
         val newHistories = mutableMapOf<String, Map<LocalDate, Float>>()
-        val newStreaks = mutableMapOf<String, Int>()
+        val habitRecordsMap = recentRecords.groupBy { it.habitId } // Tek seferde grupla
 
-        // Her habit için history hesapla
         habits.forEach { habit ->
-            val habitRecords = recentRecords.filter { it.habitId == habit.id }
-            val targetCount = habit.targetCount.coerceAtLeast(1)
-
-            // Completion history oluştur
-            val completionMap = habitRecords.associate { record ->
-                record.date to (record.completedCount.toFloat() / targetCount)
-            }
-            newHistories[habit.id] = completionMap
-
-            // Streak hesapla (async)
-            viewModelScope.launch {
-                calculateStreakUseCase(habit.id).fold(
-                    onSuccess = { streakInfo ->
-                        _uiState.update { state ->
-                            state.copy(
-                                streaks = state.streaks + (habit.id to streakInfo.currentStreak)
-                            )
-                        }
-                    },
-                    onFailure = { /* Ignore */ }
-                )
+            val habitRecords = habitRecordsMap[habit.id] ?: emptyList()
+            if (habitRecords.isNotEmpty()) {
+                val targetCount = habit.targetCount.coerceAtLeast(1)
+                val completionMap = habitRecords.associate { record ->
+                    record.date to (record.completedCount.toFloat() / targetCount)
+                }
+                newHistories[habit.id] = completionMap
             }
         }
 
-        // History'leri ve allRecords'ı güncelle
+        // Batch update ve streak hesaplama ayrıştırıldı
         _uiState.update { state ->
             state.copy(
-                completionHistories = newHistories.toMap(),
-                allRecords = allRecords // CRITICAL FIX: allRecords'ı da güncelle!
+                completionHistories = newHistories,
+                allRecords = allRecords
             )
+        }
+
+        // Streak hesaplamaları ayrı coroutine'de ve throttled
+        habits.chunked(5).forEach { habitChunk -> // 5'li gruplar halinde işle
+            viewModelScope.launch {
+                habitChunk.forEach { habit ->
+                    calculateStreakUseCase(habit.id).fold(
+                        onSuccess = { streakInfo ->
+                            _uiState.update { state ->
+                                state.copy(
+                                    streaks = state.streaks + (habit.id to streakInfo.currentStreak)
+                                )
+                            }
+                        },
+                        onFailure = { /* Ignore */ }
+                    )
+                }
+            }
         }
     }
 

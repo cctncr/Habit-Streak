@@ -10,6 +10,7 @@ import org.example.habitstreak.presentation.ui.model.ViewMode
 /**
  * Factory for creating habit cards based on view mode
  * Following Factory Pattern and Open/Closed Principle
+ * Now uses MemoizedHabitCard for performance optimization
  */
 object HabitCardFactory {
 
@@ -27,49 +28,18 @@ object HabitCardFactory {
         onCardClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
-        when (viewMode) {
-            is ViewMode.Large -> {
-                HabitCardLarge(
-                    habit = habit,
-                    completionHistory = completionHistory,
-                    todayProgress = todayProgress,
-                    currentStreak = currentStreak,
-                    today = today,
-                    todayRecord = todayRecord,
-                    habitRecords = habitRecords,
-                    onUpdateProgress = onUpdateProgress,
-                    onCardClick = onCardClick,
-                    modifier = modifier
-                )
-            }
-            is ViewMode.Medium -> {
-                HabitCardMedium(
-                    habit = habit,
-                    completionHistory = completionHistory,
-                    todayProgress = todayProgress,
-                    currentStreak = currentStreak,
-                    today = today,
-                    todayRecord = todayRecord,
-                    habitRecords = habitRecords,
-                    onUpdateProgress = onUpdateProgress,
-                    onCardClick = onCardClick,
-                    modifier = modifier
-                )
-            }
-            is ViewMode.Compact -> {
-                HabitCardCompact(
-                    habit = habit,
-                    completionHistory = completionHistory,
-                    todayProgress = todayProgress,
-                    currentStreak = currentStreak,
-                    today = today,
-                    todayRecord = todayRecord,
-                    habitRecords = habitRecords,
-                    onUpdateProgress = onUpdateProgress,
-                    onCardClick = onCardClick,
-                    modifier = modifier
-                )
-            }
-        }
+        MemoizedHabitCard(
+            viewMode = viewMode,
+            habit = habit,
+            completionHistory = completionHistory,
+            todayProgress = todayProgress,
+            currentStreak = currentStreak,
+            today = today,
+            todayRecord = todayRecord,
+            habitRecords = habitRecords,
+            onUpdateProgress = onUpdateProgress,
+            onCardClick = onCardClick,
+            modifier = modifier
+        )
     }
 }
