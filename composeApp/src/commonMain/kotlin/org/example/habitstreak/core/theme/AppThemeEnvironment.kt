@@ -35,7 +35,5 @@ fun AppThemeEnvironment(content: @Composable () -> Unit) {
  * Helper function to change app theme at runtime
  */
 fun changeAppTheme(theme: AppTheme?) {
-    println("🎨 AppThemeEnvironment.changeAppTheme: Changing from '${customAppTheme}' to '${theme}'")
     customAppTheme = theme
-    println("✅ AppThemeEnvironment.changeAppTheme: customAppTheme is now '${customAppTheme}'")
 }
