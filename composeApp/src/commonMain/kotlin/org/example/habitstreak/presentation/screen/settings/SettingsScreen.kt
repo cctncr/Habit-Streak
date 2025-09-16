@@ -54,7 +54,6 @@ import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
 import org.example.habitstreak.core.util.AppLocale
-import org.example.habitstreak.core.util.Strings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +62,6 @@ fun SettingsScreen(
     onNavigateToAbout: () -> Unit,
     onNavigateToBackup: () -> Unit,
     onNavigateToArchivedHabits: () -> Unit,
-    onLocaleChanged: (org.example.habitstreak.core.util.AppLocale) -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -125,7 +123,6 @@ fun SettingsScreen(
                         LanguageSettingsItem(
                             currentLocale = uiState.locale,
                             onLocaleChanged = { locale ->
-                                println("🎛️ SettingsScreen: User selected locale ${locale.code}")
                                 viewModel.setLocale(locale)
                             }
                         )

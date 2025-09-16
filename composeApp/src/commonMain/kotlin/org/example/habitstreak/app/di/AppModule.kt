@@ -21,10 +21,16 @@ import org.example.habitstreak.data.repository.CategoryRepositoryImpl
 import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.core.util.DateProviderImpl
+import org.example.habitstreak.core.locale.*
 
 val appModule = module {
     // Core utilities
     single<DateProvider> { DateProviderImpl() }
+
+    // Locale services
+    single<ILocaleStateHolder> { LocaleStateHolder() }
+    single<ILocaleRepository> { LocaleRepositoryImpl(get()) }
+    single<ILocaleService> { LocaleService(get(), get()) }
 
     // Database
     single { HabitDatabase(get()) }
@@ -73,7 +79,9 @@ val appModule = module {
         SettingsViewModel(
             preferencesRepository = get(),
             notificationService = getOrNull(),
-            habitRepository = get()
+            habitRepository = get(),
+            localeService = get(),
+            localeStateHolder = get()
         )
     }
     single<CategoryRepository> {

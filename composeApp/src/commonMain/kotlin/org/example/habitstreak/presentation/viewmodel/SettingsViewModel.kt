@@ -10,12 +10,15 @@ import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.presentation.ui.state.SettingsUiState
 import org.example.habitstreak.core.util.AppLocale
-import org.example.habitstreak.core.util.LocaleManager
+import org.example.habitstreak.core.locale.ILocaleService
+import org.example.habitstreak.core.locale.ILocaleStateHolder
 
 class SettingsViewModel(
     private val preferencesRepository: PreferencesRepository,
     private val notificationService: NotificationService?,
-    private val habitRepository: HabitRepository
+    private val habitRepository: HabitRepository,
+    private val localeService: ILocaleService,
+    private val localeStateHolder: ILocaleStateHolder
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -52,9 +55,7 @@ class SettingsViewModel(
             }
 
             launch {
-                preferencesRepository.getLocale().collect { localeCode ->
-                    val locale = AppLocale.fromCode(localeCode)
-                    LocaleManager.setLocale(locale)
+                localeStateHolder.currentLocale.collect { locale ->
                     _uiState.update { it.copy(locale = locale) }
                 }
             }
@@ -149,17 +150,8 @@ class SettingsViewModel(
     }
 
     fun setLocale(locale: AppLocale) {
-        println("⚙️ SettingsViewModel.setLocale: Called with ${locale.code}")
-        println("📱 SettingsViewModel.setLocale: Current LocaleManager locale: ${LocaleManager.getCurrentLocale().code}")
         viewModelScope.launch {
-            println("🔄 SettingsViewModel.setLocale: Setting LocaleManager locale to ${locale.code}")
-            LocaleManager.setLocale(locale)
-            println("💾 SettingsViewModel.setLocale: Saving locale ${locale.code} to preferences")
-            preferencesRepository.setLocale(locale.code)
-            println("🔄 SettingsViewModel.setLocale: Updating UI state with locale ${locale.code}")
-            _uiState.update { it.copy(locale = locale) }
-            println("✅ SettingsViewModel.setLocale: Completed for ${locale.code}")
-            println("📱 SettingsViewModel.setLocale: Final LocaleManager locale: ${LocaleManager.getCurrentLocale().code}")
+            localeService.changeLocale(locale)
         }
     }
 

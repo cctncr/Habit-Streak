@@ -18,9 +18,7 @@ import org.example.habitstreak.presentation.screen.settings.SettingsScreen
 import org.example.habitstreak.presentation.screen.statistics.StatisticsScreen
 
 @Composable
-fun AppNavigation(
-    onLocaleChanged: (org.example.habitstreak.core.util.AppLocale) -> Unit = {}
-) {
+fun AppNavigation() {
     val navigationState = rememberNavigationState()
     var currentScreen by remember { mutableStateOf(navigationState.currentScreen) }
 
@@ -122,8 +120,7 @@ fun AppNavigation(
                         // Navigate to archived habits
                         navigationState.navigateTo(Screen.ArchivedHabits)
                         currentScreen = navigationState.currentScreen
-                    },
-                    onLocaleChanged = onLocaleChanged
+                    }
                 )
             }
 

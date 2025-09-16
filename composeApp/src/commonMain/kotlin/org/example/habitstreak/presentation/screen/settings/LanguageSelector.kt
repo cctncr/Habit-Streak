@@ -16,7 +16,8 @@ import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
 import org.example.habitstreak.core.util.AppLocale
-import org.example.habitstreak.core.util.LocaleManager
+import org.example.habitstreak.core.locale.ILocaleService
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +87,8 @@ private fun LanguageSelectionDialog(
     onLocaleSelected: (AppLocale) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val localeService: ILocaleService = koinInject()
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -93,7 +96,7 @@ private fun LanguageSelectionDialog(
         },
         text = {
             LazyColumn {
-                items(LocaleManager.getAvailableLocales()) { locale ->
+                items(localeService.getAvailableLocales()) { locale ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
