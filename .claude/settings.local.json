@@ -3,7 +3,9 @@
     "allow": [
       "Bash(find:*)",
       "Bash(./gradlew:*)",
-      "Bash(claude doctor)"
+      "Bash(claude doctor)",
+      "WebSearch",
+      "WebFetch(domain:www.jetbrains.com)"
     ],
     "deny": [],
     "ask": []

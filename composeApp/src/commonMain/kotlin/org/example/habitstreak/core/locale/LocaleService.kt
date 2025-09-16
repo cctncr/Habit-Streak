@@ -10,24 +10,24 @@ class LocaleService(
 ) : ILocaleService {
 
     override suspend fun changeLocale(locale: AppLocale) {
+        println("🔧 LocaleService.changeLocale: Changing to ${locale.code}")
         localeStateHolder.setCurrentLocale(locale)
         localeRepository.setLocale(locale.code)
+        // Update the app-wide locale environment for stringResource()
+        changeAppLocale(locale.code)
+        println("✅ LocaleService.changeLocale: Completed change to ${locale.code}")
     }
 
     override suspend fun initializeLocale() {
         val savedLocaleCode = localeRepository.getLocale()
+        val savedLocale = AppLocale.fromCode(savedLocaleCode)
 
-        // Detect if this is first launch (no saved locale preference)
-        val isFirstLaunch = savedLocaleCode.isEmpty() || savedLocaleCode == AppLocale.ENGLISH.code
+        // Always use the saved locale (which includes system locale from first launch)
+        localeStateHolder.setCurrentLocale(savedLocale)
+        changeAppLocale(savedLocale.code)
 
-        if (isFirstLaunch) {
-            val systemLocale = getSystemLocale()
-            localeStateHolder.setCurrentLocale(systemLocale)
-            localeRepository.setLocale(systemLocale.code)
-        } else {
-            val savedLocale = AppLocale.fromCode(savedLocaleCode)
-            localeStateHolder.setCurrentLocale(savedLocale)
-        }
+        // Debug logging to check what's happening
+        println("🔧 LocaleService.initializeLocale: savedLocaleCode='$savedLocaleCode', using locale='${savedLocale.code}'")
     }
 
     override fun getAvailableLocales(): List<AppLocale> {

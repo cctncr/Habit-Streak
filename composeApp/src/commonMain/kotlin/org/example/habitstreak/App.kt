@@ -6,6 +6,7 @@ import org.example.habitstreak.core.util.AppLocale
 import org.example.habitstreak.core.util.LocaleProvider
 import org.example.habitstreak.core.locale.ILocaleService
 import org.example.habitstreak.core.locale.ILocaleStateHolder
+import org.example.habitstreak.core.locale.AppEnvironment
 import org.example.habitstreak.domain.usecase.InitializeCategoriesUseCase
 import org.example.habitstreak.presentation.navigation.AppNavigation
 import org.example.habitstreak.presentation.ui.theme.AppTheme
@@ -24,10 +25,12 @@ fun App() {
         localeService.initializeLocale()
     }
 
-    // No key() wrapper needed - proper state observation handles recomposition
-    LocaleProvider(locale = currentLocale) {
-        AppTheme {
-            AppNavigation()
+    // Use AppEnvironment to enable stringResource() locale changes
+    AppEnvironment {
+        LocaleProvider(locale = currentLocale) {
+            AppTheme {
+                AppNavigation()
+            }
         }
     }
 }
