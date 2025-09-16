@@ -12,13 +12,18 @@ import org.example.habitstreak.presentation.ui.state.SettingsUiState
 import org.example.habitstreak.core.util.AppLocale
 import org.example.habitstreak.core.locale.ILocaleService
 import org.example.habitstreak.core.locale.ILocaleStateHolder
+import org.example.habitstreak.core.theme.AppTheme
+import org.example.habitstreak.core.theme.IThemeService
+import org.example.habitstreak.core.theme.IThemeStateHolder
 
 class SettingsViewModel(
     private val preferencesRepository: PreferencesRepository,
     private val notificationService: NotificationService?,
     private val habitRepository: HabitRepository,
     private val localeService: ILocaleService,
-    private val localeStateHolder: ILocaleStateHolder
+    private val localeStateHolder: ILocaleStateHolder,
+    private val themeService: IThemeService,
+    private val themeStateHolder: IThemeStateHolder
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -49,7 +54,7 @@ class SettingsViewModel(
             }
 
             launch {
-                preferencesRepository.getTheme().collect { theme ->
+                themeStateHolder.currentTheme.collect { theme ->
                     _uiState.update { it.copy(theme = theme) }
                 }
             }
@@ -143,9 +148,9 @@ class SettingsViewModel(
         }
     }
 
-    fun setTheme(theme: String) {
+    fun setTheme(theme: AppTheme) {
         viewModelScope.launch {
-            preferencesRepository.setTheme(theme)
+            themeService.changeTheme(theme)
         }
     }
 

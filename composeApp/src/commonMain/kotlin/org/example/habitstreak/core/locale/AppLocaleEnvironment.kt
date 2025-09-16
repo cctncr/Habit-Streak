@@ -36,7 +36,5 @@ fun AppEnvironment(content: @Composable () -> Unit) {
  * Helper function to change app locale at runtime
  */
 fun changeAppLocale(localeCode: String?) {
-    println("🌍 AppLocaleEnvironment.changeAppLocale: Changing from '${customAppLocale}' to '${localeCode}'")
     customAppLocale = localeCode
-    println("✅ AppLocaleEnvironment.changeAppLocale: customAppLocale is now '${customAppLocale}'")
 }

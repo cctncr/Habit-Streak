@@ -65,7 +65,6 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showThemeDialog by remember { mutableStateOf(false) }
 
     // Show snackbar for messages
     val snackbarHostState = remember { SnackbarHostState() }
@@ -109,16 +108,11 @@ fun SettingsScreen(
                 // General Settings
                 item {
                     SettingsSection(title = stringResource(Res.string.section_general)) {
-                        SettingsItem(
-                            icon = Icons.Outlined.Palette,
-                            title = stringResource(Res.string.settings_theme),
-                            subtitle = when(uiState.theme) {
-                                "system" -> stringResource(Res.string.theme_system)
-                                "light" -> stringResource(Res.string.theme_light)
-                                "dark" -> stringResource(Res.string.theme_dark)
-                                else -> stringResource(Res.string.theme_system)
-                            },
-                            onClick = { showThemeDialog = true }
+                        ThemeSettingsItem(
+                            currentTheme = uiState.theme,
+                            onThemeChanged = { theme ->
+                                viewModel.setTheme(theme)
+                            }
                         )
                         LanguageSettingsItem(
                             currentLocale = uiState.locale,
@@ -215,17 +209,6 @@ fun SettingsScreen(
         }
     }
 
-    // Theme Dialog
-    if (showThemeDialog) {
-        ThemeSelectionDialog(
-            currentTheme = uiState.theme,
-            onDismiss = { showThemeDialog = false },
-            onThemeSelected = { theme ->
-                viewModel.setTheme(theme)
-                showThemeDialog = false
-            }
-        )
-    }
 }
 
 @Composable
