@@ -1,7 +1,6 @@
 package org.example.habitstreak.presentation.ui.components.card
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.model.Habit
@@ -26,34 +25,6 @@ fun MemoizedHabitCard(
     onCardClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Memoize the card content to prevent re-rendering when only ViewMode changes
-    val cardContent = remember(
-        habit.id,
-        habit.title,
-        habit.targetCount,
-        habit.color,
-        habit.icon,
-        completionHistory,
-        todayProgress,
-        currentStreak,
-        today,
-        todayRecord?.completedCount,
-        todayRecord?.note
-    ) {
-        CardContent(
-            habit = habit,
-            completionHistory = completionHistory,
-            todayProgress = todayProgress,
-            currentStreak = currentStreak,
-            today = today,
-            todayRecord = todayRecord,
-            habitRecords = habitRecords,
-            onUpdateProgress = onUpdateProgress,
-            onCardClick = onCardClick
-        )
-    }
-
-    // Only recompose when ViewMode changes
     when (viewMode) {
         is ViewMode.Large -> {
             HabitCardLarge(
@@ -100,14 +71,3 @@ fun MemoizedHabitCard(
     }
 }
 
-private data class CardContent(
-    val habit: Habit,
-    val completionHistory: Map<LocalDate, Float>,
-    val todayProgress: Float,
-    val currentStreak: Int,
-    val today: LocalDate,
-    val todayRecord: HabitRecord?,
-    val habitRecords: List<HabitRecord>,
-    val onUpdateProgress: (LocalDate, Int, String) -> Unit,
-    val onCardClick: () -> Unit
-)

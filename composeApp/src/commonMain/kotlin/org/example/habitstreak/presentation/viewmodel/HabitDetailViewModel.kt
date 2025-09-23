@@ -10,10 +10,8 @@ import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.NotificationError
 import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.repository.HabitRepository
-import org.example.habitstreak.domain.repository.PreferencesRepository
-import org.example.habitstreak.domain.service.NotificationService
-import org.example.habitstreak.domain.service.PermissionResult
-import org.example.habitstreak.domain.usecase.habit.CalculateStreakUseCase
+import org.example.habitstreak.domain.usecase.habit.CalculateHabitStatsUseCase
+import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificationUseCase
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.ui.state.HabitDetailUiState
@@ -24,10 +22,9 @@ class HabitDetailViewModel(
     private val habitId: String,
     private val habitRepository: HabitRepository,
     private val habitRecordRepository: HabitRecordRepository,
-    private val calculateStreakUseCase: CalculateStreakUseCase,
-    private val dateProvider: DateProvider,
-    private val notificationService: NotificationService? = null,
-    private val preferencesRepository: PreferencesRepository
+    private val calculateHabitStatsUseCase: CalculateHabitStatsUseCase,
+    private val manageHabitNotificationUseCase: ManageHabitNotificationUseCase,
+    private val dateProvider: DateProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HabitDetailUiState())
@@ -84,54 +81,27 @@ class HabitDetailViewModel(
             val habit = _uiState.value.habit ?: return@launch
             val records = _uiState.value.records
 
-            val today = dateProvider.today()
-            val fullyCompletedDates = records.filter { record ->
-                record.completedCount >= habit.targetCount.coerceAtLeast(1)
-            }.map { it.date }
-
-            // Calculate streaks
-            val streakResult = calculateStreakUseCase(habitId)
-
-            val streakInfo = streakResult.getOrNull()
-
-            // Calculate completion rate
-            val last30Days = (0..29).map { today.minus(DatePeriod(days = it)) }
-            val completedInLast30 = last30Days.count { it in fullyCompletedDates }
-            val completionRate = (completedInLast30 / 30.0) * 100
-
-            // Calculate this week and month stats
-            val weekStart = today.minus(DatePeriod(days = today.dayOfWeek.ordinal))
-            val monthStart = LocalDate(today.year, today.monthNumber, 1)
-
-            val thisWeekCount = fullyCompletedDates.count {
-                it >= weekStart && it <= today
-            }
-
-            val thisMonthCount = fullyCompletedDates.count {
-                it >= monthStart && it <= today
-            }
-
-            val averagePerDay = if (fullyCompletedDates.isNotEmpty()) {
-                val daysSinceFirstRecord = records.minOfOrNull { it.date }?.let { firstDate ->
-                    (today.toEpochDays() - firstDate.toEpochDays()).toInt() + 1
-                } ?: 1
-                fullyCompletedDates.size.toDouble() / daysSinceFirstRecord
-            } else 0.0
-
-            _uiState.update { state ->
-                state.copy(
-                    stats = HabitStats(
-                        currentStreak = streakInfo?.currentStreak ?: 0,
-                        longestStreak = streakInfo?.longestStreak ?: 0,
-                        totalDays = fullyCompletedDates.size,
-                        completionRate = completionRate,
-                        averagePerDay = averagePerDay,
-                        thisWeekCount = thisWeekCount,
-                        thisMonthCount = thisMonthCount,
-                        lastCompleted = fullyCompletedDates.maxOrNull()
-                    )
-                )
-            }
+            calculateHabitStatsUseCase(habitId, habit, records).fold(
+                onSuccess = { stats ->
+                    _uiState.update { state ->
+                        state.copy(
+                            stats = HabitStats(
+                                currentStreak = stats.currentStreak,
+                                longestStreak = stats.longestStreak,
+                                totalDays = stats.totalDays,
+                                completionRate = stats.completionRate,
+                                averagePerDay = stats.averagePerDay,
+                                thisWeekCount = stats.thisWeekCount,
+                                thisMonthCount = stats.thisMonthCount,
+                                lastCompleted = stats.lastCompleted
+                            )
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(error = error.message) }
+                }
+            )
         }
     }
 
@@ -191,30 +161,8 @@ class HabitDetailViewModel(
     }
 
     private fun observeNotificationConfig() {
-        if (notificationService == null) {
-            viewModelScope.launch {
-                habitRepository.observeHabitById(habitId).collect { habit ->
-                    val currentError = _uiState.value.notificationError
-                    _uiState.update { state ->
-                        state.copy(
-                            isNotificationEnabled = habit?.isReminderEnabled == true,
-                            notificationTime = habit?.reminderTime?.let {
-                                try {
-                                    LocalTime.parse(it)
-                                } catch (e: Exception) {
-                                    null
-                                }
-                            },
-                            notificationError = if (currentError?.shouldPreserve() == true) currentError else null
-                        )
-                    }
-                }
-            }
-            return
-        }
-
         viewModelScope.launch {
-            notificationService.observeNotificationConfig(habitId).collect { config ->
+            manageHabitNotificationUseCase.observeNotificationConfig(habitId).collect { config ->
                 val currentError = _uiState.value.notificationError
                 _uiState.update { state ->
                     state.copy(
@@ -229,39 +177,54 @@ class HabitDetailViewModel(
     }
 
     fun toggleNotification(enabled: Boolean) {
-        if (notificationService == null) {
-            setNotificationError(NotificationError.ServiceUnavailable())
-            return
-        }
-
         viewModelScope.launch {
             if (enabled) {
-                val permissionStatus = notificationService.checkPermissionStatus()
-
-                when (permissionStatus) {
-                    is PermissionResult.Granted -> {
-                        val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
-                        enableNotification(time)
+                val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
+                when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
+                    is ManageHabitNotificationUseCase.NotificationResult.Success -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                isNotificationEnabled = true,
+                                notificationTime = time,
+                                notificationError = null
+                            )
+                        }
                     }
+                    is ManageHabitNotificationUseCase.NotificationResult.Error -> {
+                        setNotificationError(result.error)
+                        _uiState.update { it.copy(isNotificationEnabled = false) }
 
-                    is PermissionResult.DeniedCanAskAgain -> {
+                        if (result.error is NotificationError.PermissionDenied && result.error.canRequestAgain) {
+                            _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
+                        }
+                    }
+                    is ManageHabitNotificationUseCase.NotificationResult.PermissionRequired -> {
                         _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
                         setNotificationError(NotificationError.PermissionDenied(canRequestAgain = true))
                         _uiState.update { it.copy(isNotificationEnabled = false) }
                     }
-
-                    is PermissionResult.DeniedPermanently -> {
-                        setNotificationError(NotificationError.PermissionDenied(canRequestAgain = false))
-                        _uiState.update { it.copy(isNotificationEnabled = false) }
-                    }
-
-                    is PermissionResult.Error -> {
-                        setNotificationError(permissionStatus.error)
+                    is ManageHabitNotificationUseCase.NotificationResult.ServiceUnavailable -> {
+                        setNotificationError(NotificationError.ServiceUnavailable())
                         _uiState.update { it.copy(isNotificationEnabled = false) }
                     }
                 }
             } else {
-                disableNotification()
+                when (val result = manageHabitNotificationUseCase.disableNotification(habitId)) {
+                    is ManageHabitNotificationUseCase.NotificationResult.Success -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                isNotificationEnabled = false,
+                                notificationError = null
+                            )
+                        }
+                    }
+                    is ManageHabitNotificationUseCase.NotificationResult.Error -> {
+                        setNotificationError(result.error)
+                    }
+                    else -> {
+                        // Handle other cases if needed
+                    }
+                }
             }
         }
     }
@@ -272,75 +235,34 @@ class HabitDetailViewModel(
             return
         }
 
-        if (notificationService == null) {
-            setNotificationError(NotificationError.ServiceUnavailable())
-            return
-        }
-
         viewModelScope.launch {
             if (!_uiState.value.isNotificationEnabled) {
                 toggleNotification(true)
             } else {
-                enableNotification(time)
+                when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
+                    is ManageHabitNotificationUseCase.NotificationResult.Success -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                isNotificationEnabled = true,
+                                notificationTime = time,
+                                notificationError = null
+                            )
+                        }
+                    }
+                    is ManageHabitNotificationUseCase.NotificationResult.Error -> {
+                        setNotificationError(result.error)
+                        _uiState.update { it.copy(isNotificationEnabled = false) }
+                    }
+                    else -> {
+                        // Handle other cases
+                    }
+                }
             }
         }
-    }
-
-    private suspend fun enableNotification(time: LocalTime) {
-        notificationService?.enableNotification(habitId, time)?.fold(
-            onSuccess = {
-                _uiState.update { state ->
-                    state.copy(
-                        isNotificationEnabled = true,
-                        notificationTime = time,
-                        notificationError = null
-                    )
-                }
-            },
-            onFailure = { error: Throwable ->
-                val notificationError = when (error) {
-                    is NotificationError -> error
-                    else -> NotificationError.GeneralError(error)
-                }
-
-                if (notificationError is NotificationError.PermissionDenied && notificationError.canRequestAgain) {
-                    _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
-                }
-
-                setNotificationError(notificationError)
-                _uiState.update { it.copy(isNotificationEnabled = false) }
-            }
-        )
-    }
-
-    private suspend fun disableNotification() {
-        notificationService?.disableNotification(habitId)?.fold(
-            onSuccess = {
-                _uiState.update { state ->
-                    state.copy(
-                        isNotificationEnabled = false,
-                        notificationError = null
-                    )
-                }
-            },
-            onFailure = { error: Throwable ->
-                val notificationError = when (error) {
-                    is NotificationError -> error
-                    else -> NotificationError.GeneralError(error)
-                }
-                setNotificationError(notificationError)
-            }
-        )
     }
 
     fun openAppSettings() {
-        viewModelScope.launch {
-            val success = notificationService?.openAppSettings() ?: false
-
-            if (!success) {
-                _uiEvents.tryEmit(UiEvent.OpenAppSettings)
-            }
-        }
+        _uiEvents.tryEmit(UiEvent.OpenAppSettings)
     }
 
     private fun setNotificationError(error: NotificationError) {
@@ -358,7 +280,24 @@ class HabitDetailViewModel(
     fun onPermissionGranted() {
         viewModelScope.launch {
             val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
-            enableNotification(time)
+            when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
+                is ManageHabitNotificationUseCase.NotificationResult.Success -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            isNotificationEnabled = true,
+                            notificationTime = time,
+                            notificationError = null
+                        )
+                    }
+                }
+                is ManageHabitNotificationUseCase.NotificationResult.Error -> {
+                    setNotificationError(result.error)
+                    _uiState.update { it.copy(isNotificationEnabled = false) }
+                }
+                else -> {
+                    // Handle other cases
+                }
+            }
         }
     }
 

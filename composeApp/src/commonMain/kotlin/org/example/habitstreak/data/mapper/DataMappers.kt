@@ -2,6 +2,7 @@ package org.example.habitstreak.data.mapper
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
+import org.example.habitstreak.data.mapper.frequency.FrequencySerializationService
 import org.example.habitstreak.domain.model.DayOfWeek
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitColor
@@ -13,6 +14,9 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import org.example.habitstreak.data.local.Habit as DataHabit
 import org.example.habitstreak.data.local.HabitRecord as DataHabitRecord
+
+// Singleton instance of frequency serialization service following SOLID principles
+private val frequencySerializationService = FrequencySerializationService()
 
 @OptIn(ExperimentalTime::class)
 fun DataHabit.toDomain(): Habit {
@@ -79,90 +83,13 @@ fun HabitRecord.toData(): DataHabitRecord {
 }
 
 fun HabitFrequency.serialize(): Pair<String, String> {
-    return when (this) {
-        is HabitFrequency.Daily -> "DAILY" to ""
-        is HabitFrequency.Weekly -> "WEEKLY" to daysOfWeek.joinToString(",") { it.name }
-        is HabitFrequency.Monthly -> "MONTHLY" to daysOfMonth.joinToString(",")
-        is HabitFrequency.Custom -> "CUSTOM" to "${repeatInterval},${repeatUnit.name}"
-    }
+    return frequencySerializationService.serialize(this)
 }
 
 fun deserializeFrequency(type: String, data: String): HabitFrequency {
-    return when (type) {
-        "DAILY" -> HabitFrequency.Daily
-        "WEEKLY" -> {
-            val days = if (data.isNotEmpty()) {
-                data.split(",").map { DayOfWeek.valueOf(it) }.toSet()
-            } else {
-                emptySet()
-            }
-            HabitFrequency.Weekly(days)
-        }
-        "MONTHLY" -> {
-            val daysOfMonth = if (data.isNotEmpty()) {
-                data.split(",").map { it.toInt() }.toSet()
-            } else {
-                emptySet()
-            }
-            HabitFrequency.Monthly(daysOfMonth)
-        }
-        "CUSTOM" -> {
-            if (data.isNotEmpty()) {
-                val parts = data.split(",")
-                HabitFrequency.Custom(
-                    repeatInterval = parts[0].toIntOrNull() ?: 1,
-                    repeatUnit = if (parts.size > 1) RepeatUnit.valueOf(parts[1]) else RepeatUnit.DAYS
-                )
-            } else {
-                HabitFrequency.Custom(1, RepeatUnit.DAYS)
-            }
-        }
-        else -> HabitFrequency.Daily
-    }
+    return frequencySerializationService.deserialize(type, data)
 }
 
-fun parseFrequency(type: String, data: String): HabitFrequency = when (type) {
-    "DAILY" -> HabitFrequency.Daily
-    "WEEKLY" -> {
-        if (data.isBlank()) {
-            HabitFrequency.Daily // Fallback
-        } else {
-            try {
-                val days = Json.decodeFromString<List<String>>(data)
-                    .map { DayOfWeek.valueOf(it) }
-                    .toSet()
-                HabitFrequency.Weekly(days)
-            } catch (e: Exception) {
-                HabitFrequency.Daily
-            }
-        }
-    }
-    "MONTHLY" -> {
-        if (data.isBlank()) {
-            HabitFrequency.Daily // Fallback
-        } else {
-            try {
-                val days = Json.decodeFromString<Set<Int>>(data)
-                HabitFrequency.Monthly(days)
-            } catch (e: Exception) {
-                HabitFrequency.Daily
-            }
-        }
-    }
-    "CUSTOM" -> {
-        if (data.isBlank()) {
-            HabitFrequency.Daily
-        } else {
-            try {
-                val customData = Json.decodeFromString<Map<String, String>>(data)
-                HabitFrequency.Custom(
-                    repeatInterval = customData["interval"]?.toIntOrNull() ?: 1,
-                    repeatUnit = RepeatUnit.valueOf(customData["unit"] ?: "DAYS")
-                )
-            } catch (e: Exception) {
-                HabitFrequency.Daily
-            }
-        }
-    }
-    else -> HabitFrequency.Daily
+fun parseFrequency(type: String, data: String): HabitFrequency {
+    return frequencySerializationService.deserialize(type, data)
 }

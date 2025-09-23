@@ -5,9 +5,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import platform.Foundation.NSUserDefaults
 import org.example.habitstreak.domain.repository.PreferencesRepository
-import org.example.habitstreak.core.util.SystemLocaleProvider
+import org.example.habitstreak.core.locale.SystemLocaleProvider
 
-actual class PreferencesRepositoryImpl : PreferencesRepository {
+actual fun createPreferencesRepository(): PreferencesRepository = PreferencesRepositoryIosImpl()
+
+private class PreferencesRepositoryIosImpl : PreferencesRepository {
 
     private val userDefaults = NSUserDefaults.standardUserDefaults
 
@@ -77,6 +79,9 @@ actual class PreferencesRepositoryImpl : PreferencesRepository {
 
     override fun isSoundEnabled(): Flow<Boolean> =
         _soundEnabled.asStateFlow()
+
+    override suspend fun getSoundEnabled(): Boolean =
+        _soundEnabled.value
 
     override suspend fun setVibrationEnabled(enabled: Boolean) {
         userDefaults.setBool(enabled, VIBRATION_ENABLED)

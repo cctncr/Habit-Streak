@@ -1,8 +1,6 @@
 package org.example.habitstreak.di
 
 import org.example.habitstreak.data.local.DatabaseDriverFactory
-import org.example.habitstreak.data.repository.PreferencesRepositoryImpl
-import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.service.NotificationScheduler
 import org.example.habitstreak.domain.service.PermissionManager
 import org.example.habitstreak.platform.IOSNotificationScheduler
@@ -35,5 +33,4 @@ actual fun platformModule() = module {
         }
     }
     single<PermissionManager> { IOSPermissionManager() }
-    single<PreferencesRepository> { PreferencesRepositoryImpl() }
 }

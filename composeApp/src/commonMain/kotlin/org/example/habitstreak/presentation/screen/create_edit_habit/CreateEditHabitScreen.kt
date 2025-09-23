@@ -25,10 +25,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -95,6 +99,9 @@ import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDia
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
 import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
+import org.example.habitstreak.presentation.screen.create_edit_habit.components.FrequencySelectionDialog
+import org.example.habitstreak.presentation.screen.create_edit_habit.components.AdvancedFrequencyDialog
+import org.example.habitstreak.presentation.screen.create_edit_habit.components.getFrequencyDisplayText
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 import org.example.habitstreak.presentation.ui.utils.navigationBarsPadding
 import org.example.habitstreak.presentation.viewmodel.CreateEditHabitViewModel
@@ -123,7 +130,7 @@ fun CreateEditHabitScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var currentStep by remember(habitId) { mutableStateOf(0) }
-    val totalSteps = 3
+    val totalSteps = 4
     val stepProgress by animateFloatAsState(
         targetValue = (currentStep + 1) / totalSteps.toFloat(),
         animationSpec = tween(500),
@@ -133,6 +140,7 @@ fun CreateEditHabitScreen(
     var showIconSheet by remember { mutableStateOf(false) }
     var showColorSheet by remember { mutableStateOf(false) }
     var showReminderDialog by remember { mutableStateOf(false) }
+    var showFrequencyDialog by remember { mutableStateOf(false) }
     var showAdvancedSettings by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
 
@@ -255,12 +263,18 @@ fun CreateEditHabitScreen(
                                 onShowColorSheet = { showColorSheet = true }
                             )
 
-                            1 -> CategorySelectionStep(
+                            1 -> FrequencyStep(
+                                uiState = uiState,
+                                viewModel = viewModel,
+                                onShowFrequencyDialog = { showFrequencyDialog = true }
+                            )
+
+                            2 -> CategorySelectionStep(
                                 uiState = uiState,
                                 viewModel = viewModel,
                             )
 
-                            2 -> GoalStep(
+                            3 -> GoalStep(
                                 uiState = uiState,
                                 viewModel = viewModel,
                                 onShowReminderDialog = {
@@ -446,6 +460,17 @@ fun CreateEditHabitScreen(
                 showReminderDialog = false
             },
             onDismiss = { showReminderDialog = false }
+        )
+    }
+
+    if (showFrequencyDialog) {
+        AdvancedFrequencyDialog(
+            currentFrequency = uiState.frequency,
+            onFrequencySelected = { frequency ->
+                viewModel.updateFrequency(frequency)
+                showFrequencyDialog = false
+            },
+            onDismiss = { showFrequencyDialog = false }
         )
     }
 
@@ -649,6 +674,127 @@ private fun BasicInfoStep(
                             color = HabitStreakTheme.habitColorToComposeColor(uiState.selectedColor),
                             shape = CircleShape
                         )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FrequencyStep(
+    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
+    viewModel: CreateEditHabitViewModel,
+    onShowFrequencyDialog: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(Res.string.frequency_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = stringResource(Res.string.frequency_subtitle),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Current Frequency Display
+        Card(
+            onClick = onShowFrequencyDialog,
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = when (uiState.frequency) {
+                            is org.example.habitstreak.domain.model.HabitFrequency.Daily ->
+                                stringResource(Res.string.frequency_daily)
+                            is org.example.habitstreak.domain.model.HabitFrequency.Weekly ->
+                                stringResource(Res.string.frequency_weekly)
+                            is org.example.habitstreak.domain.model.HabitFrequency.Monthly ->
+                                stringResource(Res.string.frequency_monthly)
+                            is org.example.habitstreak.domain.model.HabitFrequency.Custom ->
+                                stringResource(Res.string.frequency_custom)
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = getFrequencyDisplayText(uiState.frequency),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        // Frequency options grid
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.heightIn(max = 200.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                FrequencyCard(
+                    title = stringResource(Res.string.frequency_daily),
+                    description = stringResource(Res.string.frequency_daily_desc),
+                    isSelected = uiState.frequency is org.example.habitstreak.domain.model.HabitFrequency.Daily,
+                    onClick = {
+                        viewModel.updateFrequency(org.example.habitstreak.domain.model.HabitFrequency.Daily)
+                    }
+                )
+            }
+            item {
+                FrequencyCard(
+                    title = stringResource(Res.string.frequency_weekly),
+                    description = if (uiState.frequency is org.example.habitstreak.domain.model.HabitFrequency.Weekly) {
+                        getFrequencyDisplayText(uiState.frequency)
+                    } else {
+                        stringResource(Res.string.weekly_frequency_subtitle)
+                    },
+                    isSelected = uiState.frequency is org.example.habitstreak.domain.model.HabitFrequency.Weekly,
+                    onClick = onShowFrequencyDialog
+                )
+            }
+            item {
+                FrequencyCard(
+                    title = stringResource(Res.string.frequency_monthly),
+                    description = if (uiState.frequency is org.example.habitstreak.domain.model.HabitFrequency.Monthly) {
+                        getFrequencyDisplayText(uiState.frequency)
+                    } else {
+                        stringResource(Res.string.monthly_frequency_subtitle)
+                    },
+                    isSelected = uiState.frequency is org.example.habitstreak.domain.model.HabitFrequency.Monthly,
+                    onClick = onShowFrequencyDialog
+                )
+            }
+            item {
+                FrequencyCard(
+                    title = stringResource(Res.string.frequency_custom),
+                    description = if (uiState.frequency is org.example.habitstreak.domain.model.HabitFrequency.Custom) {
+                        getFrequencyDisplayText(uiState.frequency)
+                    } else {
+                        stringResource(Res.string.custom_frequency_subtitle)
+                    },
+                    isSelected = uiState.frequency is org.example.habitstreak.domain.model.HabitFrequency.Custom,
+                    onClick = onShowFrequencyDialog
                 )
             }
         }
@@ -1095,6 +1241,57 @@ private fun getPresetGoals(): List<PresetGoal> {
         PresetGoal(5, stringResource(Res.string.preset_reps)),
         PresetGoal(3, stringResource(Res.string.preset_hour))
     )
+}
+
+@Composable
+private fun FrequencyCard(
+    title: String,
+    description: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 8.dp else 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                }
+            )
+        }
+    }
 }
 
 @Composable

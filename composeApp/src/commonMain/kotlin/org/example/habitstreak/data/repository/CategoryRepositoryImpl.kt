@@ -7,7 +7,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import org.example.habitstreak.core.util.UuidGenerator
+import org.example.habitstreak.domain.util.UuidGenerator
 import org.example.habitstreak.data.local.HabitDatabase
 import org.example.habitstreak.data.mapper.toData
 import org.example.habitstreak.data.mapper.toDomain

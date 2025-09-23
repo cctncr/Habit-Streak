@@ -1,4 +1,4 @@
-package org.example.habitstreak.core.common
+package org.example.habitstreak.domain.common
 
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate

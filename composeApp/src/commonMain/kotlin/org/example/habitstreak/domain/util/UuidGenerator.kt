@@ -1,4 +1,4 @@
-package org.example.habitstreak.core.util
+package org.example.habitstreak.domain.util
 
 import kotlin.random.Random
 

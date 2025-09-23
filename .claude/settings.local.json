@@ -5,7 +5,9 @@
       "Bash(./gradlew:*)",
       "Bash(claude doctor)",
       "WebSearch",
-      "WebFetch(domain:www.jetbrains.com)"
+      "WebFetch(domain:www.jetbrains.com)",
+      "Bash(tree:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

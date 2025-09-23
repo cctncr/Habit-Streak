@@ -13,7 +13,7 @@ import org.example.habitstreak.data.mapper.toDomain
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.repository.HabitRepository
 import kotlinx.coroutines.withContext
-import org.example.habitstreak.core.util.UuidGenerator
+import org.example.habitstreak.domain.util.UuidGenerator
 import kotlin.time.ExperimentalTime
 
 class HabitRepositoryImpl(

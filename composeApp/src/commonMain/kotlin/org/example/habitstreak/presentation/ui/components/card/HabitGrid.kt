@@ -1,6 +1,7 @@
 package org.example.habitstreak.presentation.ui.components.card
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,7 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -24,9 +28,15 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
+import kotlinx.datetime.toLocalDateTime
 import org.example.habitstreak.domain.model.HabitRecord
+import org.example.habitstreak.domain.model.Habit
+import org.example.habitstreak.domain.util.HabitFrequencyUtils
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 @Composable
 fun HabitGrid(
     completedDates: Map<LocalDate, Float>,
@@ -40,7 +50,8 @@ fun HabitGrid(
     maxHistoryDays: Long = 365L,
     accentColor: Color = MaterialTheme.colorScheme.primary,
     habitRecords: List<HabitRecord> = emptyList(),
-    onDateClick: ((LocalDate) -> Unit)? = null
+    onDateClick: ((LocalDate) -> Unit)? = null,
+    habit: Habit? = null
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -88,6 +99,10 @@ fun HabitGrid(
 
                     if (date <= today && date >= gridStartDate) {
                         val hasNote = habitRecords.any { it.date == date && it.note.isNotBlank() }
+                        val isDateActive = habit?.let {
+                            val createdDate = it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                            HabitFrequencyUtils.isActiveOnDate(it.frequency, date, createdDate)
+                        } ?: true // Default to true when no habit provided (for backward compatibility)
 
                         key(date) {
                             DateCell(
@@ -99,7 +114,8 @@ fun HabitGrid(
                                 accentColor = accentColor,
                                 boxSize = boxSize,
                                 cornerRadius = cornerRadius,
-                                onClick = onDateClick?.let { { it(date) } }
+                                onClick = onDateClick?.let { { it(date) } },
+                                isActive = isDateActive
                             )
                         }
                     } else if (date > today) {
@@ -126,10 +142,12 @@ private fun DateCell(
     accentColor: Color,
     boxSize: Dp,
     cornerRadius: Dp,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    isActive: Boolean = true
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = when {
+            !isActive -> accentColor.copy(alpha = 0.2f) // Lighter background for inactive days
             progress >= 1f -> accentColor
             progress >= 0.75f -> accentColor.copy(alpha = 0.8f)
             progress >= 0.5f -> accentColor.copy(alpha = 0.6f)
@@ -161,12 +179,23 @@ private fun DateCell(
                 } else Modifier
             )
             .then(
-                if (onClick != null) {
+                if (onClick != null && isActive) {
                     Modifier.clickable { onClick() }
                 } else Modifier
             ),
         contentAlignment = Alignment.Center
     ) {
+        // Striped pattern for inactive days
+        if (!isActive) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawStripedPattern(
+                    color = accentColor.copy(alpha = 0.4f),
+                    boxSize = boxSize,
+                    cornerRadius = cornerRadius
+                )
+            }
+        }
+
         when {
             progress >= 1f -> {
                 Icon(
@@ -233,5 +262,35 @@ private fun getMonthAbbreviation(month: Int): String {
         11 -> "Nov"
         12 -> "Dec"
         else -> ""
+    }
+}
+
+private fun DrawScope.drawStripedPattern(
+    color: Color,
+    boxSize: Dp,
+    cornerRadius: Dp,
+    stripeWidth: Float = 2f,
+    stripeSpacing: Float = 6f
+) {
+    val boxSizePx = boxSize.toPx()
+    val stripeAngle = 45f // 45 degree diagonal stripes
+
+    // Calculate the number of stripes needed to cover the diagonal of the box
+    val diagonal = kotlin.math.sqrt((boxSizePx * boxSizePx * 2).toDouble()).toFloat()
+    val totalStripes = (diagonal / stripeSpacing).toInt() + 2
+
+    // Draw diagonal stripes
+    for (i in -totalStripes..totalStripes) {
+        val startX = i * stripeSpacing
+        val startY = 0f
+        val endX = startX + boxSizePx
+        val endY = boxSizePx
+
+        drawLine(
+            color = color,
+            start = Offset(startX, startY),
+            end = Offset(endX, endY),
+            strokeWidth = stripeWidth
+        )
     }
 }

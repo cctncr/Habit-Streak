@@ -14,7 +14,6 @@
     <string name="month_feb">Şub</string>
     <string name="month_mar">Mar</string>
     <string name="month_apr">Nis</string>
-    <string name="month_may">May</string>
     <string name="month_jun">Haz</string>
     <string name="month_jul">Tem</string>
     <string name="month_aug">Ağu</string>
@@ -193,11 +192,6 @@
     <string name="category_lifestyle">Yaşam Tarzı</string>
     <string name="category_mindfulness">Farkındalık</string>
 
-    <!-- Frequency -->
-    <string name="frequency_daily">Günlük</string>
-    <string name="frequency_weekly">Haftalık</string>
-    <string name="frequency_monthly">Aylık</string>
-
     <!-- Common -->
     <string name="yes">Evet</string>
     <string name="no">Hayır</string>
@@ -262,13 +256,13 @@
     <string name="insight_habit_count">Alışkanlık Sayısı</string>
 
     <!-- Days of week -->
-    <string name="day_monday">Pzt</string>
-    <string name="day_tuesday">Sal</string>
-    <string name="day_wednesday">Çar</string>
-    <string name="day_thursday">Per</string>
-    <string name="day_friday">Cum</string>
-    <string name="day_saturday">Cmt</string>
-    <string name="day_sunday">Paz</string>
+    <string name="monday">Pazartesi</string>
+    <string name="tuesday">Salı</string>
+    <string name="wednesday">Çarşamba</string>
+    <string name="thursday">Perşembe</string>
+    <string name="friday">Cuma</string>
+    <string name="saturday">Cumartesi</string>
+    <string name="sunday">Pazar</string>
 
     <!-- Additional categories -->
     <string name="category_nutrition">Beslenme</string>
@@ -370,13 +364,6 @@
     <string name="enable_notifications">Bildirimleri Etkinleştir</string>
     <string name="notification_time">Bildirim Zamanı</string>
     <string name="days_of_week">Haftanın Günleri</string>
-    <string name="monday">Pazartesi</string>
-    <string name="tuesday">Salı</string>
-    <string name="wednesday">Çarşamba</string>
-    <string name="thursday">Perşembe</string>
-    <string name="friday">Cuma</string>
-    <string name="saturday">Cumartesi</string>
-    <string name="sunday">Pazar</string>
     <string name="confirm">Onayla</string>
     <string name="habit_name_error">Lütfen bir alışkanlık adı girin</string>
     <string name="target_amount_error">Lütfen geçerli bir hedef miktar girin</string>
@@ -465,4 +452,66 @@
     <string name="preset_pages">sayfa</string>
     <string name="preset_reps">tekrar</string>
     <string name="preset_hour">saat</string>
+
+    <!-- Habit Detail Screen -->
+    <string name="previous_month">Önceki ay</string>
+    <string name="next_month">Sonraki ay</string>
+    <string name="created">Oluşturuldu</string>
+    <string name="no_activity_yet">Henüz aktivite yok</string>
+    <string name="no_notes_yet">Henüz not yok</string>
+    <string name="note">Not</string>
+    <string name="add_note_future_date">Bu gelecek tarih için bir not ekle...</string>
+    <string name="add_note_about_day">Bu gün hakkında bir not ekle...</string>
+    <string name="delete">Sil</string>
+
+    <!-- Full Month Names -->
+    <string name="month_january">Ocak</string>
+    <string name="month_february">Şubat</string>
+    <string name="month_march">Mart</string>
+    <string name="month_april">Nisan</string>
+    <string name="month_may">Mayıs</string>
+    <string name="month_june">Haziran</string>
+    <string name="month_july">Temmuz</string>
+    <string name="month_august">Ağustos</string>
+    <string name="month_september">Eylül</string>
+    <string name="month_october">Ekim</string>
+    <string name="month_november">Kasım</string>
+    <string name="month_december">Aralık</string>
+
+    <!-- Frequency Strings -->
+    <string name="frequency_title">Ne sıklıkla?</string>
+    <string name="frequency_subtitle">Bu alışkanlığı ne zaman yapmak istediğinizi seçin</string>
+    <string name="frequency_daily">Günlük</string>
+    <string name="frequency_weekly">Haftalık</string>
+    <string name="frequency_monthly">Aylık</string>
+    <string name="frequency_custom">Özel</string>
+
+    <string name="frequency_daily_desc">Her gün</string>
+    <string name="frequency_weekly_desc">Haftalık (%d gün)</string>
+    <string name="frequency_monthly_desc">Aylık (%d gün)</string>
+    <string name="frequency_custom_desc">Her %d %s</string>
+
+    <string name="frequency_dialog_title">Sıklık Seç</string>
+    <string name="frequency_dialog_cancel">İptal</string>
+    <string name="frequency_dialog_ok">Tamam</string>
+
+    <string name="custom_frequency_title">Özel Sıklık</string>
+    <string name="custom_frequency_subtitle">Alışkanlığınız için özel bir aralık belirleyin</string>
+    <string name="custom_frequency_repeat_every">Her şunu tekrarla</string>
+    <string name="custom_frequency_days">gün</string>
+    <string name="custom_frequency_weeks">hafta</string>
+    <string name="custom_frequency_months">ay</string>
+
+    <string name="weekly_frequency_title">Haftalık Sıklık</string>
+    <string name="weekly_frequency_subtitle">Haftanın hangi günlerini seçin</string>
+    <string name="weekly_frequency_select_days">Günleri seç</string>
+
+    <string name="monthly_frequency_title">Aylık Sıklık</string>
+    <string name="monthly_frequency_subtitle">Ayın hangi günlerini seçin</string>
+    <string name="monthly_frequency_select_days">Günleri seç (1-31)</string>
+
+    <string name="quick_options">Hızlı seçenekler:</string>
+    <string name="three_times_week">Haftada 3x</string>
+    <string name="customize_frequency">Sıklığı özelleştir</string>
+
 </resources>

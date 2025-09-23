@@ -1,4 +1,4 @@
-package org.example.habitstreak.core.util
+package org.example.habitstreak.core.locale
 
 /**
  * Platform-specific system locale detection

@@ -1,4 +1,4 @@
-package org.example.habitstreak.core.util
+package org.example.habitstreak.core.locale
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider

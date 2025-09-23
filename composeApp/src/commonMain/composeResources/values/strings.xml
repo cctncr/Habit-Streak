@@ -14,7 +14,6 @@
     <string name="month_feb">Feb</string>
     <string name="month_mar">Mar</string>
     <string name="month_apr">Apr</string>
-    <string name="month_may">May</string>
     <string name="month_jun">Jun</string>
     <string name="month_jul">Jul</string>
     <string name="month_aug">Aug</string>
@@ -48,6 +47,43 @@
     <string name="day_wed_short">W</string>
     <string name="day_thu_short">T</string>
     <string name="day_fri_short">F</string>
+
+    <!-- Frequency Strings -->
+    <string name="frequency_title">How often?</string>
+    <string name="frequency_subtitle">Choose when you want to do this habit</string>
+    <string name="frequency_daily">Daily</string>
+    <string name="frequency_weekly">Weekly</string>
+    <string name="frequency_monthly">Monthly</string>
+    <string name="frequency_custom">Custom</string>
+
+    <string name="frequency_daily_desc">Every day</string>
+    <string name="frequency_weekly_desc">Weekly (%d days)</string>
+    <string name="frequency_monthly_desc">Monthly (%d days)</string>
+    <string name="frequency_custom_desc">Every %d %s</string>
+
+    <string name="frequency_dialog_title">Select Frequency</string>
+    <string name="frequency_dialog_cancel">Cancel</string>
+    <string name="frequency_dialog_ok">OK</string>
+
+    <string name="custom_frequency_title">Custom Frequency</string>
+    <string name="custom_frequency_subtitle">Set a custom interval for your habit</string>
+    <string name="custom_frequency_repeat_every">Repeat every</string>
+    <string name="custom_frequency_days">days</string>
+    <string name="custom_frequency_weeks">weeks</string>
+    <string name="custom_frequency_months">months</string>
+
+    <string name="weekly_frequency_title">Weekly Frequency</string>
+    <string name="weekly_frequency_subtitle">Choose which days of the week</string>
+    <string name="weekly_frequency_select_days">Select days</string>
+
+    <string name="monthly_frequency_title">Monthly Frequency</string>
+    <string name="monthly_frequency_subtitle">Choose which days of the month</string>
+    <string name="monthly_frequency_select_days">Select days (1-31)</string>
+
+    <string name="quick_options">Quick options:</string>
+    <string name="three_times_week">3x/week</string>
+    <string name="customize_frequency">Customize frequency</string>
+
     <string name="day_sat_short">S</string>
     <string name="day_sun_short">S</string>
 
@@ -193,10 +229,6 @@
     <string name="category_lifestyle">Lifestyle</string>
     <string name="category_mindfulness">Mindfulness</string>
 
-    <!-- Frequency -->
-    <string name="frequency_daily">Daily</string>
-    <string name="frequency_weekly">Weekly</string>
-    <string name="frequency_monthly">Monthly</string>
 
     <!-- Common -->
     <string name="yes">Yes</string>
@@ -261,14 +293,6 @@
     <string name="insight_average_streak">Average Streak</string>
     <string name="insight_habit_count">Habit Count</string>
 
-    <!-- Days of week -->
-    <string name="day_monday">Mon</string>
-    <string name="day_tuesday">Tue</string>
-    <string name="day_wednesday">Wed</string>
-    <string name="day_thursday">Thu</string>
-    <string name="day_friday">Fri</string>
-    <string name="day_saturday">Sat</string>
-    <string name="day_sunday">Sun</string>
 
     <!-- Additional categories -->
     <string name="category_nutrition">Nutrition</string>
@@ -465,4 +489,29 @@
     <string name="preset_pages">pages</string>
     <string name="preset_reps">reps</string>
     <string name="preset_hour">hour</string>
+
+    <!-- Habit Detail Screen -->
+    <string name="previous_month">Previous month</string>
+    <string name="next_month">Next month</string>
+    <string name="created">Created</string>
+    <string name="no_activity_yet">No activity yet</string>
+    <string name="no_notes_yet">No notes yet</string>
+    <string name="note">Note</string>
+    <string name="add_note_future_date">Add a note for this future date...</string>
+    <string name="add_note_about_day">Add a note about this day...</string>
+    <string name="delete">Delete</string>
+
+    <!-- Full Month Names -->
+    <string name="month_january">January</string>
+    <string name="month_february">February</string>
+    <string name="month_march">March</string>
+    <string name="month_april">April</string>
+    <string name="month_may">May</string>
+    <string name="month_june">June</string>
+    <string name="month_july">July</string>
+    <string name="month_august">August</string>
+    <string name="month_september">September</string>
+    <string name="month_october">October</string>
+    <string name="month_november">November</string>
+    <string name="month_december">December</string>
 </resources>

@@ -1,9 +1,8 @@
-package org.example.habitstreak.core.util
+package org.example.habitstreak.domain.util
 
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.example.habitstreak.domain.util.DateProvider
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant

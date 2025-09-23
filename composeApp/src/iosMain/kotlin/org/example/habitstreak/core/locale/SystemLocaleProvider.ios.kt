@@ -1,4 +1,4 @@
-package org.example.habitstreak.core.util
+package org.example.habitstreak.core.locale
 
 import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale

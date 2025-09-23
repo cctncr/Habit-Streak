@@ -4,7 +4,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.domain.repository.HabitRecordRepository
-import org.example.habitstreak.domain.usecase.util.UseCase
+import org.example.habitstreak.domain.usecase.UseCase
 
 class ToggleHabitCompletionUseCase(
     private val habitRecordRepository: HabitRecordRepository

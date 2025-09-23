@@ -9,7 +9,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import habitstreak.composeapp.generated.resources.*
 import org.example.habitstreak.domain.model.HabitFrequency
+import org.example.habitstreak.domain.model.RepeatUnit
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,11 +32,19 @@ fun FrequencyOption(
     )
 }
 
+@Composable
 fun getFrequencyDisplayText(frequency: HabitFrequency): String {
     return when (frequency) {
-        is HabitFrequency.Daily -> "Every day"
-        is HabitFrequency.Weekly -> "Weekly (${frequency.daysOfWeek.size} days)"
-        is HabitFrequency.Monthly -> "Monthly (${frequency.daysOfMonth.size} days)"
-        is HabitFrequency.Custom -> "Every ${frequency.repeatInterval} ${frequency.repeatUnit.name.lowercase()}"
+        is HabitFrequency.Daily -> stringResource(Res.string.frequency_daily_desc)
+        is HabitFrequency.Weekly -> stringResource(Res.string.frequency_weekly_desc, frequency.daysOfWeek.size)
+        is HabitFrequency.Monthly -> stringResource(Res.string.frequency_monthly_desc, frequency.daysOfMonth.size)
+        is HabitFrequency.Custom -> {
+            val unitString = when (frequency.repeatUnit) {
+                RepeatUnit.DAYS -> stringResource(Res.string.custom_frequency_days)
+                RepeatUnit.WEEKS -> stringResource(Res.string.custom_frequency_weeks)
+                RepeatUnit.MONTHS -> stringResource(Res.string.custom_frequency_months)
+            }
+            stringResource(Res.string.frequency_custom_desc, frequency.repeatInterval, unitString)
+        }
     }
 }

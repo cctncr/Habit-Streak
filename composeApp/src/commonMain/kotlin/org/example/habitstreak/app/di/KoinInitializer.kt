@@ -19,5 +19,5 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) =
 fun initKoin(vararg modules: Module, appDeclaration: KoinAppDeclaration = {}) =
     startKoin {
         appDeclaration()
-        modules(appModule, *modules)
+        modules(appModule + modules.toList())
     }

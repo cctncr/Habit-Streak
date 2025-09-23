@@ -9,6 +9,7 @@ interface PreferencesRepository {
 
     suspend fun setSoundEnabled(enabled: Boolean)
     fun isSoundEnabled(): Flow<Boolean>
+    suspend fun getSoundEnabled(): Boolean
 
     suspend fun setVibrationEnabled(enabled: Boolean)
     fun isVibrationEnabled(): Flow<Boolean>

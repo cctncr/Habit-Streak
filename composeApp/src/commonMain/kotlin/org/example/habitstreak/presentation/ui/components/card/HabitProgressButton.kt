@@ -29,16 +29,16 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun HabitProgressButton(
-progress: Float, // 0f to 1f
-isCompleted: Boolean,
-targetCount: Int = 1,
-unit: String = "",
-onClick: () -> Unit,
-buttonSize: Dp = 48.dp,
-strokeWidth: Dp = 4.dp,
-progressColor: Color = MaterialTheme.colorScheme.primary,
-backgroundStrokeColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-modifier: Modifier = Modifier
+    progress: Float, // 0f to 1f
+    isCompleted: Boolean,
+    targetCount: Int = 1,
+    unit: String = "",
+    onClick: () -> Unit,
+    buttonSize: Dp = 48.dp,
+    strokeWidth: Dp = 4.dp,
+    progressColor: Color = MaterialTheme.colorScheme.primary,
+    backgroundStrokeColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    modifier: Modifier = Modifier
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
@@ -102,6 +102,7 @@ modifier: Modifier = Modifier
                 tint = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.size(buttonSize * 0.4f)
             )
+
             else -> Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Add",

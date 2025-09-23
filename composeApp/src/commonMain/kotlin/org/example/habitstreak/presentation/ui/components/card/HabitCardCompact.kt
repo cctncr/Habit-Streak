@@ -24,19 +24,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.toLocalDateTime
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
 import org.example.habitstreak.presentation.ui.components.input.SimpleCheckHabitInputPanel
 import org.example.habitstreak.presentation.ui.components.input.CountableHabitInputPanel
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
+import org.example.habitstreak.domain.util.HabitFrequencyUtils
+import kotlin.time.ExperimentalTime
 
 /**
  * Compact size habit card with 1 row grid
  * Minimal view for maximum habits on screen
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun HabitCardCompact(
     habit: Habit,
@@ -58,6 +62,7 @@ fun HabitCardCompact(
     val isCompleted = todayProgress >= 1f
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
     val hasNote = todayRecord?.note?.isNotBlank() == true
+    val isTodayActive = HabitFrequencyUtils.isActiveOnDate(habit.frequency, today, habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date)
 
     Card(
         onClick = onCardClick,
@@ -158,36 +163,52 @@ fun HabitCardCompact(
                     it.date >= gridStartDate && it.date <= today
                 },
                 onDateClick = null,
+                habit = habit,
                 modifier = Modifier.width(180.dp)
             )
 
             // Progress Button
-            Box(
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = ripple(bounded = true, radius = 18.dp)
-                ) {
-                    val record = habitRecords.find { it.date == today }
-                    currentValue = record?.completedCount ?: 0
-                    currentNote = record?.note ?: ""
-                    showProgressSheet = true
-                }
-            ) {
-                HabitProgressButton(
-                    progress = todayProgress,
-                    isCompleted = isCompleted,
-                    targetCount = habit.targetCount,
-                    unit = habit.unit,
-                    progressColor = habitColor,
-                    buttonSize = 36.dp,
-                    strokeWidth = 2.5.dp,
-                    onClick = {
+            if (isTodayActive) {
+                Box(
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(bounded = true, radius = 18.dp)
+                    ) {
                         val record = habitRecords.find { it.date == today }
                         currentValue = record?.completedCount ?: 0
                         currentNote = record?.note ?: ""
                         showProgressSheet = true
                     }
-                )
+                ) {
+                    HabitProgressButton(
+                        progress = todayProgress,
+                        isCompleted = isCompleted,
+                        targetCount = habit.targetCount,
+                        unit = habit.unit,
+                        progressColor = habitColor,
+                        buttonSize = 36.dp,
+                        strokeWidth = 2.5.dp,
+                        onClick = {
+                            val record = habitRecords.find { it.date == today }
+                            currentValue = record?.completedCount ?: 0
+                            currentNote = record?.note ?: ""
+                            showProgressSheet = true
+                        }
+                    )
+                }
+            } else {
+                // Inactive day indicator
+                Box(
+                    modifier = Modifier.size(36.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "—",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        fontWeight = FontWeight.Light
+                    )
+                }
             }
         }
     }

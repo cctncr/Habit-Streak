@@ -1,6 +1,6 @@
 package org.example.habitstreak.core.locale
 
-import org.example.habitstreak.core.util.AppLocale
+import org.example.habitstreak.core.locale.AppLocale
 
 interface ILocaleService {
     suspend fun changeLocale(locale: AppLocale)

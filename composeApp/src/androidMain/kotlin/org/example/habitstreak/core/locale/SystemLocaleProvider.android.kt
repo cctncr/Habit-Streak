@@ -1,10 +1,11 @@
-package org.example.habitstreak.core.util
+package org.example.habitstreak.core.locale
 
 import java.util.Locale
 
 actual object SystemLocaleProvider {
     actual fun getSystemLocaleCode(): String {
         val systemLocale = Locale.getDefault()
-        return systemLocale.language
+        val languageCode = systemLocale.language
+        return languageCode
     }
 }

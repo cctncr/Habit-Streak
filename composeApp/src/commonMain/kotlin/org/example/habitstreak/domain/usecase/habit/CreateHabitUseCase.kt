@@ -8,14 +8,16 @@ import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
 import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.repository.HabitRepository
-import org.example.habitstreak.domain.usecase.util.UseCase
+import org.example.habitstreak.domain.service.HabitValidationService
+import org.example.habitstreak.domain.usecase.UseCase
 import org.example.habitstreak.domain.util.DateProvider
 import kotlin.time.ExperimentalTime
 
 class CreateHabitUseCase(
     private val habitRepository: HabitRepository,
     private val categoryRepository: CategoryRepository,
-    private val dateProvider: DateProvider
+    private val dateProvider: DateProvider,
+    private val validationService: HabitValidationService
 ) : UseCase<CreateHabitUseCase.Params, Result<Habit>> {
 
     data class Params(
@@ -32,12 +34,18 @@ class CreateHabitUseCase(
 
     @OptIn(ExperimentalTime::class)
     override suspend fun invoke(params: Params): Result<Habit> {
-        if (params.title.isBlank()) {
-            return Result.failure(IllegalArgumentException("Habit başlığı boş olamaz"))
-        }
+        // Use validation service following SRP
+        val validationResult = validationService.validateHabitCreation(
+            title = params.title,
+            description = params.description,
+            targetCount = params.targetCount,
+            unit = params.unit,
+            frequency = params.frequency
+        )
 
-        if (params.targetCount < 1) {
-            return Result.failure(IllegalArgumentException("Hedef sayısı en az 1 olmalıdır"))
+        if (!validationResult.isValid) {
+            val errorMessage = validationResult.errors.joinToString(", ") { it.message }
+            return Result.failure(IllegalArgumentException(errorMessage))
         }
 
         val habit = Habit(

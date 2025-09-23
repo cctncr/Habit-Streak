@@ -1,6 +1,6 @@
 package org.example.habitstreak.presentation.ui.state
 
-import org.example.habitstreak.core.util.AppLocale
+import org.example.habitstreak.core.locale.AppLocale
 import org.example.habitstreak.core.theme.AppTheme
 
 data class SettingsUiState(

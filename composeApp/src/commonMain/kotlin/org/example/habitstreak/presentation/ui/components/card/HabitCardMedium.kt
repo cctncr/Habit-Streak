@@ -46,19 +46,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.toLocalDateTime
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
 import org.example.habitstreak.presentation.ui.components.input.SimpleCheckHabitInputPanel
 import org.example.habitstreak.presentation.ui.components.input.CountableHabitInputPanel
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
+import org.example.habitstreak.domain.util.HabitFrequencyUtils
+import kotlin.time.ExperimentalTime
 
 /**
  * Medium size habit card with 3 rows grid (non-clickable)
  * Default view mode
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun HabitCardMedium(
     habit: Habit,
@@ -80,6 +84,7 @@ fun HabitCardMedium(
     val isCompleted = todayProgress >= 1f
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
     val hasNote = todayRecord?.note?.isNotBlank() == true
+    val isTodayActive = HabitFrequencyUtils.isActiveOnDate(habit.frequency, today, habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date)
 
     Card(
         onClick = onCardClick,
@@ -165,35 +170,50 @@ fun HabitCardMedium(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = false, radius = 22.dp)
-                        ) {
-                            val record = habitRecords.find { it.date == today }
-                            currentValue = record?.completedCount ?: 0
-                            currentNote = record?.note ?: ""
-                            showProgressSheet = true
-                        }
-                ) {
-                    HabitProgressButton(
-                        progress = todayProgress,
-                        isCompleted = isCompleted,
-                        targetCount = habit.targetCount,
-                        unit = habit.unit,
-                        progressColor = habitColor,
-                        buttonSize = 44.dp,
-                        strokeWidth = 3.dp,
-                        onClick = {
-                            val record = habitRecords.find { it.date == today }
-                            currentValue = record?.completedCount ?: 0
-                            currentNote = record?.note ?: ""
-                            showProgressSheet = true
-                        }
-                    )
+                if (isTodayActive) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = ripple(bounded = false, radius = 22.dp)
+                            ) {
+                                val record = habitRecords.find { it.date == today }
+                                currentValue = record?.completedCount ?: 0
+                                currentNote = record?.note ?: ""
+                                showProgressSheet = true
+                            }
+                    ) {
+                        HabitProgressButton(
+                            progress = todayProgress,
+                            isCompleted = isCompleted,
+                            targetCount = habit.targetCount,
+                            unit = habit.unit,
+                            progressColor = habitColor,
+                            buttonSize = 44.dp,
+                            strokeWidth = 3.dp,
+                            onClick = {
+                                val record = habitRecords.find { it.date == today }
+                                currentValue = record?.completedCount ?: 0
+                                currentNote = record?.note ?: ""
+                                showProgressSheet = true
+                            }
+                        )
+                    }
+                } else {
+                    // Inactive day indicator
+                    Box(
+                        modifier = Modifier.size(44.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "—",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Light
+                        )
+                    }
                 }
             }
 
@@ -214,6 +234,7 @@ fun HabitCardMedium(
                     it.date >= gridStartDate && it.date <= today
                 },
                 onDateClick = null, // Not clickable in medium view
+                habit = habit,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp)

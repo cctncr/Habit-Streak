@@ -9,7 +9,7 @@ import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.presentation.ui.state.SettingsUiState
-import org.example.habitstreak.core.util.AppLocale
+import org.example.habitstreak.core.locale.AppLocale
 import org.example.habitstreak.core.locale.ILocaleService
 import org.example.habitstreak.core.locale.ILocaleStateHolder
 import org.example.habitstreak.core.theme.AppTheme
@@ -117,7 +117,7 @@ class SettingsViewModel(
                     )
                 } catch (e: Exception) {
                     // Log error but continue with other habits
-                    println("Failed to enable notification for habit ${habit.id}: ${e.message}")
+                    // TODO: Implement proper logging framework
                 }
             }
         }
@@ -131,7 +131,7 @@ class SettingsViewModel(
             try {
                 notificationService.disableNotification(habit.id)
             } catch (e: Exception) {
-                println("Failed to disable notification for habit ${habit.id}: ${e.message}")
+                // TODO: Implement proper logging framework
             }
         }
     }

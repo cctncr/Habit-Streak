@@ -3,7 +3,7 @@ package org.example.habitstreak.core.extensions
 import androidx.compose.runtime.Composable
 import kotlinx.datetime.*
 import org.example.habitstreak.domain.util.DateProvider
-import org.example.habitstreak.core.util.DateFormatter
+import org.example.habitstreak.domain.util.DateFormatter
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 

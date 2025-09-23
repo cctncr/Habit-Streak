@@ -4,12 +4,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.example.habitstreak.domain.repository.PreferencesRepository
-import org.example.habitstreak.core.util.SystemLocaleProvider
+import org.example.habitstreak.core.locale.SystemLocaleProvider
 import java.util.prefs.Preferences
 
-actual class PreferencesRepositoryImpl : PreferencesRepository {
+actual fun createPreferencesRepository(): PreferencesRepository = PreferencesRepositoryJvmImpl()
 
-    private val prefs: Preferences = Preferences.userNodeForPackage(PreferencesRepositoryImpl::class.java)
+private class PreferencesRepositoryJvmImpl : PreferencesRepository {
+
+    private val prefs: Preferences = Preferences.userNodeForPackage(PreferencesRepositoryJvmImpl::class.java)
 
     companion object {
         const val NOTIFICATIONS_ENABLED = "notifications_enabled"
@@ -56,6 +58,9 @@ actual class PreferencesRepositoryImpl : PreferencesRepository {
 
     override fun isSoundEnabled(): Flow<Boolean> =
         _soundEnabled.asStateFlow()
+
+    override suspend fun getSoundEnabled(): Boolean =
+        _soundEnabled.value
 
     override suspend fun setVibrationEnabled(enabled: Boolean) {
         prefs.putBoolean(VIBRATION_ENABLED, enabled)

@@ -7,7 +7,7 @@ import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.repository.HabitRepository
-import org.example.habitstreak.domain.usecase.util.FlowUseCase
+import org.example.habitstreak.domain.usecase.FlowUseCase
 
 class GetHabitsWithCompletionUseCase(
     private val habitRepository: HabitRepository,

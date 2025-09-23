@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
-import org.example.habitstreak.core.util.UuidGenerator
+import org.example.habitstreak.domain.util.UuidGenerator
 import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitFrequency
@@ -26,6 +26,7 @@ class CreateEditHabitViewModel(
     private val categoryRepository: CategoryRepository,
     private val habitId: String?
 ) : ViewModel() {
+
 
     private val _uiState = MutableStateFlow(CreateEditHabitUiState())
     val uiState: StateFlow<CreateEditHabitUiState> = _uiState.asStateFlow()

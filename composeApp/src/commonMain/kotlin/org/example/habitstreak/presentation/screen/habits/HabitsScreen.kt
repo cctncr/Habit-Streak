@@ -41,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults.LinearStrokeCap
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
@@ -65,27 +66,33 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
 import org.example.habitstreak.domain.model.Category
-import org.example.habitstreak.presentation.ui.components.card.HabitCard
 import org.example.habitstreak.presentation.ui.components.card.HabitCardFactory
 import org.example.habitstreak.presentation.ui.components.common.ViewModeSelector
 import org.example.habitstreak.presentation.ui.components.empty.EmptyHabitsState
 import org.example.habitstreak.presentation.ui.model.ViewMode
 import org.example.habitstreak.presentation.viewmodel.HabitsViewModel
+import org.example.habitstreak.domain.model.HabitFilter
+import org.example.habitstreak.domain.service.HabitFilterService
 import org.example.habitstreak.domain.usecase.habit.GetHabitsWithCompletionUseCase
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.compose.koinInject
+import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalTime::class)
 @Composable
 fun HabitsScreen(
     onNavigateToCreateHabit: () -> Unit,
     onNavigateToStatistics: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToHabitDetail: (String) -> Unit,
-    viewModel: HabitsViewModel = koinViewModel()
+    viewModel: HabitsViewModel = koinViewModel(),
+    habitFilterService: HabitFilterService = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val habitsWithCompletion by viewModel.habitsWithCompletion.collectAsState()
@@ -106,22 +113,15 @@ fun HabitsScreen(
     var previousScrollOffset by remember { mutableStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(true) }
 
-    val filteredHabits = remember(habitsWithCompletion, selectedFilter, selectedCategoryId) {
+    // Use HabitFilterService following SOLID principles - business logic extracted from UI
+    val filteredHabits = remember(habitsWithCompletion, selectedFilter, selectedCategoryId, today) {
         derivedStateOf {
-            val filterPredicate: (GetHabitsWithCompletionUseCase.HabitWithCompletion) -> Boolean = when (selectedFilter) {
-                HabitFilter.ALL -> { _ -> true }
-                HabitFilter.COMPLETED -> { habitWithCompletion -> habitWithCompletion.completedCount >= habitWithCompletion.habit.targetCount }
-                HabitFilter.PENDING -> { habitWithCompletion -> habitWithCompletion.completedCount < habitWithCompletion.habit.targetCount }
-            }
-
-            val categoryPredicate: (GetHabitsWithCompletionUseCase.HabitWithCompletion) -> Boolean =
-                selectedCategoryId?.let { categoryId ->
-                    { habitWithCompletion -> habitWithCompletion.habit.categories.any { category -> category.id == categoryId } }
-                } ?: { _ -> true }
-
-            habitsWithCompletion.filter { habitWithCompletion ->
-                filterPredicate(habitWithCompletion) && categoryPredicate(habitWithCompletion)
-            }
+            habitFilterService.filterHabits(
+                habits = habitsWithCompletion,
+                filter = selectedFilter,
+                selectedCategoryId = selectedCategoryId,
+                targetDate = today
+            )
         }.value
     }
 
@@ -141,22 +141,10 @@ fun HabitsScreen(
         previousScrollOffset = currentOffset
     }
 
-    val todayCompleted = filteredHabits.count { it.completedCount >= it.habit.targetCount }
-    val totalHabits = filteredHabits.size
-
-    // Daily Goal hesaplaması - Tüm habitler üzerinden, filter'dan bağımsız
-    val dailyGoalPercentage by remember {
+    // Progress statistics using service following SRP
+    val progressStats by remember(habitsWithCompletion, today) {
         derivedStateOf {
-            if (habitsWithCompletion.isEmpty()) {
-                0
-            } else {
-                val totalProgress = habitsWithCompletion.sumOf { habitWithCompletion ->
-                    val progress = habitWithCompletion.completedCount.toFloat() /
-                            habitWithCompletion.habit.targetCount.coerceAtLeast(1)
-                    (progress.coerceIn(0f, 1f) * 100).toInt()
-                }
-                (totalProgress / habitsWithCompletion.size).coerceIn(0, 100)
-            }
+            habitFilterService.calculateProgressStats(habitsWithCompletion, today)
         }
     }
 
@@ -217,11 +205,13 @@ fun HabitsScreen(
                     ) {
                         item(key = "progress") {
                             ProgressOverviewCard(
-                                completionPercentage = dailyGoalPercentage,
-                                todayCompleted = habitsWithCompletion.count {
-                                    it.completedCount >= it.habit.targetCount
-                                },
-                                totalHabits = habitsWithCompletion.size
+                                completionPercentage = (progressStats.completionRate * 100).toInt(),
+                                todayCompleted = progressStats.completedHabits,
+                                totalHabits = progressStats.totalHabits,
+                                onAssistChipClick = {
+                                    selectedFilter = HabitFilter.PENDING
+                                    viewModel.clearCategoryFilter()
+                                }
                             )
                         }
 
@@ -391,7 +381,8 @@ fun HabitsScreen(
 private fun ProgressOverviewCard(
     completionPercentage: Int,
     todayCompleted: Int,
-    totalHabits: Int
+    totalHabits: Int,
+    onAssistChipClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -425,7 +416,7 @@ private fun ProgressOverviewCard(
 
                 if (totalHabits > 0) {
                     AssistChip(
-                        onClick = { },
+                        onClick = onAssistChipClick,
                         label = {
                             Text("$todayCompleted / $totalHabits")
                         },
@@ -445,7 +436,7 @@ private fun ProgressOverviewCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),
-                strokeCap = androidx.compose.material3.ProgressIndicatorDefaults.LinearStrokeCap
+                strokeCap = LinearStrokeCap
             )
         }
     }
@@ -497,11 +488,6 @@ private fun DatePickerModal(
     }
 }
 
-enum class HabitFilter {
-    ALL,
-    COMPLETED,
-    PENDING
-}
 
 @Composable
 fun HabitFilter.getLabel(): String = when (this) {

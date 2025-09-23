@@ -3,8 +3,6 @@ package org.example.habitstreak.di
 
 import android.content.Context
 import org.example.habitstreak.data.local.DatabaseDriverFactory
-import org.example.habitstreak.data.repository.PreferencesRepositoryImpl
-import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.service.NotificationScheduler
 import org.example.habitstreak.domain.service.PermissionManager
 import org.example.habitstreak.platform.AndroidNotificationScheduler
@@ -19,11 +17,6 @@ import org.koin.dsl.module
 val androidModule = module {
     // Database driver
     single { DatabaseDriverFactory(androidContext()).createDriver() }
-
-    // Preferences repository
-    single<PreferencesRepository> {
-        PreferencesRepositoryImpl(androidContext())
-    }
 
     // Notification scheduler - only handles scheduling
     single<NotificationScheduler> {

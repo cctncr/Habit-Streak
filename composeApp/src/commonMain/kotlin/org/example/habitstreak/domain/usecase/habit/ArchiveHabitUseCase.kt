@@ -1,7 +1,7 @@
 package org.example.habitstreak.domain.usecase.habit
 
 import org.example.habitstreak.domain.repository.HabitRepository
-import org.example.habitstreak.domain.usecase.util.UseCase
+import org.example.habitstreak.domain.usecase.UseCase
 import kotlin.time.ExperimentalTime
 
 class ArchiveHabitUseCase(

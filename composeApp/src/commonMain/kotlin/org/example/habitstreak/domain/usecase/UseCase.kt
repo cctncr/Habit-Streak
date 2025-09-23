@@ -1,4 +1,4 @@
-package org.example.habitstreak.domain.usecase.util
+package org.example.habitstreak.domain.usecase
 
 import kotlinx.coroutines.flow.Flow
 

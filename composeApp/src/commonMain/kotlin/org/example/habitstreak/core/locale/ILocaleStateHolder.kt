@@ -1,7 +1,7 @@
 package org.example.habitstreak.core.locale
 
 import kotlinx.coroutines.flow.StateFlow
-import org.example.habitstreak.core.util.AppLocale
+import org.example.habitstreak.core.locale.AppLocale
 
 interface ILocaleStateHolder {
     val currentLocale: StateFlow<AppLocale>

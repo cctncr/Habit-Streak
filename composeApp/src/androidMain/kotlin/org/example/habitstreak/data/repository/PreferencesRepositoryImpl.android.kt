@@ -9,16 +9,20 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.example.habitstreak.domain.repository.PreferencesRepository
-import org.example.habitstreak.core.util.SystemLocaleProvider
+import org.example.habitstreak.core.locale.SystemLocaleProvider
 import java.io.IOException
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     name = "habit_streak_preferences"
 )
 
-actual class PreferencesRepositoryImpl(
-    private val context: Context
-) : PreferencesRepository {
+actual fun createPreferencesRepository(): PreferencesRepository = PreferencesRepositoryAndroidImpl()
+
+private class PreferencesRepositoryAndroidImpl : PreferencesRepository, KoinComponent {
+
+    private val context: Context by inject()
 
     companion object {
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
@@ -68,6 +72,9 @@ actual class PreferencesRepositoryImpl(
             .map { preferences ->
                 preferences[SOUND_ENABLED] ?: true
             }
+
+    override suspend fun getSoundEnabled(): Boolean =
+        isSoundEnabled().first()
 
     override suspend fun setVibrationEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->

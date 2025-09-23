@@ -53,7 +53,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
-import org.example.habitstreak.core.util.AppLocale
+import org.example.habitstreak.core.locale.AppLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,11 +80,8 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    val currentAppLocale = AppLocale.current()
-                    val settingsText = stringResource(Res.string.nav_settings)
-                    println("📱 SettingsScreen: Title recomposing with locale ${currentAppLocale.code}, text: '$settingsText'")
                     Text(
-                        text = settingsText,
+                        text = stringResource(Res.string.nav_settings),
                         style = MaterialTheme.typography.headlineMedium
                     )
                 },

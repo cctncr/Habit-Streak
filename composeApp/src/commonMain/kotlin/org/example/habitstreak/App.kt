@@ -2,8 +2,8 @@ package org.example.habitstreak
 
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
-import org.example.habitstreak.core.util.AppLocale
-import org.example.habitstreak.core.util.LocaleProvider
+import org.example.habitstreak.core.locale.AppLocale
+import org.example.habitstreak.core.locale.LocaleProvider
 import org.example.habitstreak.core.locale.ILocaleService
 import org.example.habitstreak.core.locale.ILocaleStateHolder
 import org.example.habitstreak.core.locale.AppEnvironment
