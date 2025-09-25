@@ -34,6 +34,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.util.HabitFrequencyUtils
+import org.example.habitstreak.presentation.ui.utils.drawStripedPattern
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
@@ -189,7 +190,7 @@ private fun DateCell(
         if (!isActive) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawStripedPattern(
-                    color = accentColor.copy(alpha = 0.4f),
+                    color = accentColor, // Full color like completed cells
                     boxSize = boxSize,
                     cornerRadius = cornerRadius
                 )
@@ -265,32 +266,3 @@ private fun getMonthAbbreviation(month: Int): String {
     }
 }
 
-private fun DrawScope.drawStripedPattern(
-    color: Color,
-    boxSize: Dp,
-    cornerRadius: Dp,
-    stripeWidth: Float = 2f,
-    stripeSpacing: Float = 6f
-) {
-    val boxSizePx = boxSize.toPx()
-    val stripeAngle = 45f // 45 degree diagonal stripes
-
-    // Calculate the number of stripes needed to cover the diagonal of the box
-    val diagonal = kotlin.math.sqrt((boxSizePx * boxSizePx * 2).toDouble()).toFloat()
-    val totalStripes = (diagonal / stripeSpacing).toInt() + 2
-
-    // Draw diagonal stripes
-    for (i in -totalStripes..totalStripes) {
-        val startX = i * stripeSpacing
-        val startY = 0f
-        val endX = startX + boxSizePx
-        val endY = boxSizePx
-
-        drawLine(
-            color = color,
-            start = Offset(startX, startY),
-            end = Offset(endX, endY),
-            strokeWidth = stripeWidth
-        )
-    }
-}

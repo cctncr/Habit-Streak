@@ -109,6 +109,7 @@ import org.koin.compose.koinInject
 import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
+import org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -682,7 +683,7 @@ private fun BasicInfoStep(
 
 @Composable
 private fun FrequencyStep(
-    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
+    uiState: CreateEditHabitUiState,
     viewModel: CreateEditHabitViewModel,
     onShowFrequencyDialog: () -> Unit
 ) {
@@ -804,7 +805,7 @@ private fun FrequencyStep(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CategorySelectionStep(
-    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
+    uiState: CreateEditHabitUiState,
     viewModel: CreateEditHabitViewModel
 ) {
     Column(

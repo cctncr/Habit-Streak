@@ -1,12 +1,15 @@
 package org.example.habitstreak.presentation.screen.habit_detail.components
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,22 +20,34 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.HabitType
 import org.example.habitstreak.domain.model.getType
+import org.example.habitstreak.domain.util.HabitFrequencyUtils
 import org.example.habitstreak.presentation.model.YearMonth
+import org.example.habitstreak.presentation.ui.utils.drawStripedPattern
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
 import kotlin.time.ExperimentalTime
 
 /**
- * Calendar component for habit detail screen following Single Responsibility Principle.
- * Handles only calendar display and date selection logic.
+ * Pagination-based calendar component for habit detail screen following Single Responsibility Principle.
+ * Handles calendar display, date selection logic, and swipe navigation between months.
  */
-@OptIn(ExperimentalTime::class)
+@OptIn(ExperimentalTime::class, ExperimentalFoundationApi::class)
 @Composable
 fun HabitDetailCalendar(
     currentMonth: YearMonth,
@@ -45,6 +60,43 @@ fun HabitDetailCalendar(
 ) {
     val createdDate = habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
     val createdMonth = YearMonth(createdDate.year, createdDate.monthNumber)
+    val todayMonth = YearMonth(today.year, today.monthNumber)
+
+    // Calculate initial months to display
+    var monthsToShow by remember { mutableStateOf(calculateInitialMonthRange(createdMonth, todayMonth)) }
+    val initialPage = monthsToShow.indexOf(currentMonth).takeIf { it >= 0 } ?: (monthsToShow.size / 2)
+
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { monthsToShow.size }
+    )
+
+    val coroutineScope = rememberCoroutineScope()
+
+    // Update current month when page changes and handle dynamic range extension
+    LaunchedEffect(pagerState.currentPage, monthsToShow.size) {
+        if (pagerState.currentPage < monthsToShow.size) {
+            onMonthChange(monthsToShow[pagerState.currentPage])
+        }
+
+        val threshold = 3
+
+        // Extend forward when approaching the end
+        if (pagerState.currentPage > monthsToShow.size - threshold) {
+            val additionalMonths = generateNextMonths(monthsToShow.last(), 6)
+            monthsToShow = monthsToShow + additionalMonths
+        }
+
+        // Extend backward when approaching the beginning
+        if (pagerState.currentPage < threshold && pagerState.currentPage >= 0) {
+            val additionalMonths = generatePreviousMonths(monthsToShow.first(), 6)
+            val oldSize = monthsToShow.size
+            monthsToShow = additionalMonths + monthsToShow
+            // Adjust pager position to maintain current view
+            val newPosition = pagerState.currentPage + (monthsToShow.size - oldSize)
+            pagerState.scrollToPage(newPosition)
+        }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -56,10 +108,25 @@ fun HabitDetailCalendar(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Month Navigation
-            MonthNavigation(
-                currentMonth = currentMonth,
-                onMonthChange = onMonthChange
+            // Month Navigation with current month indicator
+            MonthNavigationHeader(
+                currentMonth = if (pagerState.currentPage < monthsToShow.size) monthsToShow[pagerState.currentPage] else currentMonth,
+                onPreviousMonth = {
+                    coroutineScope.launch {
+                        if (pagerState.currentPage > 0) {
+                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                        }
+                    }
+                },
+                onNextMonth = {
+                    coroutineScope.launch {
+                        if (pagerState.currentPage < monthsToShow.size - 1) {
+                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                        }
+                    }
+                },
+                canNavigatePrevious = pagerState.currentPage > 0,
+                canNavigateNext = pagerState.currentPage < monthsToShow.size - 1
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -69,14 +136,21 @@ fun HabitDetailCalendar(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Calendar Grid
-            CalendarGrid(
-                currentMonth = currentMonth,
-                records = records,
-                habit = habit,
-                today = today,
-                onDateSelected = onDateSelected
-            )
+            // Paginated Calendar
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth()
+            ) { pageIndex ->
+                if (pageIndex < monthsToShow.size) {
+                    CalendarGrid(
+                        currentMonth = monthsToShow[pageIndex],
+                        records = records,
+                        habit = habit,
+                        today = today,
+                        onDateSelected = onDateSelected
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -84,16 +158,26 @@ fun HabitDetailCalendar(
             NavigationChips(
                 createdMonth = createdMonth,
                 today = today,
-                onMonthChange = onMonthChange
+                onNavigateToMonth = { targetMonth ->
+                    val targetIndex = monthsToShow.indexOf(targetMonth)
+                    if (targetIndex >= 0) {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(targetIndex)
+                        }
+                    }
+                }
             )
         }
     }
 }
 
 @Composable
-private fun MonthNavigation(
+private fun MonthNavigationHeader(
     currentMonth: YearMonth,
-    onMonthChange: (YearMonth) -> Unit,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    canNavigatePrevious: Boolean,
+    canNavigateNext: Boolean,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -102,30 +186,34 @@ private fun MonthNavigation(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(
-            onClick = { onMonthChange(currentMonth.previous()) },
+            onClick = onPreviousMonth,
+            enabled = canNavigatePrevious,
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 Icons.Filled.ChevronLeft,
-                contentDescription = "Previous month",
-                modifier = Modifier.size(20.dp)
+                contentDescription = stringResource(Res.string.previous_month),
+                modifier = Modifier.size(20.dp),
+                tint = if (canNavigatePrevious) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
             )
         }
 
         Text(
-            text = "${getMonthName(currentMonth.month)} ${currentMonth.year}",
+            text = "${getLocalizedMonthName(currentMonth.month)} ${currentMonth.year}",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
 
         IconButton(
-            onClick = { onMonthChange(currentMonth.next()) },
+            onClick = onNextMonth,
+            enabled = canNavigateNext,
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
                 Icons.Filled.ChevronRight,
-                contentDescription = "Next month",
-                modifier = Modifier.size(20.dp)
+                contentDescription = stringResource(Res.string.next_month),
+                modifier = Modifier.size(20.dp),
+                tint = if (canNavigateNext) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
             )
         }
     }
@@ -137,7 +225,17 @@ private fun WeekdayHeaders(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
+        val weekdayLabels = listOf(
+            stringResource(Res.string.day_mon_short),
+            stringResource(Res.string.day_tue_short),
+            stringResource(Res.string.day_wed_short),
+            stringResource(Res.string.day_thu_short),
+            stringResource(Res.string.day_fri_short),
+            stringResource(Res.string.day_sat_short),
+            stringResource(Res.string.day_sun_short)
+        )
+
+        weekdayLabels.forEach { day ->
             Text(
                 text = day,
                 style = MaterialTheme.typography.bodySmall,
@@ -150,6 +248,7 @@ private fun WeekdayHeaders(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalTime::class)
 @Composable
 private fun CalendarGrid(
     currentMonth: YearMonth,
@@ -161,6 +260,8 @@ private fun CalendarGrid(
 ) {
     val daysInMonth = getDaysInMonth(currentMonth.year, currentMonth.month)
     val firstDayOfMonth = LocalDate(currentMonth.year, currentMonth.month, 1)
+    val createdDate = habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
+
     // Convert to Monday-based (1=Monday, 7=Sunday)
     val firstDayOfWeek = when (firstDayOfMonth.dayOfWeek) {
         DayOfWeek.MONDAY -> 0
@@ -172,11 +273,17 @@ private fun CalendarGrid(
         DayOfWeek.SUNDAY -> 6
     }
 
-    val totalCells = ((daysInMonth + firstDayOfWeek - 1) / 7 + 1) * 7
+    // Always show 6 rows for consistent layout, but optimize for content
+    val actualRows = ((daysInMonth + firstDayOfWeek - 1) / 7 + 1)
+    val totalCells = 6 * 7 // Fixed 42 cells for consistency
+
+    // Optimal height calculation: cells (36dp) + spacing (4dp between rows)
+    // 6 rows: (6 * 36dp) + (5 * 4dp spacing) = 216dp + 20dp = 236dp
+    val optimizedHeight = 236.dp
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(7),
-        modifier = modifier.height((totalCells / 7 * 42).dp),
+        modifier = modifier.height(optimizedHeight),
         userScrollEnabled = false,
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -195,6 +302,8 @@ private fun CalendarGrid(
                     else -> if (record.completedCount > 0) 1f else 0f
                 }
 
+                val isDateActive = HabitFrequencyUtils.isActiveOnDate(habit.frequency, date, createdDate)
+
                 CalendarDayCell(
                     dayNumber = dayNumber,
                     date = date,
@@ -202,10 +311,13 @@ private fun CalendarGrid(
                     isToday = date == today,
                     isFuture = date > today,
                     hasNote = records.any { it.date == date && it.note.isNotBlank() },
+                    isActive = isDateActive,
+                    habit = habit,
                     onClick = { onDateSelected(date) }
                 )
             } else {
-                Spacer(modifier = Modifier.size(36.dp))
+                // Empty cell for padding - maintains consistent calendar height
+                Spacer(modifier = Modifier.size(12.dp))
             }
         }
     }
@@ -219,18 +331,30 @@ private fun CalendarDayCell(
     isToday: Boolean,
     isFuture: Boolean,
     hasNote: Boolean,
+    isActive: Boolean,
+    habit: Habit,
     onClick: () -> Unit
 ) {
-    val backgroundColor = when {
-        completionRate >= 1f -> MaterialTheme.colorScheme.primary
-        completionRate > 0.5f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-        completionRate > 0f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    }
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            !isActive -> habit.color.composeColor.copy(alpha = 0.2f)
+            completionRate >= 1f -> habit.color.composeColor
+            completionRate > 0.5f -> habit.color.composeColor.copy(alpha = 0.6f)
+            completionRate > 0f -> habit.color.composeColor.copy(alpha = 0.3f)
+            hasNote -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        },
+        label = "backgroundColor"
+    )
 
     val textColor = when {
-        completionRate >= 0.5f -> MaterialTheme.colorScheme.onPrimary
+        completionRate >= 0.5f -> Color.White
         else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val borderColor = when {
+        isToday -> MaterialTheme.colorScheme.primary
+        else -> Color.Transparent
     }
 
     Box(
@@ -242,14 +366,25 @@ private fun CalendarDayCell(
                 if (isToday) {
                     Modifier.border(
                         2.dp,
-                        MaterialTheme.colorScheme.primary,
+                        borderColor,
                         RoundedCornerShape(8.dp)
                     )
                 } else Modifier
             )
-            .clickable { onClick() },
+            .clickable(enabled = isActive) { onClick() },
         contentAlignment = Alignment.Center
     ) {
+        // Striped pattern for inactive days
+        if (!isActive) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawStripedPattern(
+                    color = habit.color.composeColor, // Full color like completed cells
+                    boxSize = 36.dp,
+                    cornerRadius = 8.dp
+                )
+            }
+        }
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -276,7 +411,7 @@ private fun CalendarDayCell(
 private fun NavigationChips(
     createdMonth: YearMonth,
     today: LocalDate,
-    onMonthChange: (YearMonth) -> Unit,
+    onNavigateToMonth: (YearMonth) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -284,8 +419,8 @@ private fun NavigationChips(
         horizontalArrangement = Arrangement.End
     ) {
         AssistChip(
-            onClick = { onMonthChange(createdMonth) },
-            label = { Text("Created") },
+            onClick = { onNavigateToMonth(createdMonth) },
+            label = { Text(stringResource(Res.string.created)) },
             leadingIcon = {
                 Icon(
                     Icons.Outlined.DateRange,
@@ -297,8 +432,8 @@ private fun NavigationChips(
         )
 
         AssistChip(
-            onClick = { onMonthChange(YearMonth(today.year, today.monthNumber)) },
-            label = { Text("Today") },
+            onClick = { onNavigateToMonth(YearMonth(today.year, today.monthNumber)) },
+            label = { Text(stringResource(Res.string.today)) },
             leadingIcon = {
                 Icon(
                     Icons.Outlined.Today,
@@ -320,20 +455,63 @@ private fun getDaysInMonth(year: Int, month: Int): Int {
     }
 }
 
-private fun getMonthName(month: Int): String {
+@Composable
+private fun getLocalizedMonthName(month: Int): String {
     return when (month) {
-        1 -> "January"
-        2 -> "February"
-        3 -> "March"
-        4 -> "April"
-        5 -> "May"
-        6 -> "June"
-        7 -> "July"
-        8 -> "August"
-        9 -> "September"
-        10 -> "October"
-        11 -> "November"
-        12 -> "December"
+        1 -> stringResource(Res.string.month_january)
+        2 -> stringResource(Res.string.month_february)
+        3 -> stringResource(Res.string.month_march)
+        4 -> stringResource(Res.string.month_april)
+        5 -> stringResource(Res.string.month_may)
+        6 -> stringResource(Res.string.month_june)
+        7 -> stringResource(Res.string.month_july)
+        8 -> stringResource(Res.string.month_august)
+        9 -> stringResource(Res.string.month_september)
+        10 -> stringResource(Res.string.month_october)
+        11 -> stringResource(Res.string.month_november)
+        12 -> stringResource(Res.string.month_december)
         else -> ""
     }
 }
+
+private fun calculateInitialMonthRange(createdMonth: YearMonth, todayMonth: YearMonth): List<YearMonth> {
+    val months = mutableListOf<YearMonth>()
+
+    // Add some months before creation for better UX
+    var current = createdMonth.previous().previous().previous()
+
+    // Add months until today plus some future months
+    val endMonth = todayMonth.next().next().next().next().next().next() // 6 months ahead
+
+    while (current <= endMonth) {
+        months.add(current)
+        current = current.next()
+    }
+
+    return months
+}
+
+private fun generateNextMonths(fromMonth: YearMonth, count: Int): List<YearMonth> {
+    val months = mutableListOf<YearMonth>()
+    var current = fromMonth.next()
+
+    repeat(count) {
+        months.add(current)
+        current = current.next()
+    }
+
+    return months
+}
+
+private fun generatePreviousMonths(fromMonth: YearMonth, count: Int): List<YearMonth> {
+    val months = mutableListOf<YearMonth>()
+    var current = fromMonth.previous()
+
+    repeat(count) {
+        months.add(0, current) // Add to beginning
+        current = current.previous()
+    }
+
+    return months
+}
+

@@ -13,7 +13,7 @@ import kotlin.time.ExperimentalTime
 data class YearMonth(
     val year: Int,
     val month: Int // 1-12
-) {
+) : Comparable<YearMonth> {
     init {
         require(month in 1..12) { "Month must be between 1 and 12" }
     }
@@ -44,6 +44,13 @@ data class YearMonth(
             YearMonth(year - 1, 12)
         } else {
             YearMonth(year, month - 1)
+        }
+    }
+
+    override fun compareTo(other: YearMonth): Int {
+        return when {
+            year != other.year -> year.compareTo(other.year)
+            else -> month.compareTo(other.month)
         }
     }
 }
