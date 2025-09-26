@@ -28,13 +28,16 @@ class NotificationWorker(
         val habitId = inputData.getString(AndroidNotificationScheduler.KEY_HABIT_ID)
             ?: return Result.failure()
 
+        val habitTitle = inputData.getString(AndroidNotificationScheduler.KEY_HABIT_TITLE)
+            ?: getHabitTitleFromDatabase(habitId)
+
         val message = inputData.getString(AndroidNotificationScheduler.KEY_MESSAGE)
             ?: "Time to complete your habit!"
 
         val koinContext = GlobalContext.getOrNull()
         if (koinContext == null) {
             // Fallback to basic notification if DI not available
-            showNotification(habitId, message, isActive = true)
+            showNotification(habitId, habitTitle, message, isActive = true)
             return Result.success()
         }
 
@@ -52,22 +55,37 @@ class NotificationWorker(
 
             result.fold(
                 onSuccess = { isActive ->
-                    showNotification(habitId, message, isActive)
+                    showNotification(habitId, habitTitle, message, isActive)
                 },
                 onFailure = {
                     // Show notification with complete button on error (safe fallback)
-                    showNotification(habitId, message, isActive = true)
+                    showNotification(habitId, habitTitle, message, isActive = true)
                 }
             )
         } catch (e: Exception) {
             // Show notification with complete button on error (safe fallback)
-            showNotification(habitId, message, isActive = true)
+            showNotification(habitId, habitTitle, message, isActive = true)
         }
 
         return Result.success()
     }
 
-    private fun showNotification(habitId: String, message: String, isActive: Boolean) {
+    private suspend fun getHabitTitleFromDatabase(habitId: String): String {
+        return try {
+            val koinContext = GlobalContext.getOrNull()
+            if (koinContext != null) {
+                val habitRepository = koinContext.get<org.example.habitstreak.domain.repository.HabitRepository>()
+                val result = habitRepository.getHabitById(habitId)
+                result.getOrNull()?.title ?: "Habit"
+            } else {
+                "Habit"
+            }
+        } catch (e: Exception) {
+            "Habit"
+        }
+    }
+
+    private fun showNotification(habitId: String, habitTitle: String, message: String, isActive: Boolean) {
         val notificationManager = applicationContext.getSystemService(
             Context.NOTIFICATION_SERVICE
         ) as NotificationManager
@@ -103,7 +121,7 @@ class NotificationWorker(
         if (isActive) {
             // Active day - show completion action
             notificationBuilder
-                .setContentTitle("Habit Reminder")
+                .setContentTitle("$habitTitle Reminder")
                 .setContentText(message)
                 .addAction(
                     android.R.drawable.ic_input_add,
@@ -113,8 +131,8 @@ class NotificationWorker(
         } else {
             // Inactive day - different message, no completion action
             notificationBuilder
-                .setContentTitle("Rest Day")
-                .setContentText("This habit is not scheduled for today. Take a well-deserved break!")
+                .setContentTitle("$habitTitle Rest Day")
+                .setContentText("$habitTitle is not scheduled for today. Take a well-deserved break!")
         }
 
         val notification = notificationBuilder.build()

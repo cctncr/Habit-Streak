@@ -13,6 +13,8 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.service.NotificationScheduler
+import org.example.habitstreak.domain.repository.HabitRepository
+import org.koin.core.context.GlobalContext
 import java.util.concurrent.TimeUnit
 import kotlinx.datetime.*
 import kotlin.time.Clock
@@ -126,7 +128,7 @@ class AndroidNotificationScheduler(
     }
 
     @OptIn(ExperimentalTime::class)
-    private fun scheduleExactAlarm(config: NotificationConfig) {
+    private suspend fun scheduleExactAlarm(config: NotificationConfig) {
         val now = Clock.System.now()
         val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
         var targetDateTime = today.atTime(config.time)
@@ -155,7 +157,7 @@ class AndroidNotificationScheduler(
         }
     }
 
-    private fun scheduleWithWorkManager(config: NotificationConfig) {
+    private suspend fun scheduleWithWorkManager(config: NotificationConfig) {
         val workRequest = createWorkRequest(config)
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             NOTIFICATION_WORK_TAG + config.habitId,
@@ -183,9 +185,12 @@ class AndroidNotificationScheduler(
         }
     }
 
-    private fun createAlarmPendingIntent(config: NotificationConfig): PendingIntent {
+    private suspend fun createAlarmPendingIntent(config: NotificationConfig): PendingIntent {
+        val habitTitle = getHabitTitle(config.habitId)
+
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(AlarmReceiver.EXTRA_HABIT_ID, config.habitId)
+            putExtra(AlarmReceiver.EXTRA_HABIT_TITLE, habitTitle)
             putExtra(AlarmReceiver.EXTRA_MESSAGE, config.message)
         }
 
@@ -201,14 +206,32 @@ class AndroidNotificationScheduler(
         )
     }
 
+    private suspend fun getHabitTitle(habitId: String): String {
+        return try {
+            val koinContext = GlobalContext.getOrNull()
+            if (koinContext != null) {
+                val habitRepository = koinContext.get<HabitRepository>()
+                val result = habitRepository.getHabitById(habitId)
+                result.getOrNull()?.title ?: "Habit"
+            } else {
+                "Habit"
+            }
+        } catch (e: Exception) {
+            "Habit"
+        }
+    }
+
     @OptIn(ExperimentalTime::class)
-    private fun createWorkRequest(config: NotificationConfig) =
+    private suspend fun createWorkRequest(config: NotificationConfig) =
         PeriodicWorkRequestBuilder<NotificationWorker>(
             24, TimeUnit.HOURS
         ).apply {
+            val habitTitle = getHabitTitle(config.habitId)
+
             setInputData(
                 workDataOf(
                     KEY_HABIT_ID to config.habitId,
+                    KEY_HABIT_TITLE to habitTitle,
                     KEY_MESSAGE to config.message
                 )
             )

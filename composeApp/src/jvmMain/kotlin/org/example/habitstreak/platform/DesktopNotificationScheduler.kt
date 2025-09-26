@@ -141,10 +141,22 @@ class DesktopNotificationScheduler : NotificationScheduler {
     }
 
     private fun showNotification(config: NotificationConfig) {
-        trayIcon?.displayMessage(
-            "Habit Reminder",
-            config.message,
-            TrayIcon.MessageType.INFO
-        )
+        try {
+            val icon = trayIcon
+            if (icon != null) {
+                icon.displayMessage(
+                    "Habit Reminder",
+                    config.message,
+                    TrayIcon.MessageType.INFO
+                )
+            } else {
+                // Fallback to console logging if tray unavailable
+                println("Habit Reminder: ${config.message}")
+            }
+        } catch (e: Exception) {
+            // Fallback to console logging on any tray operation error
+            println("Habit Reminder: ${config.message}")
+            println("Tray notification failed: ${e.message}")
+        }
     }
 }

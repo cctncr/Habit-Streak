@@ -16,7 +16,8 @@ import org.example.habitstreak.domain.service.PermissionResult
 import androidx.core.content.edit
 
 class AndroidPermissionManager(
-    private val context: Context
+    private val context: Context,
+    private val activityProvider: ActivityProvider
 ) : PermissionManager {
 
     companion object {
@@ -56,7 +57,7 @@ class AndroidPermissionManager(
             return PermissionResult.DeniedPermanently
         }
 
-        val activity = context as? Activity
+        val activity = activityProvider.getCurrentActivity()
         if (activity == null) {
             return PermissionResult.Error(
                 NotificationError.ServiceUnavailable("Activity context required for permission request")
@@ -98,7 +99,7 @@ class AndroidPermissionManager(
         if (hasNotificationPermission()) return false
 
         // Check if system allows showing permission dialog
-        val activity = context as? Activity ?: return false
+        val activity = activityProvider.getCurrentActivity() ?: return false
 
         // If we haven't requested before, we can request
         if (!hasBeenRequestedBefore()) return true

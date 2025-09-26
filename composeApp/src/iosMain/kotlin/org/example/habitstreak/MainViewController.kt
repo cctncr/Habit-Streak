@@ -3,7 +3,7 @@ package org.example.habitstreak
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.compose.material3.Text
 import org.example.habitstreak.app.di.appModule
-import org.example.habitstreak.di.platformModule
+import org.example.habitstreak.app.di.platformModule
 import org.example.habitstreak.platform.IOSNotificationSetup
 import org.koin.core.context.startKoin
 

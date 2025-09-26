@@ -8,6 +8,7 @@ import org.example.habitstreak.domain.service.NotificationScheduler
 import platform.Foundation.*
 import platform.UserNotifications.*
 import kotlin.coroutines.resume
+import kotlin.concurrent.Volatile
 
 /**
  * iOS implementation of NotificationScheduler
@@ -18,6 +19,7 @@ class IOSNotificationScheduler : NotificationScheduler {
 
     private val notificationCenter = UNUserNotificationCenter.currentNotificationCenter()
 
+    @Volatile
     private var categoriesSetup = false
 
     private fun ensureCategoriesSetup() {

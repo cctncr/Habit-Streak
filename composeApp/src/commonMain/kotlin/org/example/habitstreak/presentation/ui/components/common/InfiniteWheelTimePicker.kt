@@ -87,7 +87,7 @@ fun InfiniteWheelTimePicker(
             visibleItemCount = 5,
             modifier = Modifier.weight(1f)
         ) { item ->
-            if (is24Hour) "%02d".format(item) else item.toString()
+            if (is24Hour) item.toString().padStart(2, '0') else item.toString()
         }
 
         // Separator
@@ -112,7 +112,7 @@ fun InfiniteWheelTimePicker(
             visibleItemCount = 5,
             modifier = Modifier.weight(1f)
         ) { item ->
-            "%02d".format(item)
+            item.toString().padStart(2, '0')
         }
 
         // AM/PM selector (non-infinite for 12-hour format)

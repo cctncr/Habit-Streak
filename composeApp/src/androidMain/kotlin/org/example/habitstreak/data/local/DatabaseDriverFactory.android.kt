@@ -7,8 +7,7 @@ import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 actual class DatabaseDriverFactory(private val context: Context) {
     actual fun createDriver(): SqlDriver {
         return AndroidSqliteDriver(HabitDatabase.Schema, context, "habit.db").also { driver ->
-            // Enable foreign key constraints
-            driver.execute(null, "PRAGMA foreign_keys=ON", 0)
+            DatabaseMigration.setupMigrations(driver)
         }
     }
 }

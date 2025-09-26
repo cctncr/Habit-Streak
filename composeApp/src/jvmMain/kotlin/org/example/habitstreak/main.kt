@@ -3,7 +3,7 @@ package org.example.habitstreak
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import org.example.habitstreak.app.di.appModule
-import org.example.habitstreak.di.platformModule
+import org.example.habitstreak.app.di.platformModule
 import org.koin.core.context.startKoin
 
 fun main() = application {

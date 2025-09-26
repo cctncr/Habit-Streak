@@ -2,8 +2,7 @@ package org.example.habitstreak
 
 import android.app.Application
 import org.example.habitstreak.app.di.appModule
-import org.example.habitstreak.di.androidModule
-import org.example.habitstreak.di.platformModule
+import org.example.habitstreak.app.di.platformModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -15,7 +14,7 @@ class HabitStreakApplication : Application() {
         startKoin {
             androidLogger()
             androidContext(this@HabitStreakApplication)
-            modules(appModule, androidModule, platformModule())
+            modules(appModule, platformModule())
         }
     }
 }
