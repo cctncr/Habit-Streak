@@ -11,18 +11,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalTime
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderTimeDialog(
     selectedTime: LocalTime?,
     onTimeSelected: (LocalTime) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val timePickerState = rememberTimePickerState(
-        initialHour = selectedTime?.hour ?: 9,
-        initialMinute = selectedTime?.minute ?: 0,
-        is24Hour = false
-    )
+    var currentTime by remember {
+        mutableStateOf(selectedTime ?: LocalTime(9, 0))
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -47,9 +44,13 @@ fun ReminderTimeDialog(
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                // Material3 TimePicker
-                TimePicker(
-                    state = timePickerState,
+                // Infinite Wheel Time Picker
+                InfiniteWheelTimePicker(
+                    selectedTime = currentTime,
+                    onTimeChanged = { newTime ->
+                        currentTime = newTime
+                    },
+                    is24Hour = false,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -75,7 +76,7 @@ fun ReminderTimeDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Selected: ${formatTime(LocalTime(timePickerState.hour, timePickerState.minute))}",
+                            text = "Selected: ${formatTime(currentTime)}",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.Medium
@@ -87,7 +88,7 @@ fun ReminderTimeDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onTimeSelected(LocalTime(timePickerState.hour, timePickerState.minute))
+                    onTimeSelected(currentTime)
                     onDismiss()
                 }
             ) {

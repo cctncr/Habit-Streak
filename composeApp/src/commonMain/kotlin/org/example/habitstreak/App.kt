@@ -15,7 +15,11 @@ import org.example.habitstreak.presentation.ui.theme.AppTheme
 import org.koin.compose.koinInject
 
 @Composable
-fun App() {
+fun App(
+    deepLinkHabitId: String? = null,
+    shouldNavigateToHabit: Boolean = false,
+    onDeepLinkHandled: () -> Unit = {}
+) {
     val initializeCategoriesUseCase: InitializeCategoriesUseCase = koinInject()
     val localeService: ILocaleService = koinInject()
     val themeService: IThemeService = koinInject()
@@ -34,7 +38,11 @@ fun App() {
         AppThemeEnvironment {
             LocaleProvider(locale = currentLocale) {
                 AppTheme {
-                    AppNavigation()
+                    AppNavigation(
+                        deepLinkHabitId = deepLinkHabitId,
+                        shouldNavigateToHabit = shouldNavigateToHabit,
+                        onDeepLinkHandled = onDeepLinkHandled
+                    )
                 }
             }
         }

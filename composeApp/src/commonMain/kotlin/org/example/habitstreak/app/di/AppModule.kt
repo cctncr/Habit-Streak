@@ -87,6 +87,8 @@ val appModule = module {
     factory { ManageHabitNotificationUseCase(getOrNull()) }
     factory { ArchiveHabitUseCase(get()) }
     factory { InitializeCategoriesUseCase(get()) }
+    factory { org.example.habitstreak.domain.usecase.notification.CompleteHabitFromNotificationUseCase(get()) }
+    factory { org.example.habitstreak.domain.usecase.notification.CheckHabitActiveDayUseCase(get()) }
 
     // ViewModels - Following Dependency Injection best practices
     factory { HabitsViewModel(get(), get(), get(), get(), get(), get(), get()) }

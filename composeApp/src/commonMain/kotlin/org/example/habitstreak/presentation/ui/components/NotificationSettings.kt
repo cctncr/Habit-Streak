@@ -27,8 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
+import org.example.habitstreak.presentation.ui.components.common.InfiniteWheelTimePicker
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -294,34 +293,33 @@ private fun getErrorDialogMessage(error: NotificationError): String = when (erro
         error.message
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimePickerDialog(
     initialTime: LocalTime,
     onTimeSelected: (LocalTime) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val timePickerState = rememberTimePickerState(
-        initialHour = initialTime.hour,
-        initialMinute = initialTime.minute,
-        is24Hour = false
-    )
+    var currentTime by remember {
+        mutableStateOf(initialTime)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select Time") },
         text = {
-            TimePicker(
-                state = timePickerState,
+            InfiniteWheelTimePicker(
+                selectedTime = currentTime,
+                onTimeChanged = { newTime ->
+                    currentTime = newTime
+                },
+                is24Hour = false,
                 modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    onTimeSelected(
-                        LocalTime(timePickerState.hour, timePickerState.minute)
-                    )
+                    onTimeSelected(currentTime)
                 }
             ) {
                 Text("OK")

@@ -1,13 +1,16 @@
+package org.example.habitstreak.platform
+
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.os.Build
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.example.habitstreak.domain.repository.HabitRecordRepository
+import org.example.habitstreak.domain.usecase.notification.CompleteHabitFromNotificationUseCase
 import org.example.habitstreak.domain.util.DateProvider
-import org.example.habitstreak.platform.AndroidNotificationScheduler
 import org.koin.core.context.GlobalContext
 
 /**
@@ -26,7 +29,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
         when (intent.action) {
             "COMPLETE_HABIT" -> handleCompleteHabit(context, habitId, koinContext)
-            "SNOOZE_HABIT" -> handleSnoozeHabit(context, habitId, koinContext)
         }
 
         // Cancel notification
@@ -39,42 +41,58 @@ class NotificationActionReceiver : BroadcastReceiver() {
     private fun handleCompleteHabit(context: Context, habitId: String, koinContext: org.koin.core.Koin) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val habitRecordRepository = koinContext.get<HabitRecordRepository>()
+                val completeHabitUseCase = koinContext.get<CompleteHabitFromNotificationUseCase>()
                 val dateProvider = koinContext.get<DateProvider>()
 
-                // Mark habit as complete for today
-                habitRecordRepository.markHabitAsComplete(
-                    habitId = habitId,
-                    date = dateProvider.today(),
-                    count = 1, // Default to 1 completion
-                    note = "Completed from notification"
+                // Use dedicated use case for consistent completion logic
+                val result = completeHabitUseCase(
+                    CompleteHabitFromNotificationUseCase.Params(
+                        habitId = habitId,
+                        date = dateProvider.today(),
+                        count = 1,
+                        note = "Completed from notification"
+                    )
                 )
 
-                // Show success toast or notification
-                showCompletionNotification(context, habitId)
+                result.fold(
+                    onSuccess = {
+                        showCompletionNotification(context, habitId)
+                    },
+                    onFailure = { error ->
+                        error.printStackTrace()
+                        showErrorNotification(context, habitId)
+                    }
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
+                showErrorNotification(context, habitId)
             }
         }
     }
 
-    private fun handleSnoozeHabit(context: Context, habitId: String, koinContext: org.koin.core.Koin) {
-        // Schedule a new notification in 1 hour
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // Implementation for snooze
-                // You can reschedule the notification for later
-                showSnoozeNotification(context, habitId)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
 
     private fun showCompletionNotification(context: Context, habitId: String) {
         val notificationManager = context.getSystemService(
             Context.NOTIFICATION_SERVICE
         ) as NotificationManager
+
+        // Create intent to open habit detail when notification is clicked
+        val intent = Intent(context, org.example.habitstreak.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("habit_id", habitId)
+            putExtra("navigate_to_habit", true)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            (habitId + "_complete").hashCode(),
+            intent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
 
         val notification = android.app.Notification.Builder(
             context,
@@ -83,6 +101,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Great job!")
             .setContentText("Habit completed successfully!")
+            .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 
@@ -93,7 +112,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
         )
     }
 
-    private fun showSnoozeNotification(context: Context, habitId: String) {
+
+    private fun showErrorNotification(context: Context, habitId: String) {
         val notificationManager = context.getSystemService(
             Context.NOTIFICATION_SERVICE
         ) as NotificationManager
@@ -102,15 +122,15 @@ class NotificationActionReceiver : BroadcastReceiver() {
             context,
             AndroidNotificationScheduler.CHANNEL_ID
         )
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Snoozed")
-            .setContentText("Habit reminder snoozed for 1 hour")
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("Error")
+            .setContentText("Failed to complete habit. Please try again.")
             .setAutoCancel(true)
             .build()
 
-        // Show snooze notification briefly
+        // Show error notification briefly
         notificationManager.notify(
-            (habitId + "_snooze").hashCode(),
+            (habitId + "_error").hashCode(),
             notification
         )
     }

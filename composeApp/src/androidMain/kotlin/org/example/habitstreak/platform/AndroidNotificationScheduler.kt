@@ -1,8 +1,11 @@
 package org.example.habitstreak.platform
 
+import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -17,11 +20,14 @@ import kotlin.time.ExperimentalTime
 
 /**
  * Android implementation of NotificationScheduler
+ * Uses AlarmManager for exact timing with WorkManager as fallback
  * Follows Single Responsibility - only handles scheduling, not permissions
  */
 class AndroidNotificationScheduler(
     private val context: Context
 ) : NotificationScheduler {
+
+    private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
     companion object {
         const val CHANNEL_ID = "habit_reminders"
@@ -57,14 +63,13 @@ class AndroidNotificationScheduler(
 
     override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
         return try {
-            val workRequest = createWorkRequest(config)
-
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                NOTIFICATION_WORK_TAG + config.habitId,
-                ExistingPeriodicWorkPolicy.REPLACE,
-                workRequest
-            )
-
+            // Try AlarmManager first for exact timing
+            if (canScheduleExactAlarms()) {
+                scheduleExactAlarm(config)
+            } else {
+                // Fallback to WorkManager
+                scheduleWithWorkManager(config)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -73,6 +78,8 @@ class AndroidNotificationScheduler(
 
     override suspend fun cancelNotification(habitId: String): Result<Unit> {
         return try {
+            // Cancel both AlarmManager and WorkManager
+            cancelAlarm(habitId)
             WorkManager.getInstance(context)
                 .cancelUniqueWork(NOTIFICATION_WORK_TAG + habitId)
             Result.success(Unit)
@@ -89,6 +96,7 @@ class AndroidNotificationScheduler(
 
     override suspend fun cancelAllNotifications(): Result<Unit> {
         return try {
+            // Cancel all alarms and work requests
             WorkManager.getInstance(context)
                 .cancelAllWorkByTag(NOTIFICATION_WORK_TAG)
             Result.success(Unit)
@@ -107,6 +115,90 @@ class AndroidNotificationScheduler(
         } catch (e: Exception) {
             false
         }
+    }
+
+    private fun canScheduleExactAlarms(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            alarmManager.canScheduleExactAlarms()
+        } else {
+            true
+        }
+    }
+
+    @OptIn(ExperimentalTime::class)
+    private fun scheduleExactAlarm(config: NotificationConfig) {
+        val now = Clock.System.now()
+        val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+        var targetDateTime = today.atTime(config.time)
+
+        // If time has passed today, schedule for tomorrow
+        if (targetDateTime.toInstant(TimeZone.currentSystemDefault()) <= now) {
+            targetDateTime = today.plus(1, DateTimeUnit.DAY).atTime(config.time)
+        }
+
+        val triggerTime = targetDateTime.toInstant(TimeZone.currentSystemDefault()).toEpochMilliseconds()
+        val pendingIntent = createAlarmPendingIntent(config)
+
+        // Use setExactAndAllowWhileIdle for exact timing
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setExact(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        }
+    }
+
+    private fun scheduleWithWorkManager(config: NotificationConfig) {
+        val workRequest = createWorkRequest(config)
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            NOTIFICATION_WORK_TAG + config.habitId,
+            ExistingPeriodicWorkPolicy.REPLACE,
+            workRequest
+        )
+    }
+
+    private fun cancelAlarm(habitId: String) {
+        val intent = Intent(context, AlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            habitId.hashCode(),
+            intent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
+            } else {
+                PendingIntent.FLAG_NO_CREATE
+            }
+        )
+
+        pendingIntent?.let {
+            alarmManager.cancel(it)
+            it.cancel()
+        }
+    }
+
+    private fun createAlarmPendingIntent(config: NotificationConfig): PendingIntent {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra(AlarmReceiver.EXTRA_HABIT_ID, config.habitId)
+            putExtra(AlarmReceiver.EXTRA_MESSAGE, config.message)
+        }
+
+        return PendingIntent.getBroadcast(
+            context,
+            config.habitId.hashCode(),
+            intent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
     }
 
     @OptIn(ExperimentalTime::class)

@@ -456,7 +456,7 @@
     <!-- Habit Detail Screen -->
     <string name="previous_month">Önceki ay</string>
     <string name="next_month">Sonraki ay</string>
-    <string name="created">Oluşturuldu</string>
+    <string name="created">Oluşturulma</string>
     <string name="no_activity_yet">Henüz aktivite yok</string>
     <string name="no_notes_yet">Henüz not yok</string>
     <string name="note">Not</string>

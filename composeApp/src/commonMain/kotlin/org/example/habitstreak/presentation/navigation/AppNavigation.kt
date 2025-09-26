@@ -6,6 +6,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,9 +19,22 @@ import org.example.habitstreak.presentation.screen.settings.SettingsScreen
 import org.example.habitstreak.presentation.screen.statistics.StatisticsScreen
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    deepLinkHabitId: String? = null,
+    shouldNavigateToHabit: Boolean = false,
+    onDeepLinkHandled: () -> Unit = {}
+) {
     val navigationState = rememberNavigationState()
     var currentScreen by remember { mutableStateOf(navigationState.currentScreen) }
+
+    // Handle deep link navigation
+    LaunchedEffect(deepLinkHabitId, shouldNavigateToHabit) {
+        if (deepLinkHabitId != null && shouldNavigateToHabit) {
+            navigationState.navigateTo(Screen.HabitDetail(deepLinkHabitId))
+            currentScreen = navigationState.currentScreen
+            onDeepLinkHandled()
+        }
+    }
 
     BackHandler(enabled = currentScreen != Screen.Habits) {
         navigationState.navigateBack()
