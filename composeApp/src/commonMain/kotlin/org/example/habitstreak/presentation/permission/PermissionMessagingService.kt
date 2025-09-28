@@ -120,7 +120,7 @@ class PermissionMessagingService {
         val message = getMessageForContext(context, messageType)
 
         return if (habitName != null && message.defaultText.contains("%s")) {
-            message.defaultText.format(habitName)
+            message.defaultText.replace("%s", habitName)
         } else {
             message.defaultText
         }
