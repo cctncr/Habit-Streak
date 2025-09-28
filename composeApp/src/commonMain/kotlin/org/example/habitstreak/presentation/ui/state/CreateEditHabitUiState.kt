@@ -15,6 +15,7 @@ data class CreateEditHabitUiState(
     val selectedCategories: List<Category> = emptyList(),
     val availableCategories: List<Category> = emptyList(),
     val reminderTime: LocalTime? = null,
+    val isNotificationEnabled: Boolean = false,
     val targetCount: Int = 1,
     val unit: String = "",
     val isEditMode: Boolean = false,

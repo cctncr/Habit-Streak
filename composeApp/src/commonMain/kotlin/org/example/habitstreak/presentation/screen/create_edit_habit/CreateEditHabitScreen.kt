@@ -96,8 +96,10 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
 import org.example.habitstreak.presentation.ui.components.permission.PermissionRationaleDialog
+import org.example.habitstreak.presentation.ui.components.permission.SettingsNavigationDialog
 import org.example.habitstreak.presentation.permission.PermissionContext
 import org.example.habitstreak.presentation.permission.PermissionFlowHandler
+import org.example.habitstreak.presentation.permission.PermissionFlowResult
 import org.example.habitstreak.presentation.permission.PermissionMessagingService
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
@@ -146,7 +148,7 @@ fun CreateEditHabitScreen(
     var showReminderDialog by remember { mutableStateOf(false) }
     var showFrequencyDialog by remember { mutableStateOf(false) }
     var showAdvancedSettings by remember { mutableStateOf(false) }
-    var showPermissionDialog by remember { mutableStateOf(false) }
+    var permissionDialogState by remember { mutableStateOf<PermissionFlowResult?>(null) }
 
     val isFormValid = uiState.title.isNotBlank()
 
@@ -290,20 +292,31 @@ fun CreateEditHabitScreen(
                                                 onResult = { result ->
                                                     // Handle permission result
                                                     when (result) {
-                                                        is org.example.habitstreak.presentation.permission.PermissionFlowResult.Granted -> {
+                                                        is PermissionFlowResult.Granted -> {
+                                                            viewModel.updateNotificationEnabled(true)
                                                             showReminderDialog = true
                                                         }
-                                                        is org.example.habitstreak.presentation.permission.PermissionFlowResult.PermissionGranted -> {
+                                                        is PermissionFlowResult.PermissionGranted -> {
+                                                            viewModel.updateNotificationEnabled(true)
                                                             showReminderDialog = true
+                                                        }
+                                                        is PermissionFlowResult.ShowRationaleDialog -> {
+                                                            // Show permission rationale dialog
+                                                            permissionDialogState = result
+                                                        }
+                                                        is PermissionFlowResult.ShowSettingsDialog -> {
+                                                            // Show settings navigation dialog
+                                                            permissionDialogState = result
                                                         }
                                                         else -> {
-                                                            // Permission denied or error - user can still set reminder without permission
-                                                            showReminderDialog = true
+                                                            // Permission denied - don't allow setting reminder without permission
+                                                            // Do nothing - keep switch off
                                                         }
                                                     }
                                                 }
                                             )
                                         } else {
+                                            // Permission already granted, show reminder dialog directly
                                             showReminderDialog = true
                                         }
                                     }
@@ -479,6 +492,7 @@ fun CreateEditHabitScreen(
             selectedTime = uiState.reminderTime,
             onTimeSelected = { time ->
                 viewModel.updateReminderTime(time)
+                viewModel.updateNotificationEnabled(true)
                 showReminderDialog = false
             },
             onDismiss = { showReminderDialog = false }
@@ -496,43 +510,67 @@ fun CreateEditHabitScreen(
         )
     }
 
-    // Permission Dialog
-    if (showPermissionDialog) {
-        val messagingService = remember { PermissionMessagingService() }
-        val context = PermissionContext.CREATE_EDIT
-        val rationaleMessage = messagingService.getMessage(context, org.example.habitstreak.presentation.permission.PermissionMessageType.RATIONALE)
-        val benefitMessage = messagingService.getMessage(context, org.example.habitstreak.presentation.permission.PermissionMessageType.BENEFIT)
-
-        PermissionRationaleDialog(
-            context = context,
-            rationaleMessage = rationaleMessage,
-            benefitMessage = benefitMessage,
-            onRequestPermission = {
-                showPermissionDialog = false
-                coroutineScope.launch {
-                    permissionFlowHandler.handleSystemPermissionResult(
-                        context = PermissionContext.CREATE_EDIT,
-                        habitName = uiState.title.ifBlank { null },
-                        onResult = { result ->
-                            when (result) {
-                                is org.example.habitstreak.presentation.permission.PermissionFlowResult.Granted,
-                                is org.example.habitstreak.presentation.permission.PermissionFlowResult.PermissionGranted -> {
+    // Permission dialogs
+    when (val dialogState = permissionDialogState) {
+        is PermissionFlowResult.ShowRationaleDialog -> {
+            PermissionRationaleDialog(
+                context = dialogState.context,
+                rationaleMessage = dialogState.rationaleMessage,
+                benefitMessage = dialogState.benefitMessage,
+                habitName = uiState.title.ifBlank { null },
+                onRequestPermission = {
+                    coroutineScope.launch {
+                        permissionFlowHandler.handleSystemPermissionResult(
+                            context = PermissionContext.CREATE_EDIT,
+                            habitName = uiState.title.ifBlank { null },
+                            onResult = { result ->
+                                permissionDialogState = result
+                                if (result is PermissionFlowResult.PermissionGranted) {
+                                    // Retry setting reminder after permission granted
+                                    viewModel.updateNotificationEnabled(true)
                                     showReminderDialog = true
                                 }
-                                else -> {
-                                    // Permission handling complete
-                                }
                             }
-                        }
-                    )
+                        )
+                    }
+                },
+                onDismiss = {
+                    permissionDialogState = null
+                },
+                onNeverAskAgain = {
+                    permissionFlowHandler.handleNeverAskAgain(PermissionContext.CREATE_EDIT)
+                    permissionDialogState = null
                 }
-            },
-            onDismiss = { showPermissionDialog = false },
-            onNeverAskAgain = {
-                showPermissionDialog = false
-                // Could add analytics here if needed
+            )
+        }
+
+        is PermissionFlowResult.ShowSettingsDialog -> {
+            SettingsNavigationDialog(
+                context = PermissionContext.CREATE_EDIT,
+                message = dialogState.message,
+                onOpenSettings = {
+                    coroutineScope.launch {
+                        permissionFlowHandler.handleOpenSettings(PermissionContext.CREATE_EDIT)
+                        permissionDialogState = null
+                    }
+                },
+                onDismiss = {
+                    permissionDialogState = null
+                },
+                onDisableFeature = {
+                    // User chooses to disable notifications feature
+                    permissionDialogState = null
+                }
+            )
+        }
+
+        else -> {
+            // Handle other dialog states if needed
+            if (dialogState is PermissionFlowResult.PermissionGranted ||
+                dialogState is PermissionFlowResult.Granted) {
+                permissionDialogState = null
             }
-        )
+        }
     }
 
     // Custom Category Dialog
@@ -1167,11 +1205,12 @@ private fun GoalStep(
                     }
                 }
                 Switch(
-                    checked = uiState.reminderTime != null,
+                    checked = uiState.isNotificationEnabled,
                     onCheckedChange = { enabled ->
                         if (enabled) {
                             onShowReminderDialog()
                         } else {
+                            viewModel.updateNotificationEnabled(false)
                             viewModel.updateReminderTime(null)
                         }
                     }

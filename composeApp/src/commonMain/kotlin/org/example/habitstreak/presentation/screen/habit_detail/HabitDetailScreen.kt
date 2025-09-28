@@ -50,6 +50,7 @@ import kotlinx.datetime.LocalDate
 import org.example.habitstreak.core.extensions.formatLong
 import org.example.habitstreak.presentation.permission.PermissionFlowHandler
 import org.example.habitstreak.presentation.permission.PermissionContext
+import org.example.habitstreak.presentation.permission.PermissionFlowResult
 import org.example.habitstreak.core.extensions.formatRelative
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
@@ -60,6 +61,8 @@ import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.ui.components.input.SimpleCheckHabitInputPanel
 import org.example.habitstreak.presentation.ui.components.input.CountableHabitInputPanel
 import org.example.habitstreak.presentation.ui.components.NotificationSettingsCard
+import org.example.habitstreak.presentation.ui.components.permission.PermissionRationaleDialog
+import org.example.habitstreak.presentation.ui.components.permission.SettingsNavigationDialog
 import org.example.habitstreak.presentation.ui.theme.AppTheme
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 import org.example.habitstreak.presentation.screen.habit_detail.components.HabitDetailCalendar
@@ -102,6 +105,9 @@ fun HabitDetailScreen(
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedActivityTab by remember { mutableStateOf(ActivityTab.HISTORY) }
+
+    // Permission dialog state
+    var permissionDialogState by remember { mutableStateOf<PermissionFlowResult?>(null) }
     val today = dateProvider.today()
 
     // Handle UI events
@@ -114,8 +120,9 @@ fun HabitDetailScreen(
                             context = PermissionContext.HABIT_DETAIL,
                             habitName = uiState.habit?.title,
                             onResult = { result ->
-                                // Handle permission result if needed
+                                // Handle permission result
                                 println("Permission result: $result")
+                                permissionDialogState = result
                             }
                         )
                     }
@@ -284,17 +291,70 @@ fun HabitDetailScreen(
                 }
             )
         }
+
+        // Permission dialogs
+        when (val dialogState = permissionDialogState) {
+            is PermissionFlowResult.ShowRationaleDialog -> {
+                PermissionRationaleDialog(
+                    context = dialogState.context,
+                    rationaleMessage = dialogState.rationaleMessage,
+                    benefitMessage = dialogState.benefitMessage,
+                    habitName = uiState.habit?.title,
+                    onRequestPermission = {
+                        coroutineScope.launch {
+                            permissionFlowHandler.handleSystemPermissionResult(
+                                context = PermissionContext.HABIT_DETAIL,
+                                habitName = uiState.habit?.title,
+                                onResult = { result ->
+                                    permissionDialogState = result
+                                    if (result is PermissionFlowResult.PermissionGranted) {
+                                        // Retry enabling notification after permission granted
+                                        viewModel.toggleNotification(true)
+                                    }
+                                }
+                            )
+                        }
+                    },
+                    onDismiss = {
+                        permissionDialogState = null
+                    },
+                    onNeverAskAgain = {
+                        permissionFlowHandler.handleNeverAskAgain(PermissionContext.HABIT_DETAIL)
+                        permissionDialogState = null
+                    }
+                )
+            }
+
+            is PermissionFlowResult.ShowSettingsDialog -> {
+                SettingsNavigationDialog(
+                    context = PermissionContext.HABIT_DETAIL,
+                    message = dialogState.message,
+                    onOpenSettings = {
+                        coroutineScope.launch {
+                            permissionFlowHandler.handleOpenSettings(PermissionContext.HABIT_DETAIL)
+                            permissionDialogState = null
+                        }
+                    },
+                    onDismiss = {
+                        permissionDialogState = null
+                    },
+                    onDisableFeature = {
+                        // User chooses to disable notifications feature
+                        permissionDialogState = null
+                    }
+                )
+            }
+
+            else -> {
+                // Handle other dialog states if needed
+                if (dialogState is PermissionFlowResult.PermissionGranted ||
+                    dialogState is PermissionFlowResult.Granted) {
+                    permissionDialogState = null
+                }
+            }
+        }
     }
 }
-
-
-
-
-
-
-
-
-
 
 @OptIn(ExperimentalTime::class)
 @Composable

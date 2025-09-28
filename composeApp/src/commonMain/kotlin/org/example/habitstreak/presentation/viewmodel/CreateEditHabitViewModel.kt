@@ -202,6 +202,10 @@ class CreateEditHabitViewModel(
         _uiState.update { it.copy(reminderTime = time) }
     }
 
+    fun updateNotificationEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(isNotificationEnabled = enabled) }
+    }
+
     fun updateArchived(isArchived: Boolean) {
         _uiState.update { it.copy(isArchived = isArchived) }
     }

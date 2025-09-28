@@ -58,6 +58,7 @@ val appModule = module {
     single<HabitRepository> { HabitRepositoryImpl(get()) }
     single<HabitRecordRepository> { HabitRecordRepositoryImpl(get(), get()) }
     single<StatisticsRepository> { StatisticsRepositoryImpl(get(), get(), get()) }
+    single<NotificationRepository> { NotificationRepositoryImpl(get()) }
     single<CategoryRepository> {
         CategoryRepositoryImpl(
             database = get(),
@@ -80,7 +81,16 @@ val appModule = module {
         )
     }
 
-    // Services - NotificationScheduler from platform modules
+    // Notification Services - NotificationScheduler from platform modules
+    single<NotificationService> {
+        NotificationService(
+            notificationRepository = get(),
+            habitRepository = get(),
+            scheduler = get(),
+            preferencesRepository = get(),
+            permissionManager = get()
+        )
+    }
 
     // Use Cases - Following Single Responsibility Principle
     factory { CreateHabitUseCase(get(), get(), get(), get()) }
@@ -88,7 +98,7 @@ val appModule = module {
     factory { GetHabitsWithCompletionUseCase(get(), get()) }
     factory { org.example.habitstreak.domain.usecase.habit.CalculateStreakUseCase(get(), get(), get()) }
     factory { CalculateHabitStatsUseCase(get(), get()) }
-    factory { ManageHabitNotificationUseCase(getOrNull()) }
+    factory { ManageHabitNotificationUseCase(get()) }
     factory { ArchiveHabitUseCase(get()) }
     factory { InitializeCategoriesUseCase(get()) }
     factory { org.example.habitstreak.domain.usecase.notification.CompleteHabitFromNotificationUseCase(get()) }
@@ -111,7 +121,7 @@ val appModule = module {
     factory {
         SettingsViewModel(
             preferencesRepository = get(),
-            notificationService = getOrNull(),
+            notificationService = get(),
             habitRepository = get(),
             localeService = get(),
             localeStateHolder = get(),
