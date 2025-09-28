@@ -94,8 +94,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
-import org.example.habitstreak.domain.service.PermissionManager
 import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
+import org.example.habitstreak.presentation.ui.components.permission.PermissionRationaleDialog
+import org.example.habitstreak.presentation.permission.PermissionContext
+import org.example.habitstreak.presentation.permission.PermissionFlowHandler
+import org.example.habitstreak.presentation.permission.PermissionMessagingService
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
 import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
@@ -123,7 +126,7 @@ fun CreateEditHabitScreen(
     habitId: String? = null,
     onNavigateBack: () -> Unit,
     viewModel: CreateEditHabitViewModel = koinViewModel(key = habitId) { parametersOf(habitId) },
-    permissionManager: PermissionManager? = koinInject()
+    permissionFlowHandler: PermissionFlowHandler = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -280,8 +283,26 @@ fun CreateEditHabitScreen(
                                 viewModel = viewModel,
                                 onShowReminderDialog = {
                                     coroutineScope.launch {
-                                        if (permissionManager?.hasNotificationPermission() == false) {
-                                            showPermissionDialog = true
+                                        if (!permissionFlowHandler.hasPermission()) {
+                                            permissionFlowHandler.requestPermissionWithFlow(
+                                                context = PermissionContext.CREATE_EDIT,
+                                                habitName = uiState.title.ifBlank { null },
+                                                onResult = { result ->
+                                                    // Handle permission result
+                                                    when (result) {
+                                                        is org.example.habitstreak.presentation.permission.PermissionFlowResult.Granted -> {
+                                                            showReminderDialog = true
+                                                        }
+                                                        is org.example.habitstreak.presentation.permission.PermissionFlowResult.PermissionGranted -> {
+                                                            showReminderDialog = true
+                                                        }
+                                                        else -> {
+                                                            // Permission denied or error - user can still set reminder without permission
+                                                            showReminderDialog = true
+                                                        }
+                                                    }
+                                                }
+                                            )
                                         } else {
                                             showReminderDialog = true
                                         }
@@ -477,26 +498,39 @@ fun CreateEditHabitScreen(
 
     // Permission Dialog
     if (showPermissionDialog) {
-        AlertDialog(
-            onDismissRequest = { showPermissionDialog = false },
-            title = { Text(stringResource(Res.string.notification_permission_required)) },
-            text = {
-                Text(stringResource(Res.string.notification_permission_message))
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showPermissionDialog = false
-                    coroutineScope.launch {
-                        permissionManager?.openAppSettings()
-                    }
-                }) {
-                    Text(stringResource(Res.string.open_settings))
+        val messagingService = remember { PermissionMessagingService() }
+        val context = PermissionContext.CREATE_EDIT
+        val rationaleMessage = messagingService.getMessage(context, org.example.habitstreak.presentation.permission.PermissionMessageType.RATIONALE)
+        val benefitMessage = messagingService.getMessage(context, org.example.habitstreak.presentation.permission.PermissionMessageType.BENEFIT)
+
+        PermissionRationaleDialog(
+            context = context,
+            rationaleMessage = rationaleMessage,
+            benefitMessage = benefitMessage,
+            onRequestPermission = {
+                showPermissionDialog = false
+                coroutineScope.launch {
+                    permissionFlowHandler.handleSystemPermissionResult(
+                        context = PermissionContext.CREATE_EDIT,
+                        habitName = uiState.title.ifBlank { null },
+                        onResult = { result ->
+                            when (result) {
+                                is org.example.habitstreak.presentation.permission.PermissionFlowResult.Granted,
+                                is org.example.habitstreak.presentation.permission.PermissionFlowResult.PermissionGranted -> {
+                                    showReminderDialog = true
+                                }
+                                else -> {
+                                    // Permission handling complete
+                                }
+                            }
+                        }
+                    )
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showPermissionDialog = false }) {
-                    Text(stringResource(Res.string.action_cancel))
-                }
+            onDismiss = { showPermissionDialog = false },
+            onNeverAskAgain = {
+                showPermissionDialog = false
+                // Could add analytics here if needed
             }
         )
     }

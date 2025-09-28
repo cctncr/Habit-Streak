@@ -48,6 +48,8 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.core.extensions.formatLong
+import org.example.habitstreak.presentation.permission.PermissionFlowHandler
+import org.example.habitstreak.presentation.permission.PermissionContext
 import org.example.habitstreak.core.extensions.formatRelative
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
@@ -89,7 +91,8 @@ fun HabitDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: () -> Unit,
     viewModel: HabitDetailViewModel = koinViewModel(key = habitId) { parametersOf(habitId) },
-    dateProvider: DateProvider = koinInject()
+    dateProvider: DateProvider = koinInject(),
+    permissionFlowHandler: PermissionFlowHandler = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -106,11 +109,30 @@ fun HabitDetailScreen(
         viewModel.uiEvents.collect { event ->
             when (event) {
                 is HabitDetailViewModel.UiEvent.RequestNotificationPermission -> {
-                    println("Permission request needed - integrate with platform-specific handler")
+                    coroutineScope.launch {
+                        permissionFlowHandler.requestPermissionWithFlow(
+                            context = PermissionContext.HABIT_DETAIL,
+                            habitName = uiState.habit?.title,
+                            onResult = { result ->
+                                // Handle permission result if needed
+                                println("Permission result: $result")
+                            }
+                        )
+                    }
                 }
 
                 is HabitDetailViewModel.UiEvent.OpenAppSettings -> {
-                    println("Opening app settings - integrate with platform-specific handler")
+                    coroutineScope.launch {
+                        try {
+                            val success = permissionFlowHandler.handleOpenSettings(PermissionContext.HABIT_DETAIL)
+                            if (!success) {
+                                // Handle failure case if needed
+                                println("Failed to open settings")
+                            }
+                        } catch (e: Exception) {
+                            println("Error opening settings: ${e.message}")
+                        }
+                    }
                 }
             }
         }

@@ -35,57 +35,86 @@ class DesktopPermissionManager : PermissionManager {
 
     override suspend fun openAppSettings(): Boolean {
         return try {
-            // Try to open system notification settings
             val osName = System.getProperty("os.name").lowercase()
 
             when {
                 osName.contains("windows") -> {
-                    // Open Windows notification settings
-                    Runtime.getRuntime().exec("ms-settings:notifications")
-                    true
+                    openWindowsSettings()
                 }
                 osName.contains("mac") -> {
-                    // Open macOS notification settings
-                    Runtime.getRuntime().exec(arrayOf(
-                        "open",
-                        "x-apple.systempreferences:com.apple.preference.notifications"
-                    ))
-                    true
+                    openMacSettings()
                 }
                 osName.contains("linux") -> {
-                    // Try to open Linux notification settings (varies by desktop environment)
-                    try {
-                        Runtime.getRuntime().exec("gnome-control-center notifications")
-                        true
-                    } catch (e: Exception) {
-                        try {
-                            Runtime.getRuntime().exec("systemsettings5 kcm_notifications")
-                            true
-                        } catch (e: Exception) {
-                            false
-                        }
-                    }
+                    openLinuxSettings()
                 }
                 else -> false
             }
         } catch (e: Exception) {
-            // Fallback: try to open general system settings
+            false
+        }
+    }
+
+    private fun openWindowsSettings(): Boolean {
+        return try {
+            // Try notification settings first
+            ProcessBuilder("cmd", "/c", "start", "ms-settings:notifications").start()
+            true
+        } catch (e: Exception) {
             try {
-                if (Desktop.isDesktopSupported()) {
-                    val desktop = Desktop.getDesktop()
-                    if (desktop.isSupported(Desktop.Action.BROWSE)) {
-                        val osName = System.getProperty("os.name").lowercase()
-                        when {
-                            osName.contains("windows") -> {
-                                desktop.browse(URI("ms-settings:"))
-                                true
-                            }
-                            else -> false
-                        }
-                    } else false
-                } else false
+                // Fallback to general settings
+                ProcessBuilder("cmd", "/c", "start", "ms-settings:").start()
+                true
+            } catch (e: Exception) {
+                try {
+                    // Last resort: control panel
+                    Runtime.getRuntime().exec("control")
+                    true
+                } catch (e: Exception) {
+                    false
+                }
+            }
+        }
+    }
+
+    private fun openMacSettings(): Boolean {
+        return try {
+            // Open macOS notification settings
+            ProcessBuilder("open", "x-apple.systempreferences:com.apple.preference.notifications").start()
+            true
+        } catch (e: Exception) {
+            try {
+                // Fallback to system preferences
+                ProcessBuilder("open", "/System/Applications/System Preferences.app").start()
+                true
             } catch (e: Exception) {
                 false
+            }
+        }
+    }
+
+    private fun openLinuxSettings(): Boolean {
+        return try {
+            // Try GNOME settings
+            ProcessBuilder("gnome-control-center", "notifications").start()
+            true
+        } catch (e: Exception) {
+            try {
+                // Try KDE settings
+                ProcessBuilder("systemsettings5", "kcm_notifications").start()
+                true
+            } catch (e: Exception) {
+                try {
+                    // Try general settings
+                    ProcessBuilder("gnome-control-center").start()
+                    true
+                } catch (e: Exception) {
+                    try {
+                        ProcessBuilder("systemsettings5").start()
+                        true
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
             }
         }
     }

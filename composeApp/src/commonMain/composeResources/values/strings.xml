@@ -514,4 +514,77 @@
     <string name="month_october">October</string>
     <string name="month_november">November</string>
     <string name="month_december">December</string>
+
+    <!-- Permission Strings -->
+    <string name="permission_enable_notifications">Enable Notifications</string>
+    <string name="permission_set_up_reminders">Set Up Reminders</string>
+    <string name="permission_smart_habit_reminders">Smart Habit Reminders</string>
+    <string name="permission_what_you_get">What you'll get:</string>
+    <string name="permission_privacy_note">We only send notifications you've requested. No spam, ever.</string>
+    <string name="permission_allow_notifications">Allow Notifications</string>
+    <string name="permission_not_now">Not Now</string>
+    <string name="permission_dont_ask_again">Don't Ask Again</string>
+    <string name="permission_needed">Permission Needed</string>
+    <string name="permission_try_again">Try Again</string>
+    <string name="permission_enable_in_settings">Enable Notifications in Settings</string>
+    <string name="permission_how_to_enable">How to enable notifications:</string>
+    <string name="permission_step_open_settings">Open Device Settings</string>
+    <string name="permission_step_open_settings_desc">Tap the button below to go directly to your device settings</string>
+    <string name="permission_step_find_app">Find 'Habit Streak'</string>
+    <string name="permission_step_find_app_desc">Look for Habit Streak in your app list or use search</string>
+    <string name="permission_step_enable_notifications">Enable Notifications</string>
+    <string name="permission_step_enable_notifications_desc">Toggle on 'Allow Notifications' or similar option</string>
+    <string name="permission_step_return_app">Return to App</string>
+    <string name="permission_step_return_app_desc">Come back and enjoy your habit reminders!</string>
+    <string name="permission_tip">Tip:</string>
+    <string name="permission_open_settings">Open Settings</string>
+    <string name="permission_maybe_later">Maybe Later</string>
+    <string name="permission_disable_notifications">Disable Notifications</string>
+
+    <!-- Permission Context Messages - Settings -->
+    <string name="permission_settings_rationale">Enable notifications to receive daily reminders for all your habits</string>
+    <string name="permission_settings_benefit">Stay consistent with timely reminders • Track your progress automatically • Never miss a habit again</string>
+    <string name="permission_settings_denied_soft">Notifications help you stay on track with all your habits. You can try enabling them again.</string>
+    <string name="permission_settings_denied_hard">To enable notifications for your habits, please go to Settings > Notifications and allow notifications for Habit Streak.</string>
+    <string name="permission_settings_success">Great! Notifications are now enabled for all your habits.</string>
+    <string name="permission_settings_tip">Once enabled, all your habits will send reminders at their scheduled times.</string>
+
+    <!-- Permission Context Messages - Habit Detail -->
+    <string name="permission_habit_detail_rationale">Get timely reminders for '%s' to maintain your streak</string>
+    <string name="permission_habit_detail_benefit">Never break your streak • Build consistency • Achieve your goals faster</string>
+    <string name="permission_habit_detail_denied_soft">Reminders help you maintain your '%s' streak. You can enable them later in settings.</string>
+    <string name="permission_habit_detail_denied_hard">To get reminders for '%s', please enable notifications in your device settings.</string>
+    <string name="permission_habit_detail_success">Perfect! You'll now get reminders for '%s'.</string>
+    <string name="permission_habit_detail_tip">This specific habit will start sending reminders once notifications are enabled.</string>
+
+    <!-- Permission Context Messages - Create/Edit -->
+    <string name="permission_create_edit_rationale">Set up smart reminders to never miss your new habit</string>
+    <string name="permission_create_edit_benefit">Start strong • Build the habit from day one • Increase success rate by 300%</string>
+    <string name="permission_create_edit_denied_soft">Notifications significantly improve habit formation success. You can set them up later.</string>
+    <string name="permission_create_edit_denied_hard">To set up reminders for your new habit, please enable notifications in device settings.</string>
+    <string name="permission_create_edit_success">Excellent! Your new habit is set up with smart reminders.</string>
+    <string name="permission_create_edit_tip">Your new habit will be much more effective with timely reminders enabled.</string>
+
+    <!-- General Messages -->
+    <string name="notifications_enabled">Notifications enabled</string>
+    <string name="notifications_disabled">Notifications disabled</string>
+    <string name="failed_to_enable_notifications">Failed to enable notifications: %s</string>
+    <string name="failed_to_disable_notifications">Failed to disable notifications: %s</string>
+    <string name="unable_to_open_settings">Unable to open device settings</string>
+
+    <!-- Notification Time and Settings -->
+    <string name="notification_time_at">At %s</string>
+    <string name="get_notified_description">Get notified to complete your habit</string>
+    <string name="permission_needed_tap_settings">Permission needed - tap Settings</string>
+    <string name="permission_required_grant_in_settings">Notification permission is required. Please grant permission in Settings to receive habit reminders.</string>
+    <string name="notification_error_enable_in_settings">Enable notifications in app Settings</string>
+    <string name="notification_error_check_settings">Check notification settings</string>
+    <string name="notification_permission_permanently_denied">Notification permission is permanently denied. Please enable notifications for this app in your device Settings.</string>
+    <string name="notifications_disabled_in_app">Notifications are disabled in app settings. Please enable notifications first, then try again.</string>
+    <string name="failed_to_schedule_notification">Failed to schedule notification: %s</string>
+    <string name="failed_to_schedule_generic">Failed to schedule notification</string>
+    <string name="notification_service_unavailable">Notification service is not available on this device.</string>
+    <string name="habit_not_found_refresh">Habit not found. Please refresh and try again.</string>
+    <string name="completed_from_notification">Completed from notification</string>
+    <string name="default_settings_permission_message">To enable notifications, please go to device settings.</string>
 </resources>

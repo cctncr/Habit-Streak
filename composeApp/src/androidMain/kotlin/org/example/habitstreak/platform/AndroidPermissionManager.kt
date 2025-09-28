@@ -113,6 +113,19 @@ class AndroidPermissionManager(
 
     override suspend fun openAppSettings(): Boolean {
         return try {
+            // First try using activity context if available
+            val activity = activityProvider.getCurrentActivity()
+            if (activity != null) {
+                val intent = Intent().apply {
+                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                    data = Uri.fromParts("package", context.packageName, null)
+                    // Don't add NEW_TASK flag when starting from Activity
+                }
+                activity.startActivity(intent)
+                return true
+            }
+
+            // Fallback to application context
             val intent = Intent().apply {
                 action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
                 data = Uri.fromParts("package", context.packageName, null)
@@ -121,15 +134,47 @@ class AndroidPermissionManager(
             context.startActivity(intent)
             true
         } catch (e: Exception) {
-            // Fallback to main settings
+            // Fallback 1: Try app notification settings specifically
             try {
-                val intent = Intent(Settings.ACTION_SETTINGS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                val activity = activityProvider.getCurrentActivity()
+                val intent = Intent().apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    } else {
+                        action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    if (activity == null) {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
                 }
-                context.startActivity(intent)
+
+                if (activity != null) {
+                    activity.startActivity(intent)
+                } else {
+                    context.startActivity(intent)
+                }
                 true
-            } catch (e: Exception) {
-                false
+            } catch (e2: Exception) {
+                // Fallback 2: General settings
+                try {
+                    val activity = activityProvider.getCurrentActivity()
+                    val intent = Intent(Settings.ACTION_SETTINGS).apply {
+                        if (activity == null) {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                    }
+
+                    if (activity != null) {
+                        activity.startActivity(intent)
+                    } else {
+                        context.startActivity(intent)
+                    }
+                    true
+                } catch (e3: Exception) {
+                    false
+                }
             }
         }
     }

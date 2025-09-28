@@ -28,6 +28,9 @@ import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.domain.util.DateProviderImpl
 import org.example.habitstreak.core.locale.*
 import org.example.habitstreak.core.theme.*
+import org.example.habitstreak.presentation.permission.PermissionFlowHandler
+import org.example.habitstreak.presentation.permission.PermissionMessagingService
+import org.example.habitstreak.data.cache.PermissionStateCache
 
 /**
  * Main application module with improved SOLID compliance.
@@ -55,7 +58,6 @@ val appModule = module {
     single<HabitRepository> { HabitRepositoryImpl(get()) }
     single<HabitRecordRepository> { HabitRecordRepositoryImpl(get(), get()) }
     single<StatisticsRepository> { StatisticsRepositoryImpl(get(), get(), get()) }
-    single<NotificationRepository> { NotificationRepositoryImpl(get()) }
     single<CategoryRepository> {
         CategoryRepositoryImpl(
             database = get(),
@@ -67,16 +69,18 @@ val appModule = module {
     single { HabitValidationService() }
     single { org.example.habitstreak.domain.service.HabitFilterService() }
 
-    // Services - NotificationScheduler and PreferencesRepository from platform modules
+    // Permission Services - Following SRP for permission management
+    single { PermissionMessagingService() }
+    single { PermissionStateCache() }
     single {
-        NotificationService(
-            notificationRepository = get(),
-            habitRepository = get(),
-            scheduler = get(),
-            preferencesRepository = get(),
-            permissionManager = get()
+        PermissionFlowHandler(
+            permissionManager = get(),
+            messagingService = get(),
+            stateCache = get()
         )
     }
+
+    // Services - NotificationScheduler from platform modules
 
     // Use Cases - Following Single Responsibility Principle
     factory { CreateHabitUseCase(get(), get(), get(), get()) }
@@ -112,7 +116,8 @@ val appModule = module {
             localeService = get(),
             localeStateHolder = get(),
             themeService = get(),
-            themeStateHolder = get()
+            themeStateHolder = get(),
+            permissionFlowHandler = get()
         )
     }
 }

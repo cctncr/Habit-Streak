@@ -54,6 +54,9 @@ import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
 import org.example.habitstreak.core.locale.AppLocale
+import org.example.habitstreak.presentation.ui.components.permission.PermissionRationaleDialog
+import org.example.habitstreak.presentation.ui.components.permission.SettingsNavigationDialog
+import org.example.habitstreak.presentation.permission.PermissionMessagingService
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,6 +209,56 @@ fun SettingsScreen(
         }
     }
 
+    // Permission Dialogs
+    val messagingService = remember { PermissionMessagingService() }
+
+    // Permission Rationale Dialog
+    if (uiState.showPermissionDialog) {
+        val context = uiState.permissionDialogContext!!
+        val rationaleMessage = uiState.permissionMessage ?: ""
+        val benefitMessage = messagingService.getMessage(context, org.example.habitstreak.presentation.permission.PermissionMessageType.BENEFIT)
+
+        PermissionRationaleDialog(
+            context = context,
+            rationaleMessage = rationaleMessage,
+            benefitMessage = benefitMessage,
+            onRequestPermission = { viewModel.onPermissionRequested() },
+            onDismiss = { viewModel.onPermissionDialogDismiss() },
+            onNeverAskAgain = { viewModel.onNeverAskAgain() }
+        )
+    }
+
+    // Settings Navigation Dialog
+    if (uiState.showPermissionSettingsDialog) {
+        SettingsNavigationDialog(
+            context = org.example.habitstreak.presentation.permission.PermissionContext.SETTINGS,
+            message = uiState.permissionMessage ?: stringResource(Res.string.default_settings_permission_message),
+            onOpenSettings = { viewModel.onOpenDeviceSettings() },
+            onDismiss = { viewModel.onPermissionSettingsDialogDismiss() },
+            onDisableFeature = { viewModel.onDisableNotificationFeature() }
+        )
+    }
+
+    // Soft Denial Dialog
+    if (uiState.showPermissionSoftDenialDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onPermissionSoftDenialDismiss() },
+            title = { Text("Permission Needed") },
+            text = {
+                Text(uiState.permissionMessage ?: "Notifications help you stay consistent with your habits.")
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onPermissionRetry() }) {
+                    Text("Try Again")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onPermissionSoftDenialDismiss() }) {
+                    Text("Not Now")
+                }
+            }
+        )
+    }
 }
 
 @Composable

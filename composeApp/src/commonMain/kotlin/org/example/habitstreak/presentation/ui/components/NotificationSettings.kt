@@ -39,6 +39,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalTime
 import org.example.habitstreak.domain.model.NotificationError
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.*
 
 @Composable
 fun NotificationSettingsCard(
@@ -101,9 +104,9 @@ fun NotificationSettingsCard(
                         )
                         Text(
                             text = if (isEnabled && notificationTime != null) {
-                                "At ${formatTime(notificationTime)}"
+                                stringResource(Res.string.notification_time_at, formatTime(notificationTime))
                             } else {
-                                "Get notified to complete your habit"
+                                stringResource(Res.string.get_notified_description)
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
@@ -267,28 +270,30 @@ fun NotificationSettingsCard(
 }
 
 // ✅ Type-safe error message helpers
+@Composable
 private fun getErrorDisplayMessage(error: NotificationError): String = when (error) {
     is NotificationError.PermissionDenied ->
-        if (error.canRequestAgain) "Permission needed - tap Settings"
-        else "Enable permission in Settings"
-    is NotificationError.GloballyDisabled -> "Enable notifications in app Settings"
-    else -> "Check notification settings"
+        if (error.canRequestAgain) stringResource(Res.string.permission_needed_tap_settings)
+        else stringResource(Res.string.permission_enable_in_settings)
+    is NotificationError.GloballyDisabled -> stringResource(Res.string.notification_error_enable_in_settings)
+    else -> stringResource(Res.string.notification_error_check_settings)
 }
 
+@Composable
 private fun getErrorDialogMessage(error: NotificationError): String = when (error) {
     is NotificationError.PermissionDenied ->
         if (error.canRequestAgain)
-            "Notification permission is required. Please grant permission in Settings to receive habit reminders."
+            stringResource(Res.string.permission_required_grant_in_settings)
         else
-            "Notification permission is permanently denied. Please enable notifications for this app in your device Settings."
+            stringResource(Res.string.notification_permission_permanently_denied)
     is NotificationError.GloballyDisabled ->
-        "Notifications are disabled in app settings. Please enable notifications first, then try again."
+        stringResource(Res.string.notifications_disabled_in_app)
     is NotificationError.ServiceUnavailable ->
-        "Notification service is not available on this device."
+        stringResource(Res.string.notification_service_unavailable)
     is NotificationError.HabitNotFound ->
-        "Habit not found. Please refresh and try again."
+        stringResource(Res.string.habit_not_found_refresh)
     is NotificationError.SchedulingFailed ->
-        "Failed to schedule notification: ${error.reason}"
+        stringResource(Res.string.failed_to_schedule_notification, error.reason)
     is NotificationError.GeneralError ->
         error.message
 }

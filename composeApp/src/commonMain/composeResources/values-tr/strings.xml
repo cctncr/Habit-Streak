@@ -514,4 +514,79 @@
     <string name="three_times_week">Haftada 3x</string>
     <string name="customize_frequency">Sıklığı özelleştir</string>
 
+    <!-- Permission Strings -->
+    <string name="permission_enable_notifications">Bildirimleri Etkinleştir</string>
+    <string name="permission_set_up_reminders">Hatırlatıcıları Ayarla</string>
+    <string name="permission_smart_habit_reminders">Akıllı Alışkanlık Hatırlatıcıları</string>
+    <string name="permission_what_you_get">Elde edeceğiniz avantajlar:</string>
+    <string name="permission_privacy_note">Sadece istediğiniz bildirimleri gönderiyoruz. Spam yok, asla.</string>
+    <string name="permission_allow_notifications">Bildirimlere İzin Ver</string>
+    <string name="permission_not_now">Şimdi Değil</string>
+    <string name="permission_dont_ask_again">Bir Daha Sorma</string>
+    <string name="permission_needed">İzin Gerekli</string>
+    <string name="permission_try_again">Tekrar Dene</string>
+    <string name="permission_enable_in_settings">Ayarlarda Bildirimleri Etkinleştir</string>
+    <string name="permission_how_to_enable">Bildirimleri nasıl etkinleştirirsiniz:</string>
+    <string name="permission_tip">İpucu:</string>
+    <string name="permission_open_settings">Ayarları Aç</string>
+    <string name="permission_maybe_later">Belki Sonra</string>
+    <string name="permission_disable_notifications">Bildirimleri Devre Dışı Bırak</string>
+
+    <!-- Permission Context Messages - Settings -->
+    <string name="permission_settings_rationale">Tüm alışkanlıklarınız için günlük hatırlatıcılar almak üzere bildirimleri etkinleştirin</string>
+    <string name="permission_settings_benefit">Zamanında hatırlatıcılarla tutarlı kalın • İlerlemenizi otomatik olarak takip edin • Hiçbir alışkanlığı kaçırmayın</string>
+    <string name="permission_settings_denied_soft">Bildirimler tüm alışkanlıklarınızda yolda kalmanıza yardımcı olur. Tekrar etkinleştirmeyi deneyebilirsiniz.</string>
+    <string name="permission_settings_denied_hard">Alışkanlıklarınız için bildirimleri etkinleştirmek için lütfen Ayarlar > Bildirimler'e gidin ve Habit Streak için bildirimlere izin verin.</string>
+    <string name="permission_settings_success">Harika! Bildirimler artık tüm alışkanlıklarınız için etkinleştirildi.</string>
+    <string name="permission_settings_tip">Etkinleştirildikten sonra, tüm alışkanlıklarınız planlanan zamanlarda hatırlatıcılar gönderecek.</string>
+
+    <!-- Permission Context Messages - Habit Detail -->
+    <string name="permission_habit_detail_rationale">'%s' alışkanlığınız için serinizi korumak amacıyla zamanında hatırlatıcılar alın</string>
+    <string name="permission_habit_detail_benefit">Serinizi asla bozmayin • Tutarlılık oluşturun • Hedeflerinize daha hızlı ulaşın</string>
+    <string name="permission_habit_detail_denied_soft">Hatırlatıcılar '%s' serinizi korumaya yardımcı olur. Daha sonra ayarlarda etkinleştirebilirsiniz.</string>
+    <string name="permission_habit_detail_denied_hard">'%s' için hatırlatıcı almak için lütfen cihaz ayarlarında bildirimleri etkinleştirin.</string>
+    <string name="permission_habit_detail_success">Mükemmel! Artık '%s' için hatırlatıcılar alacaksınız.</string>
+    <string name="permission_habit_detail_tip">Bu özel alışkanlık, bildirimler etkinleştirildikten sonra hatırlatıcılar göndermeye başlayacak.</string>
+
+    <!-- Permission Context Messages - Create/Edit -->
+    <string name="permission_create_edit_rationale">Yeni alışkanlığınızı hiç kaçırmamak için akıllı hatırlatıcılar kurun</string>
+    <string name="permission_create_edit_benefit">Güçlü başlayın • Alışkanlığı ilk günden oluşturun • Başarı oranını %300 artırın</string>
+    <string name="permission_create_edit_denied_soft">Bildirimler alışkanlık oluşturma başarısını önemli ölçüde artırır. Daha sonra kurabilirsiniz.</string>
+    <string name="permission_create_edit_denied_hard">Yeni alışkanlığınız için hatırlatıcılar kurmak için lütfen cihaz ayarlarında bildirimleri etkinleştirin.</string>
+    <string name="permission_create_edit_success">Mükemmel! Yeni alışkanlığınız akıllı hatırlatıcılarla kuruldu.</string>
+    <string name="permission_create_edit_tip">Yeni alışkanlığınız zamanında hatırlatıcılar etkinleştirildiğinde çok daha etkili olacak.</string>
+
+    <!-- Settings navigation steps -->
+    <string name="permission_step_open_settings_title">Cihaz Ayarlarını Aç</string>
+    <string name="permission_step_open_settings_desc">Doğrudan cihaz ayarlarınıza gitmek için aşağıdaki düğmeye dokunun</string>
+    <string name="permission_step_find_app_title">\'Habit Streak\' Bulun</string>
+    <string name="permission_step_find_app_desc">Uygulama listenizde Habit Streak\'i arayın veya arama kullanın</string>
+    <string name="permission_step_enable_notifications_title">Bildirimleri Etkinleştir</string>
+    <string name="permission_step_enable_notifications_desc">\'Bildirimlere İzin Ver\' veya benzer seçeneği açın</string>
+    <string name="permission_step_return_app_title">Uygulamaya Dön</string>
+    <string name="permission_step_return_app_desc">Geri dönün ve alışkanlık hatırlatıcılarınızın tadını çıkarın!</string>
+
+    <!-- General Messages -->
+    <string name="notifications_enabled">Bildirimler etkinleştirildi</string>
+    <string name="notifications_disabled">Bildirimler devre dışı bırakıldı</string>
+    <string name="failed_to_enable_notifications">Bildirimleri etkinleştirilemedi: %s</string>
+    <string name="failed_to_disable_notifications">Bildirimler devre dışı bırakılamadı: %s</string>
+    <string name="unable_to_open_settings">Cihaz ayarları açılamıyor</string>
+
+    <!-- Notification Time and Settings -->
+    <string name="notification_time_at">Saat %s</string>
+    <string name="get_notified_description">Alışkanlığınızı tamamlamak için bildirim alın</string>
+    <string name="permission_needed_tap_settings">İzin gerekli - Ayarlara dokunun</string>
+    <string name="permission_required_grant_in_settings">Bildirim izni gereklidir. Alışkanlık hatırlatıcıları almak için lütfen Ayarlardan izin verin.</string>
+    <string name="notification_error_enable_in_settings">Uygulama Ayarlarından bildirimleri etkinleştirin</string>
+    <string name="notification_error_check_settings">Bildirim ayarlarını kontrol edin</string>
+    <string name="notification_permission_permanently_denied">Bildirim izni kalıcı olarak reddedildi. Lütfen cihaz Ayarlarından bu uygulama için bildirimleri etkinleştirin.</string>
+    <string name="notifications_disabled_in_app">Uygulama ayarlarında bildirimler devre dışı. Lütfen önce bildirimleri etkinleştirin, sonra tekrar deneyin.</string>
+    <string name="failed_to_schedule_notification">Bildirim zamanlanamadı: %s</string>
+    <string name="failed_to_schedule_generic">Bildirim zamanlanamadı</string>
+    <string name="notification_service_unavailable">Bu cihazda bildirim servisi mevcut değil.</string>
+    <string name="habit_not_found_refresh">Alışkanlık bulunamadı. Lütfen yenileyin ve tekrar deneyin.</string>
+    <string name="completed_from_notification">Bildirimden tamamlandı</string>
+    <string name="default_settings_permission_message">Bildirimleri etkinleştirmek için lütfen cihaz ayarlarına gidin.</string>
+
 </resources>

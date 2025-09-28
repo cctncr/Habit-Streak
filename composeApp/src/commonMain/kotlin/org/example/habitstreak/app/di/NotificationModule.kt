@@ -1,4 +1,4 @@
-package org.example.habitstreak.di
+package org.example.habitstreak.app.di
 
 import org.example.habitstreak.data.repository.NotificationRepositoryImpl
 import org.example.habitstreak.domain.repository.NotificationRepository
