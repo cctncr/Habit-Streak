@@ -48,9 +48,10 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.datetime.LocalDate
 import org.example.habitstreak.core.extensions.formatLong
-import org.example.habitstreak.presentation.permission.PermissionFlowHandler
-import org.example.habitstreak.presentation.permission.PermissionContext
 import org.example.habitstreak.presentation.permission.PermissionFlowResult
+import org.example.habitstreak.presentation.permission.rememberBasePermissionHandler
+import org.example.habitstreak.presentation.ui.components.permission.UnifiedPermissionDialogs
+import org.example.habitstreak.presentation.ui.components.permission.GlobalEnableNotificationDialog
 import org.example.habitstreak.core.extensions.formatRelative
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
@@ -94,8 +95,7 @@ fun HabitDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: () -> Unit,
     viewModel: HabitDetailViewModel = koinViewModel(key = habitId) { parametersOf(habitId) },
-    dateProvider: DateProvider = koinInject(),
-    permissionFlowHandler: PermissionFlowHandler = koinInject()
+    dateProvider: DateProvider = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -108,6 +108,18 @@ fun HabitDetailScreen(
 
     // Permission dialog state
     var permissionDialogState by remember { mutableStateOf<PermissionFlowResult?>(null) }
+    var showGlobalEnableDialog by remember { mutableStateOf<String?>(null) }
+
+    // Unified permission handler
+    val permissionHandler = rememberBasePermissionHandler(
+        habitName = uiState.habit?.title
+    ) { granted, canAskAgain ->
+        // Platform permission result handling
+        if (granted) {
+            viewModel.toggleNotification(true)
+        }
+    }
+
     val today = dateProvider.today()
 
     // Handle UI events
@@ -115,23 +127,19 @@ fun HabitDetailScreen(
         viewModel.uiEvents.collect { event ->
             when (event) {
                 is HabitDetailViewModel.UiEvent.RequestNotificationPermission -> {
-                    coroutineScope.launch {
-                        permissionFlowHandler.requestPermissionWithFlow(
-                            context = PermissionContext.HABIT_DETAIL,
-                            habitName = uiState.habit?.title,
-                            onResult = { result ->
-                                // Handle permission result
-                                println("Permission result: $result")
-                                permissionDialogState = result
-                            }
-                        )
+                    permissionHandler.requestPermissionFlow { result ->
+                        permissionDialogState = result
+                        if (result is PermissionFlowResult.PermissionGranted) {
+                            // Retry enabling notification after permission granted
+                            viewModel.toggleNotification(true)
+                        }
                     }
                 }
 
                 is HabitDetailViewModel.UiEvent.OpenAppSettings -> {
                     coroutineScope.launch {
                         try {
-                            val success = permissionFlowHandler.handleOpenSettings(PermissionContext.HABIT_DETAIL)
+                            val success = permissionHandler.openSettings()
                             if (!success) {
                                 // Handle failure case if needed
                                 println("Failed to open settings")
@@ -140,6 +148,11 @@ fun HabitDetailScreen(
                             println("Error opening settings: ${e.message}")
                         }
                     }
+                }
+
+                is HabitDetailViewModel.UiEvent.ShowGlobalEnableDialog -> {
+                    println("🔔 HABIT_DETAIL_SCREEN: Showing global enable dialog for habit: ${event.habitName}")
+                    showGlobalEnableDialog = event.habitName
                 }
             }
         }
@@ -190,6 +203,7 @@ fun HabitDetailScreen(
                         notificationTime = uiState.notificationTime,
                         notificationError = uiState.notificationError,
                         onToggleEnabled = { enabled ->
+                            println("🔔 HABIT_DETAIL_SCREEN: User toggled notification switch to: $enabled")
                             viewModel.toggleNotification(enabled)
                         },
                         onTimeChanged = { time ->
@@ -292,66 +306,23 @@ fun HabitDetailScreen(
             )
         }
 
-        // Permission dialogs
-        when (val dialogState = permissionDialogState) {
-            is PermissionFlowResult.ShowRationaleDialog -> {
-                PermissionRationaleDialog(
-                    context = dialogState.context,
-                    rationaleMessage = dialogState.rationaleMessage,
-                    benefitMessage = dialogState.benefitMessage,
-                    habitName = uiState.habit?.title,
-                    onRequestPermission = {
-                        coroutineScope.launch {
-                            permissionFlowHandler.handleSystemPermissionResult(
-                                context = PermissionContext.HABIT_DETAIL,
-                                habitName = uiState.habit?.title,
-                                onResult = { result ->
-                                    permissionDialogState = result
-                                    if (result is PermissionFlowResult.PermissionGranted) {
-                                        // Retry enabling notification after permission granted
-                                        viewModel.toggleNotification(true)
-                                    }
-                                }
-                            )
-                        }
-                    },
-                    onDismiss = {
-                        permissionDialogState = null
-                    },
-                    onNeverAskAgain = {
-                        permissionFlowHandler.handleNeverAskAgain(PermissionContext.HABIT_DETAIL)
-                        permissionDialogState = null
-                    }
-                )
-            }
+        // Unified permission dialogs
+        UnifiedPermissionDialogs(
+            dialogState = permissionDialogState,
+            permissionHandler = permissionHandler,
+            onDismiss = { permissionDialogState = null }
+        )
 
-            is PermissionFlowResult.ShowSettingsDialog -> {
-                SettingsNavigationDialog(
-                    context = PermissionContext.HABIT_DETAIL,
-                    message = dialogState.message,
-                    onOpenSettings = {
-                        coroutineScope.launch {
-                            permissionFlowHandler.handleOpenSettings(PermissionContext.HABIT_DETAIL)
-                            permissionDialogState = null
-                        }
-                    },
-                    onDismiss = {
-                        permissionDialogState = null
-                    },
-                    onDisableFeature = {
-                        // User chooses to disable notifications feature
-                        permissionDialogState = null
-                    }
-                )
-            }
-
-            else -> {
-                // Handle other dialog states if needed
-                if (dialogState is PermissionFlowResult.PermissionGranted ||
-                    dialogState is PermissionFlowResult.Granted) {
-                    permissionDialogState = null
-                }
-            }
+        // Global notification enable dialog - using shared component
+        showGlobalEnableDialog?.let { habitName ->
+            GlobalEnableNotificationDialog(
+                habitName = habitName,
+                onConfirm = {
+                    showGlobalEnableDialog = null
+                    viewModel.enableGlobalNotifications()
+                },
+                onDismiss = { showGlobalEnableDialog = null }
+            )
         }
     }
 }
@@ -514,25 +485,5 @@ private fun DateDetailSheet(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-    }
-}
-
-// Helper functions
-
-private fun getMonthAbbreviation(month: Int): String {
-    return when (month) {
-        1 -> "Jan"
-        2 -> "Feb"
-        3 -> "Mar"
-        4 -> "Apr"
-        5 -> "May"
-        6 -> "Jun"
-        7 -> "Jul"
-        8 -> "Aug"
-        9 -> "Sep"
-        10 -> "Oct"
-        11 -> "Nov"
-        12 -> "Dec"
-        else -> ""
     }
 }

@@ -25,15 +25,14 @@ class CalculateStreakUseCase(
     @OptIn(ExperimentalTime::class)
     override suspend fun invoke(params: String): Result<StreakInfo> {
         return try {
-            val habitId = params
-            val habitResult = habitRepository.getHabitById(habitId)
+            val habitResult = habitRepository.getHabitById(params)
             if (habitResult.isFailure) {
                 return Result.failure(habitResult.exceptionOrNull() ?: Exception("Failed to get habit"))
             }
             val habit = habitResult.getOrNull()
                 ?: return Result.failure(Exception("Habit not found"))
 
-            val recordsResult = habitRecordRepository.getRecordsForHabit(habitId)
+            val recordsResult = habitRecordRepository.getRecordsForHabit(params)
             if (recordsResult.isFailure) {
                 return Result.failure(recordsResult.exceptionOrNull() ?: Exception("Failed to get records"))
             }
@@ -69,7 +68,7 @@ class CalculateStreakUseCase(
         var longestStreak = 0
         var currentStreakFromEnd = 0
 
-        // Calculate longest streak by checking frequency-aware consecutive completion
+        // Calculate the longest streak by checking frequency-aware consecutive completion
         var tempStreak = 1
         for (i in 1 until sortedDates.size) {
             val prevDate = sortedDates[i - 1]

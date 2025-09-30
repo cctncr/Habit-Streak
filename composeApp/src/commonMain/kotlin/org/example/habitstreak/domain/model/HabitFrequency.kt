@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed class HabitFrequency {
     @Serializable
-    object Daily : HabitFrequency()
+    data object Daily : HabitFrequency()
 
     @Serializable
     data class Weekly(val daysOfWeek: Set<DayOfWeek>) : HabitFrequency()

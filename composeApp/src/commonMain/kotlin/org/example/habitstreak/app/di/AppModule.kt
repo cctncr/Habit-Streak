@@ -29,7 +29,6 @@ import org.example.habitstreak.domain.util.DateProviderImpl
 import org.example.habitstreak.core.locale.*
 import org.example.habitstreak.core.theme.*
 import org.example.habitstreak.presentation.permission.PermissionFlowHandler
-import org.example.habitstreak.presentation.permission.PermissionMessagingService
 import org.example.habitstreak.data.cache.PermissionStateCache
 
 /**
@@ -71,26 +70,16 @@ val appModule = module {
     single { org.example.habitstreak.domain.service.HabitFilterService() }
 
     // Permission Services - Following SRP for permission management
-    single { PermissionMessagingService() }
     single { PermissionStateCache() }
     single {
         PermissionFlowHandler(
             permissionManager = get(),
-            messagingService = get(),
             stateCache = get()
         )
     }
 
+
     // Notification Services - NotificationScheduler from platform modules
-    single<NotificationService> {
-        NotificationService(
-            notificationRepository = get(),
-            habitRepository = get(),
-            scheduler = get(),
-            preferencesRepository = get(),
-            permissionManager = get()
-        )
-    }
 
     // Use Cases - Following Single Responsibility Principle
     factory { CreateHabitUseCase(get(), get(), get(), get()) }
@@ -98,7 +87,6 @@ val appModule = module {
     factory { GetHabitsWithCompletionUseCase(get(), get()) }
     factory { org.example.habitstreak.domain.usecase.habit.CalculateStreakUseCase(get(), get(), get()) }
     factory { CalculateHabitStatsUseCase(get(), get()) }
-    factory { ManageHabitNotificationUseCase(get()) }
     factory { ArchiveHabitUseCase(get()) }
     factory { InitializeCategoriesUseCase(get()) }
     factory { org.example.habitstreak.domain.usecase.notification.CompleteHabitFromNotificationUseCase(get()) }
@@ -115,6 +103,8 @@ val appModule = module {
             habitRecordRepository = get(),
             calculateHabitStatsUseCase = get(),
             manageHabitNotificationUseCase = get(),
+            checkGlobalNotificationStatusUseCase = get(),
+            enableGlobalNotificationsUseCase = get(),
             dateProvider = get()
         )
     }
@@ -127,7 +117,9 @@ val appModule = module {
             localeStateHolder = get(),
             themeService = get(),
             themeStateHolder = get(),
-            permissionFlowHandler = get()
+            permissionFlowHandler = get(),
+            enableGlobalNotificationsUseCase = get(),
+            disableGlobalNotificationsUseCase = get()
         )
     }
 }

@@ -1,18 +1,16 @@
 package org.example.habitstreak.domain.usecase.notification
 
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.UseCase
 import org.example.habitstreak.domain.util.HabitFrequencyUtils
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Use case to check if a habit is active on a specific date
- * Follows Single Responsibility Principle - only handles active day checking for notifications
  */
 @OptIn(ExperimentalTime::class)
 class CheckHabitActiveDayUseCase(

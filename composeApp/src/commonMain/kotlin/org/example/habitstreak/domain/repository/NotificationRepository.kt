@@ -5,7 +5,6 @@ import org.example.habitstreak.domain.model.NotificationConfig
 
 /**
  * Repository interface for notification configurations
- * Following Interface Segregation & Dependency Inversion Principles
  */
 interface NotificationRepository {
 

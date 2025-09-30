@@ -62,11 +62,25 @@ class IOSPermissionManager : PermissionManager {
                     PermissionResult.Granted
                 }
                 UNAuthorizationStatusDenied -> {
-                    PermissionResult.DeniedPermanently
+                    PermissionResult.GloballyDisabled
                 }
                 UNAuthorizationStatusNotDetermined -> {
-                    // Request permission
-                    requestPermissionFromSystem()
+                    // This should not happen if called after platform launcher
+                    // Platform launcher should have already made the request
+                    // Check status again after potential request
+                    val newStatus = getCurrentAuthorizationStatus()
+                    when (newStatus) {
+                        UNAuthorizationStatusAuthorized, UNAuthorizationStatusProvisional -> {
+                            PermissionResult.Granted
+                        }
+                        UNAuthorizationStatusDenied -> {
+                            PermissionResult.GloballyDisabled
+                        }
+                        else -> {
+                            // Fallback: make the request here
+                            requestPermissionFromSystem()
+                        }
+                    }
                 }
                 else -> {
                     PermissionResult.Error(
@@ -124,7 +138,7 @@ class IOSPermissionManager : PermissionManager {
                             }
                             else -> {
                                 // Permission denied
-                                continuation.resume(PermissionResult.DeniedPermanently)
+                                continuation.resume(PermissionResult.GloballyDisabled)
                             }
                         }
                     } catch (e: Exception) {

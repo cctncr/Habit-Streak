@@ -6,8 +6,6 @@ import org.example.habitstreak.domain.usecase.UseCase
 
 /**
  * Use case for completing habits from notification actions
- * Follows Single Responsibility Principle - only handles notification-triggered completions
- * Ensures consistent habit completion logic across the app
  */
 class CompleteHabitFromNotificationUseCase(
     private val habitRecordRepository: HabitRecordRepository

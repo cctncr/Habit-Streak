@@ -5,46 +5,39 @@ import org.example.habitstreak.domain.service.PermissionResult
 import org.example.habitstreak.data.cache.PermissionStateCache
 
 /**
- * Context for permission requests - determines which screen triggered the request
- * This enables context-aware messaging and analytics tracking
- */
-enum class PermissionContext {
-    SETTINGS,
-    HABIT_DETAIL,
-    CREATE_EDIT
-}
-
-/**
  * Unified permission flow orchestrator following Single Responsibility Principle
  * Handles permission flow logic across all screens while maintaining DIP compliance
  */
 class PermissionFlowHandler(
     private val permissionManager: PermissionManager,
-    private val messagingService: PermissionMessagingService,
     private val stateCache: PermissionStateCache
 ) {
 
     /**
-     * Main entry point for permission requests with context-aware flow
-     * @param context The screen/feature context requesting permission
+     * Main entry point for permission requests with unified flow
      * @param habitName Optional habit name for personalized messages
      * @param onResult Callback with permission granted status
      */
     suspend fun requestPermissionWithFlow(
-        context: PermissionContext,
         habitName: String? = null,
         onResult: (PermissionFlowResult) -> Unit
     ) {
+        println("🔔 PERMISSION_FLOW_HANDLER: requestPermissionWithFlow called with habitName=$habitName")
         // Check cache first to avoid repeated permission checks
         val cachedResult = stateCache.getCachedPermissionState()
-        if (cachedResult != null) {
+        println("🔔 PERMISSION_FLOW_HANDLER: Cached permission state: $cachedResult")
+        if (cachedResult == true) {
+            println("🔔 PERMISSION_FLOW_HANDLER: Permission cached as granted, returning Granted")
             onResult(PermissionFlowResult.Granted)
             return
         }
+        // If cached as false or null, continue with flow
 
         try {
             // Step 1: Check if permission already granted
+            println("🔔 PERMISSION_FLOW_HANDLER: Checking if permission already granted...")
             if (permissionManager.hasNotificationPermission()) {
+                println("🔔 PERMISSION_FLOW_HANDLER: Permission already granted, caching and returning Granted")
                 stateCache.cachePermissionState(true)
                 onResult(PermissionFlowResult.Granted)
                 return
@@ -52,32 +45,20 @@ class PermissionFlowHandler(
 
             // Step 2: Check if we can request permission
             if (!permissionManager.canRequestPermission()) {
+                println("🔔 PERMISSION_FLOW_HANDLER: Cannot request permission, showing settings dialog")
                 onResult(
                     PermissionFlowResult.ShowSettingsDialog(
-                        message = messagingService.getMessage(
-                            context = context,
-                            messageType = PermissionMessageType.DENIED_HARD,
-                            habitName = habitName
-                        )
+                        message = "To enable notifications, please allow permissions in Settings"
                     )
                 )
                 return
             }
 
-            // Step 3: Show rationale dialog with context-aware message
+            // Step 3: Show rationale dialog
             onResult(
                 PermissionFlowResult.ShowRationaleDialog(
-                    context = context,
-                    rationaleMessage = messagingService.getMessage(
-                        context = context,
-                        messageType = PermissionMessageType.RATIONALE,
-                        habitName = habitName
-                    ),
-                    benefitMessage = messagingService.getMessage(
-                        context = context,
-                        messageType = PermissionMessageType.BENEFIT,
-                        habitName = habitName
-                    )
+                    rationaleMessage = "Enable notifications to receive daily reminders",
+                    benefitMessage = "Stay consistent with timely reminders • Track your progress automatically • Never miss a habit again"
                 )
             )
 
@@ -94,7 +75,6 @@ class PermissionFlowHandler(
      * Handle system permission request result
      */
     suspend fun handleSystemPermissionResult(
-        context: PermissionContext,
         habitName: String? = null,
         onResult: (PermissionFlowResult) -> Unit
     ) {
@@ -104,11 +84,7 @@ class PermissionFlowHandler(
                     stateCache.cachePermissionState(true)
                     onResult(
                         PermissionFlowResult.PermissionGranted(
-                            message = messagingService.getMessage(
-                                context = context,
-                                messageType = PermissionMessageType.SUCCESS,
-                                habitName = habitName
-                            )
+                            message = "Notifications enabled successfully"
                         )
                     )
                 }
@@ -116,11 +92,7 @@ class PermissionFlowHandler(
                 is PermissionResult.DeniedCanAskAgain -> {
                     onResult(
                         PermissionFlowResult.ShowSoftDenialDialog(
-                            message = messagingService.getMessage(
-                                context = context,
-                                messageType = PermissionMessageType.DENIED_SOFT,
-                                habitName = habitName
-                            )
+                            message = "Notifications help you stay on track. You can try enabling them again."
                         )
                     )
                 }
@@ -128,11 +100,15 @@ class PermissionFlowHandler(
                 is PermissionResult.DeniedPermanently -> {
                     onResult(
                         PermissionFlowResult.ShowSettingsDialog(
-                            message = messagingService.getMessage(
-                                context = context,
-                                messageType = PermissionMessageType.DENIED_HARD,
-                                habitName = habitName
-                            )
+                            message = "To enable notifications, please allow permissions in Settings"
+                        )
+                    )
+                }
+
+                is PermissionResult.GloballyDisabled -> {
+                    onResult(
+                        PermissionFlowResult.ShowSettingsDialog(
+                            message = "To enable notifications, please allow permissions in Settings"
                         )
                     )
                 }
@@ -157,16 +133,15 @@ class PermissionFlowHandler(
     /**
      * Handle user's choice to open app settings
      */
-    suspend fun handleOpenSettings(context: PermissionContext): Boolean {
+    suspend fun handleOpenSettings(): Boolean {
         return try {
             val result = permissionManager.openAppSettings()
             if (result) {
-                // Cache that user went to settings (for analytics purposes if needed later)
-                stateCache.cachePermissionState(false) // Reset cache since user is going to change settings
+                // Reset cache since user is going to change settings
+                stateCache.cachePermissionState(false)
             }
             result
         } catch (e: Exception) {
-            // Log the exception for debugging
             println("Error opening app settings: ${e.message}")
             false
         }
@@ -175,7 +150,7 @@ class PermissionFlowHandler(
     /**
      * Handle user's choice to never ask again
      */
-    fun handleNeverAskAgain(context: PermissionContext) {
+    fun handleNeverAskAgain() {
         // User selected never ask again - no action needed
     }
 
@@ -203,12 +178,11 @@ class PermissionFlowHandler(
  * Following the principle of explicit state management
  */
 sealed class PermissionFlowResult {
-    object Granted : PermissionFlowResult()
+    data object Granted : PermissionFlowResult()
 
     data class PermissionGranted(val message: String) : PermissionFlowResult()
 
     data class ShowRationaleDialog(
-        val context: PermissionContext,
         val rationaleMessage: String,
         val benefitMessage: String
     ) : PermissionFlowResult()

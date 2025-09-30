@@ -269,7 +269,6 @@ fun NotificationSettingsCard(
     }
 }
 
-// ✅ Type-safe error message helpers
 @Composable
 private fun getErrorDisplayMessage(error: NotificationError): String = when (error) {
     is NotificationError.PermissionDenied ->

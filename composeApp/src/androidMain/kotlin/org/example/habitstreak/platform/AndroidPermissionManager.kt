@@ -27,36 +27,70 @@ class AndroidPermissionManager(
 
     override suspend fun hasNotificationPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
+            val permission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
+
+            // Even if permission is granted, check if notifications are enabled at system level
+            val notificationsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+            val hasFullPermission = permission && notificationsEnabled
+
+            println("🔔 ANDROID_PERMISSION_MANAGER: hasNotificationPermission (API 33+) permission=$permission, notificationsEnabled=$notificationsEnabled, combined=$hasFullPermission")
+            hasFullPermission
         } else {
             // For API < 33, notification permission is granted by default
-            androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+            val notificationsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+            println("🔔 ANDROID_PERMISSION_MANAGER: hasNotificationPermission (API < 33) areNotificationsEnabled = $notificationsEnabled")
+            notificationsEnabled
         }
     }
 
     override suspend fun requestNotificationPermission(): PermissionResult {
+        println("🔔 ANDROID_PERMISSION_MANAGER: requestNotificationPermission called")
+
         // If already granted, return success
         if (hasNotificationPermission()) {
+            println("🔔 ANDROID_PERMISSION_MANAGER: Permission already granted, returning Granted")
             return PermissionResult.Granted
         }
 
         // For API < 33, check if notifications are enabled in system settings
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            return if (androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            val notificationsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+            println("🔔 ANDROID_PERMISSION_MANAGER: API < 33, areNotificationsEnabled = $notificationsEnabled")
+            return if (notificationsEnabled) {
+                println("🔔 ANDROID_PERMISSION_MANAGER: API < 33, notifications enabled, returning Granted")
                 PermissionResult.Granted
             } else {
+                println("🔔 ANDROID_PERMISSION_MANAGER: API < 33, notifications disabled in system settings, returning GloballyDisabled")
                 // Notifications disabled in system settings - must go to settings
-                PermissionResult.DeniedPermanently
+                PermissionResult.GloballyDisabled
             }
         }
 
         if (!canRequestPermissionSync()) {
+            println("🔔 ANDROID_PERMISSION_MANAGER: Cannot request permission, returning DeniedPermanently")
             return PermissionResult.DeniedPermanently
         }
 
+        // For API 33+, also check if user has permission but notifications are disabled at system level
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            val notificationsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+            if (permission && !notificationsEnabled) {
+                println("🔔 ANDROID_PERMISSION_MANAGER: API 33+, permission granted but notifications disabled at system level, returning GloballyDisabled")
+                return PermissionResult.GloballyDisabled
+            }
+        }
+
+        // NOTE: This method is called after the actual permission request has been made
+        // by the PlatformPermissionLauncher. It should determine the result based on current state.
         val activity = activityProvider.getCurrentActivity()
         if (activity == null) {
             return PermissionResult.Error(
@@ -70,9 +104,14 @@ class AndroidPermissionManager(
                 Manifest.permission.POST_NOTIFICATIONS
             )
 
-            if (!shouldShowRationale && hasBeenRequestedBefore()) {
+            // Check if permission was just granted
+            if (hasNotificationPermission()) {
+                PermissionResult.Granted
+            } else if (!shouldShowRationale && hasBeenRequestedBefore()) {
+                // User denied and selected "Don't ask again"
                 PermissionResult.DeniedPermanently
             } else {
+                // User denied but can ask again
                 markPermissionRequested()
                 PermissionResult.DeniedCanAskAgain
             }

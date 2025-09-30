@@ -8,6 +8,8 @@ import kotlinx.datetime.LocalTime
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.service.NotificationService
+import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
+import org.example.habitstreak.domain.usecase.notification.DisableGlobalNotificationsUseCase
 import org.example.habitstreak.presentation.ui.state.SettingsUiState
 import org.example.habitstreak.core.locale.AppLocale
 import org.example.habitstreak.core.locale.ILocaleService
@@ -15,7 +17,6 @@ import org.example.habitstreak.core.locale.ILocaleStateHolder
 import org.example.habitstreak.core.theme.AppTheme
 import org.example.habitstreak.core.theme.IThemeService
 import org.example.habitstreak.core.theme.IThemeStateHolder
-import org.example.habitstreak.presentation.permission.PermissionContext
 import org.example.habitstreak.presentation.permission.PermissionFlowHandler
 import org.example.habitstreak.presentation.permission.PermissionFlowResult
 
@@ -27,7 +28,9 @@ class SettingsViewModel(
     private val localeStateHolder: ILocaleStateHolder,
     private val themeService: IThemeService,
     private val themeStateHolder: IThemeStateHolder,
-    private val permissionFlowHandler: PermissionFlowHandler
+    private val permissionFlowHandler: PermissionFlowHandler,
+    private val enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase,
+    private val disableGlobalNotificationsUseCase: DisableGlobalNotificationsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -78,20 +81,25 @@ class SettingsViewModel(
     }
 
     fun toggleNotifications(enabled: Boolean) {
+        println("🔔 SETTINGS_VIEWMODEL: toggleNotifications called with enabled=$enabled")
         if (enabled) {
+            println("🔔 SETTINGS_VIEWMODEL: Requesting notification permission")
             requestNotificationPermission()
         } else {
+            println("🔔 SETTINGS_VIEWMODEL: Disabling notifications")
             disableNotifications()
         }
     }
 
     private fun requestNotificationPermission() {
+        println("🔔 SETTINGS_VIEWMODEL: requestNotificationPermission started")
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+            println("🔔 SETTINGS_VIEWMODEL: UI loading state set to true")
 
             permissionFlowHandler.requestPermissionWithFlow(
-                context = PermissionContext.SETTINGS,
                 onResult = { result ->
+                    println("🔔 SETTINGS_VIEWMODEL: Permission flow result received: ${result::class.simpleName}")
                     handlePermissionFlowResult(result)
                 }
             )
@@ -103,12 +111,14 @@ class SettingsViewModel(
             _uiState.update { it.copy(isLoading = true) }
 
             try {
-                // Save preference
-                preferencesRepository.setNotificationsEnabled(false)
-
-                if (notificationService != null) {
-                    // Disable all habit notifications
-                    disableAllHabitNotifications()
+                // Use DisableGlobalNotificationsUseCase instead of duplicate logic
+                when (val result = disableGlobalNotificationsUseCase.execute()) {
+                    is DisableGlobalNotificationsUseCase.GlobalDisableResult.Success -> {
+                        println("🔔 SETTINGS_VIEWMODEL: Notifications disabled successfully")
+                    }
+                    is DisableGlobalNotificationsUseCase.GlobalDisableResult.Error -> {
+                        println("🔔 SETTINGS_VIEWMODEL: Error disabling notifications: ${result.message}")
+                    }
                 }
 
                 _uiState.update {
@@ -129,13 +139,16 @@ class SettingsViewModel(
     }
 
     private fun handlePermissionFlowResult(result: PermissionFlowResult) {
+        println("🔔 SETTINGS_VIEWMODEL: handlePermissionFlowResult called with: ${result::class.simpleName}")
         viewModelScope.launch {
             when (result) {
                 is PermissionFlowResult.Granted -> {
+                    println("🔔 SETTINGS_VIEWMODEL: Permission granted, enabling notifications")
                     enableNotifications()
                 }
 
                 is PermissionFlowResult.PermissionGranted -> {
+                    println("🔔 SETTINGS_VIEWMODEL: PermissionGranted with message: ${result.message}")
                     enableNotifications()
                     _uiState.update {
                         it.copy(
@@ -147,17 +160,18 @@ class SettingsViewModel(
                 }
 
                 is PermissionFlowResult.ShowRationaleDialog -> {
+                    println("🔔 SETTINGS_VIEWMODEL: ShowRationaleDialog, showing dialog")
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             showPermissionDialog = true,
-                            permissionDialogContext = result.context,
                             permissionMessage = result.rationaleMessage
                         )
                     }
                 }
 
                 is PermissionFlowResult.ShowSoftDenialDialog -> {
+                    println("🔔 SETTINGS_VIEWMODEL: ShowSoftDenialDialog, showing denial dialog")
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -168,6 +182,7 @@ class SettingsViewModel(
                 }
 
                 is PermissionFlowResult.ShowSettingsDialog -> {
+                    println("🔔 SETTINGS_VIEWMODEL: ShowSettingsDialog, showing settings dialog")
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -191,21 +206,26 @@ class SettingsViewModel(
 
     private suspend fun enableNotifications() {
         try {
-            // Save preference
-            preferencesRepository.setNotificationsEnabled(true)
-
-            if (notificationService != null) {
-                // Re-enable all habit notifications
-                enableAllHabitNotifications()
-            }
-
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    notificationsEnabled = true,
-                    hasNotificationPermission = true,
-                    message = "Notifications enabled"
-                )
+            // Use EnableGlobalNotificationsUseCase instead of duplicate logic
+            when (val result = enableGlobalNotificationsUseCase.execute()) {
+                is EnableGlobalNotificationsUseCase.GlobalEnableResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            notificationsEnabled = true,
+                            hasNotificationPermission = true,
+                            message = "Notifications enabled"
+                        )
+                    }
+                }
+                is EnableGlobalNotificationsUseCase.GlobalEnableResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            message = "Failed to enable notifications: ${result.message}"
+                        )
+                    }
+                }
             }
         } catch (e: Exception) {
             _uiState.update {
@@ -217,39 +237,7 @@ class SettingsViewModel(
         }
     }
 
-    private suspend fun enableAllHabitNotifications() {
-        if (notificationService == null) return
-
-        // Get all habits with reminders
-        habitRepository.observeActiveHabits().first().forEach { habit ->
-            if (habit.isReminderEnabled && !habit.reminderTime.isNullOrEmpty()) {
-                try {
-                    val time = LocalTime.parse(habit.reminderTime)
-                    notificationService.enableNotification(
-                        habitId = habit.id,
-                        time = time,
-                        message = "Time to ${habit.title}" // TODO: Use string resources
-                    )
-                } catch (e: Exception) {
-                    // Log error but continue with other habits
-                    // TODO: Implement proper logging framework
-                }
-            }
-        }
-    }
-
-    private suspend fun disableAllHabitNotifications() {
-        if (notificationService == null) return
-
-        // Cancel all notifications
-        habitRepository.observeActiveHabits().first().forEach { habit ->
-            try {
-                notificationService.disableNotification(habit.id)
-            } catch (e: Exception) {
-                // TODO: Implement proper logging framework
-            }
-        }
-    }
+    // Duplicate methods removed - now using EnableGlobalNotificationsUseCase and DisableGlobalNotificationsUseCase
 
     fun toggleSound(enabled: Boolean) {
         viewModelScope.launch {
@@ -284,7 +272,6 @@ class SettingsViewModel(
         _uiState.update {
             it.copy(
                 showPermissionDialog = false,
-                permissionDialogContext = null,
                 permissionMessage = null
             )
         }
@@ -292,12 +279,9 @@ class SettingsViewModel(
 
     fun onPermissionRequested() {
         viewModelScope.launch {
-            val currentContext = _uiState.value.permissionDialogContext ?: PermissionContext.SETTINGS
-
             onPermissionDialogDismiss()
 
             permissionFlowHandler.handleSystemPermissionResult(
-                context = currentContext,
                 onResult = { result ->
                     handlePermissionFlowResult(result)
                 }
@@ -306,8 +290,7 @@ class SettingsViewModel(
     }
 
     fun onNeverAskAgain() {
-        val currentContext = _uiState.value.permissionDialogContext ?: PermissionContext.SETTINGS
-        permissionFlowHandler.handleNeverAskAgain(currentContext)
+        permissionFlowHandler.handleNeverAskAgain()
         onPermissionDialogDismiss()
     }
 
@@ -323,7 +306,7 @@ class SettingsViewModel(
     fun onOpenDeviceSettings() {
         viewModelScope.launch {
             try {
-                val success = permissionFlowHandler.handleOpenSettings(PermissionContext.SETTINGS)
+                val success = permissionFlowHandler.handleOpenSettings()
                 if (!success) {
                     _uiState.update {
                         it.copy(message = "Unable to open device settings. Please open Settings manually and navigate to notifications.")

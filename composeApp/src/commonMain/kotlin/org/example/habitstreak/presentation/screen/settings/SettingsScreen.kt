@@ -56,7 +56,8 @@ import habitstreak.composeapp.generated.resources.*
 import org.example.habitstreak.core.locale.AppLocale
 import org.example.habitstreak.presentation.ui.components.permission.PermissionRationaleDialog
 import org.example.habitstreak.presentation.ui.components.permission.SettingsNavigationDialog
-import org.example.habitstreak.presentation.permission.PermissionMessagingService
+import org.example.habitstreak.presentation.ui.components.permission.UnifiedPermissionDialogs
+import org.example.habitstreak.presentation.permission.rememberBasePermissionHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +69,15 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Unified permission handler
+    val permissionHandler = rememberBasePermissionHandler() { granted, canAskAgain ->
+        if (granted) {
+            viewModel.onPermissionGrantedExternally()
+        } else {
+            // Permission denied - no specific handler needed as ViewModel handles this internally
+        }
+    }
 
     // Show snackbar for messages
     val snackbarHostState = remember { SnackbarHostState() }
@@ -138,6 +148,7 @@ fun SettingsScreen(
                             subtitle = stringResource(Res.string.setting_push_notifications_desc),
                             checked = uiState.notificationsEnabled,
                             onCheckedChange = { enabled ->
+                                println("🔔 SETTINGS_SCREEN: User toggled notification switch to: $enabled")
                                 viewModel.toggleNotifications(enabled)
                             },
                             enabled = !uiState.isLoading
@@ -209,20 +220,17 @@ fun SettingsScreen(
         }
     }
 
-    // Permission Dialogs
-    val messagingService = remember { PermissionMessagingService() }
-
     // Permission Rationale Dialog
     if (uiState.showPermissionDialog) {
-        val context = uiState.permissionDialogContext!!
-        val rationaleMessage = uiState.permissionMessage ?: ""
-        val benefitMessage = messagingService.getMessage(context, org.example.habitstreak.presentation.permission.PermissionMessageType.BENEFIT)
+        val rationaleMessage = uiState.permissionMessage ?: stringResource(Res.string.permission_settings_rationale)
+        val benefitMessage = stringResource(Res.string.permission_settings_benefit)
 
         PermissionRationaleDialog(
-            context = context,
             rationaleMessage = rationaleMessage,
             benefitMessage = benefitMessage,
-            onRequestPermission = { viewModel.onPermissionRequested() },
+            onRequestPermission = {
+                permissionHandler.launchPlatformPermissionRequest()
+            },
             onDismiss = { viewModel.onPermissionDialogDismiss() },
             onNeverAskAgain = { viewModel.onNeverAskAgain() }
         )
@@ -231,7 +239,6 @@ fun SettingsScreen(
     // Settings Navigation Dialog
     if (uiState.showPermissionSettingsDialog) {
         SettingsNavigationDialog(
-            context = org.example.habitstreak.presentation.permission.PermissionContext.SETTINGS,
             message = uiState.permissionMessage ?: stringResource(Res.string.default_settings_permission_message),
             onOpenSettings = { viewModel.onOpenDeviceSettings() },
             onDismiss = { viewModel.onPermissionSettingsDialogDismiss() },

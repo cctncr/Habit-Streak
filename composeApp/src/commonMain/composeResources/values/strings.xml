@@ -528,13 +528,14 @@
     <string name="permission_try_again">Try Again</string>
     <string name="permission_enable_in_settings">Enable Notifications in Settings</string>
     <string name="permission_how_to_enable">How to enable notifications:</string>
-    <string name="permission_step_open_settings">Open Device Settings</string>
+    <!-- Settings navigation steps -->
+    <string name="permission_step_open_settings_title">Open Device Settings</string>
     <string name="permission_step_open_settings_desc">Tap the button below to go directly to your device settings</string>
-    <string name="permission_step_find_app">Find 'Habit Streak'</string>
+    <string name="permission_step_find_app_title">Find 'Habit Streak'</string>
     <string name="permission_step_find_app_desc">Look for Habit Streak in your app list or use search</string>
-    <string name="permission_step_enable_notifications">Enable Notifications</string>
+    <string name="permission_step_enable_notifications_title">Enable Notifications</string>
     <string name="permission_step_enable_notifications_desc">Toggle on 'Allow Notifications' or similar option</string>
-    <string name="permission_step_return_app">Return to App</string>
+    <string name="permission_step_return_app_title">Return to App</string>
     <string name="permission_step_return_app_desc">Come back and enjoy your habit reminders!</string>
     <string name="permission_tip">Tip:</string>
     <string name="permission_open_settings">Open Settings</string>

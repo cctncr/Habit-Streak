@@ -38,13 +38,16 @@ interface PermissionManager {
 sealed class PermissionResult {
 
     /** Permission granted successfully */
-    object Granted : PermissionResult()
+    data object Granted : PermissionResult()
 
     /** Permission denied but can ask again */
-    object DeniedCanAskAgain : PermissionResult()
+    data object DeniedCanAskAgain : PermissionResult()
 
     /** Permission denied permanently - must go to settings */
-    object DeniedPermanently : PermissionResult()
+    data object DeniedPermanently : PermissionResult()
+
+    /** Notifications globally disabled in device/app settings */
+    data object GloballyDisabled : PermissionResult()
 
     /** Error occurred during permission request */
     data class Error(val error: NotificationError) : PermissionResult()
@@ -56,7 +59,7 @@ sealed class PermissionResult {
 fun PermissionResult.isGranted(): Boolean = this is PermissionResult.Granted
 
 fun PermissionResult.shouldOpenSettings(): Boolean =
-    this is PermissionResult.DeniedPermanently
+    this is PermissionResult.DeniedPermanently || this is PermissionResult.GloballyDisabled
 
 fun PermissionResult.canRetry(): Boolean =
     this is PermissionResult.DeniedCanAskAgain

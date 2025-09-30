@@ -3,8 +3,7 @@ package org.example.habitstreak.domain.service
 import org.example.habitstreak.domain.model.HabitFrequency
 
 /**
- * Service for habit validation logic following Single Responsibility Principle.
- * Extracted from Use Cases to maintain clean separation of concerns.
+ * Service for habit validation logic
  */
 class HabitValidationService {
 
@@ -14,12 +13,12 @@ class HabitValidationService {
     )
 
     sealed class ValidationError(val message: String) {
-        object EmptyTitle : ValidationError("Title cannot be empty")
-        object TitleTooLong : ValidationError("Title cannot exceed 50 characters")
-        object DescriptionTooLong : ValidationError("Description cannot exceed 200 characters")
-        object InvalidTargetCount : ValidationError("Target count must be greater than 0")
-        object EmptyUnit : ValidationError("Unit cannot be empty when target count is specified")
-        object InvalidFrequency : ValidationError("Invalid frequency configuration")
+        data object EmptyTitle : ValidationError("Title cannot be empty")
+        data object TitleTooLong : ValidationError("Title cannot exceed 50 characters")
+        data object DescriptionTooLong : ValidationError("Description cannot exceed 200 characters")
+        data object InvalidTargetCount : ValidationError("Target count must be greater than 0")
+        data object EmptyUnit : ValidationError("Unit cannot be empty when target count is specified")
+        data object InvalidFrequency : ValidationError("Invalid frequency configuration")
     }
 
     fun validateHabitCreation(

@@ -3,6 +3,7 @@ package org.example.habitstreak.domain.usecase.habit
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
+import kotlinx.datetime.number
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.util.DateProvider
@@ -48,14 +49,14 @@ class CalculateHabitStatsUseCase(
 
         // Calculate this week and month stats
         val weekStart = today.minus(DatePeriod(days = today.dayOfWeek.ordinal))
-        val monthStart = LocalDate(today.year, today.monthNumber, 1)
+        val monthStart = LocalDate(today.year, today.month.number, 1)
 
         val thisWeekCount = fullyCompletedDates.count {
-            it >= weekStart && it <= today
+            it in weekStart..today
         }
 
         val thisMonthCount = fullyCompletedDates.count {
-            it >= monthStart && it <= today
+            it in monthStart..today
         }
 
         // Calculate average per day

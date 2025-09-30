@@ -34,7 +34,7 @@ class CreateHabitUseCase(
 
     @OptIn(ExperimentalTime::class)
     override suspend fun invoke(params: Params): Result<Habit> {
-        // Use validation service following SRP
+
         val validationResult = validationService.validateHabitCreation(
             title = params.title,
             description = params.description,

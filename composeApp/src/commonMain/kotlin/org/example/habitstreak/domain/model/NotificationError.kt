@@ -1,8 +1,7 @@
 package org.example.habitstreak.domain.model
 
 /**
- * Sealed class for notification errors - Multi-language safe!
- * Following Single Responsibility Principle
+ * Sealed class for notification errors
  */
 sealed class NotificationError : Exception() {
 

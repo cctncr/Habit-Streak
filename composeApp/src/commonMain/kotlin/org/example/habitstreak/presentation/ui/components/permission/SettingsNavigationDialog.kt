@@ -18,7 +18,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import org.example.habitstreak.presentation.permission.PermissionContext
 import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
@@ -29,7 +28,6 @@ import habitstreak.composeapp.generated.resources.*
  */
 @Composable
 fun SettingsNavigationDialog(
-    context: PermissionContext,
     message: String,
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
@@ -131,7 +129,7 @@ fun SettingsNavigationDialog(
                             )
                         }
                         Text(
-                            text = getContextSpecificTip(context),
+                            text = stringResource(Res.string.permission_settings_tip),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -290,14 +288,3 @@ private fun getSettingsSteps(): List<SettingsStep> {
     )
 }
 
-/**
- * Get context-specific tips for the user
- */
-@Composable
-private fun getContextSpecificTip(context: PermissionContext): String {
-    return when (context) {
-        PermissionContext.SETTINGS -> stringResource(Res.string.permission_settings_tip)
-        PermissionContext.HABIT_DETAIL -> stringResource(Res.string.permission_habit_detail_tip)
-        PermissionContext.CREATE_EDIT -> stringResource(Res.string.permission_create_edit_tip)
-    }
-}

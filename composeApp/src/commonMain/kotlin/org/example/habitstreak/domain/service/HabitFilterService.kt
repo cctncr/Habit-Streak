@@ -9,15 +9,13 @@ import org.example.habitstreak.domain.util.HabitFrequencyUtils
 import kotlin.time.ExperimentalTime
 
 /**
- * Service for habit filtering logic following Single Responsibility Principle.
- * Extracted from UI layer to maintain clean separation of concerns.
+ * Service for habit filtering logic
  */
 @OptIn(ExperimentalTime::class)
 class HabitFilterService {
 
     /**
      * Filters habits based on specified criteria.
-     * Pure business logic without UI concerns.
      */
     fun filterHabits(
         habits: List<GetHabitsWithCompletionUseCase.HabitWithCompletion>,

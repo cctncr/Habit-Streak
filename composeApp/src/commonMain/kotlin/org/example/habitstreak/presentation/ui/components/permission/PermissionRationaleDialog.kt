@@ -14,8 +14,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import org.example.habitstreak.presentation.permission.PermissionContext
-import org.example.habitstreak.presentation.permission.PermissionMessagingService
 import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
@@ -26,7 +24,6 @@ import habitstreak.composeapp.generated.resources.*
  */
 @Composable
 fun PermissionRationaleDialog(
-    context: PermissionContext,
     rationaleMessage: String,
     benefitMessage: String,
     habitName: String? = null,
@@ -35,9 +32,8 @@ fun PermissionRationaleDialog(
     onNeverAskAgain: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val messagingService = remember { PermissionMessagingService() }
     val benefits = remember(benefitMessage) {
-        messagingService.getBenefitPoints(context)
+        benefitMessage.split("•").map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     AlertDialog(
@@ -45,7 +41,7 @@ fun PermissionRationaleDialog(
         modifier = modifier,
         icon = {
             Icon(
-                imageVector = getContextIcon(context),
+                imageVector = Icons.Outlined.Notifications,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp)
@@ -53,7 +49,7 @@ fun PermissionRationaleDialog(
         },
         title = {
             Text(
-                text = getDialogTitle(context),
+                text = stringResource(Res.string.permission_enable_notifications),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -188,27 +184,4 @@ fun PermissionRationaleDialog(
             }
         }
     )
-}
-
-/**
- * Get appropriate icon for the permission context
- */
-private fun getContextIcon(context: PermissionContext): ImageVector {
-    return when (context) {
-        PermissionContext.SETTINGS -> Icons.Outlined.Notifications
-        PermissionContext.HABIT_DETAIL -> Icons.Outlined.Schedule
-        PermissionContext.CREATE_EDIT -> Icons.Outlined.AddAlert
-    }
-}
-
-/**
- * Get appropriate dialog title for the permission context
- */
-@Composable
-private fun getDialogTitle(context: PermissionContext): String {
-    return when (context) {
-        PermissionContext.SETTINGS -> stringResource(Res.string.permission_enable_notifications)
-        PermissionContext.HABIT_DETAIL -> stringResource(Res.string.permission_set_up_reminders)
-        PermissionContext.CREATE_EDIT -> stringResource(Res.string.permission_smart_habit_reminders)
-    }
 }

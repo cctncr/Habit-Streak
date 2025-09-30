@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -68,7 +67,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -76,7 +74,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -95,16 +92,15 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
-import org.example.habitstreak.presentation.ui.components.permission.PermissionRationaleDialog
-import org.example.habitstreak.presentation.ui.components.permission.SettingsNavigationDialog
-import org.example.habitstreak.presentation.permission.PermissionContext
-import org.example.habitstreak.presentation.permission.PermissionFlowHandler
+import org.example.habitstreak.presentation.ui.components.permission.UnifiedPermissionDialogs
+import org.example.habitstreak.presentation.ui.components.permission.GlobalEnableNotificationDialog
 import org.example.habitstreak.presentation.permission.PermissionFlowResult
-import org.example.habitstreak.presentation.permission.PermissionMessagingService
+import org.example.habitstreak.presentation.permission.rememberBasePermissionHandler
+import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificationStatusUseCase
+import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
 import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
-import org.example.habitstreak.presentation.screen.create_edit_habit.components.FrequencySelectionDialog
 import org.example.habitstreak.presentation.screen.create_edit_habit.components.AdvancedFrequencyDialog
 import org.example.habitstreak.presentation.screen.create_edit_habit.components.getFrequencyDisplayText
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
@@ -120,7 +116,6 @@ import org.koin.core.parameter.parametersOf
 
 @OptIn(
     ExperimentalMaterial3Api::class,
-    ExperimentalLayoutApi::class,
     ExperimentalAnimationApi::class
 )
 @Composable
@@ -128,7 +123,8 @@ fun CreateEditHabitScreen(
     habitId: String? = null,
     onNavigateBack: () -> Unit,
     viewModel: CreateEditHabitViewModel = koinViewModel(key = habitId) { parametersOf(habitId) },
-    permissionFlowHandler: PermissionFlowHandler = koinInject()
+    checkGlobalNotificationStatusUseCase: CheckGlobalNotificationStatusUseCase = koinInject(),
+    enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -149,6 +145,18 @@ fun CreateEditHabitScreen(
     var showFrequencyDialog by remember { mutableStateOf(false) }
     var showAdvancedSettings by remember { mutableStateOf(false) }
     var permissionDialogState by remember { mutableStateOf<PermissionFlowResult?>(null) }
+    var showGlobalEnableDialog by remember { mutableStateOf<String?>(null) }
+
+    // Unified permission handler
+    val permissionHandler = rememberBasePermissionHandler(
+        habitName = uiState.title.ifBlank { null }
+    ) { granted, canAskAgain ->
+        // Platform permission result handling will be done via handler internal logic
+        if (granted) {
+            viewModel.updateNotificationEnabled(true)
+            showReminderDialog = true
+        }
+    }
 
     val isFormValid = uiState.title.isNotBlank()
 
@@ -284,40 +292,48 @@ fun CreateEditHabitScreen(
                                 uiState = uiState,
                                 viewModel = viewModel,
                                 onShowReminderDialog = {
+                                    println("🔔 CREATE_EDIT_SCREEN: onShowReminderDialog called")
                                     coroutineScope.launch {
-                                        if (!permissionFlowHandler.hasPermission()) {
-                                            permissionFlowHandler.requestPermissionWithFlow(
-                                                context = PermissionContext.CREATE_EDIT,
-                                                habitName = uiState.title.ifBlank { null },
-                                                onResult = { result ->
-                                                    // Handle permission result
+                                        println("🔔 CREATE_EDIT_SCREEN: Checking global notification status...")
+
+                                        // First check global notification status
+                                        when (val globalStatus = checkGlobalNotificationStatusUseCase.execute()) {
+                                            is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.NeedsSystemPermission -> {
+                                                println("🔔 CREATE_EDIT_SCREEN: System permission needed, requesting permission flow")
+                                                permissionHandler.requestPermissionFlow { result ->
+                                                    println("🔔 CREATE_EDIT_SCREEN: Permission flow result: ${result::class.simpleName}")
                                                     when (result) {
                                                         is PermissionFlowResult.Granted -> {
+                                                            println("🔔 CREATE_EDIT_SCREEN: Permission granted, enabling notification and showing dialog")
                                                             viewModel.updateNotificationEnabled(true)
                                                             showReminderDialog = true
                                                         }
                                                         is PermissionFlowResult.PermissionGranted -> {
+                                                            println("🔔 CREATE_EDIT_SCREEN: Permission granted with message, enabling notification and showing dialog")
                                                             viewModel.updateNotificationEnabled(true)
                                                             showReminderDialog = true
                                                         }
-                                                        is PermissionFlowResult.ShowRationaleDialog -> {
-                                                            // Show permission rationale dialog
-                                                            permissionDialogState = result
-                                                        }
+                                                        is PermissionFlowResult.ShowRationaleDialog,
                                                         is PermissionFlowResult.ShowSettingsDialog -> {
-                                                            // Show settings navigation dialog
                                                             permissionDialogState = result
                                                         }
                                                         else -> {
-                                                            // Permission denied - don't allow setting reminder without permission
-                                                            // Do nothing - keep switch off
+                                                            println("🔔 CREATE_EDIT_SCREEN: Permission denied - keeping switch off")
                                                         }
                                                     }
                                                 }
-                                            )
-                                        } else {
-                                            // Permission already granted, show reminder dialog directly
-                                            showReminderDialog = true
+                                            }
+
+                                            is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.NeedsGlobalEnable -> {
+                                                println("🔔 CREATE_EDIT_SCREEN: Global notifications disabled, showing enable dialog")
+                                                showGlobalEnableDialog = uiState.title.takeIf { it.isNotBlank() } ?: "New Habit"
+                                            }
+
+                                            is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.AlreadyEnabled,
+                                            is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.CanEnable -> {
+                                                println("🔔 CREATE_EDIT_SCREEN: Global status OK, showing reminder dialog")
+                                                showReminderDialog = true
+                                            }
                                         }
                                     }
                                 }
@@ -510,67 +526,34 @@ fun CreateEditHabitScreen(
         )
     }
 
-    // Permission dialogs
-    when (val dialogState = permissionDialogState) {
-        is PermissionFlowResult.ShowRationaleDialog -> {
-            PermissionRationaleDialog(
-                context = dialogState.context,
-                rationaleMessage = dialogState.rationaleMessage,
-                benefitMessage = dialogState.benefitMessage,
-                habitName = uiState.title.ifBlank { null },
-                onRequestPermission = {
-                    coroutineScope.launch {
-                        permissionFlowHandler.handleSystemPermissionResult(
-                            context = PermissionContext.CREATE_EDIT,
-                            habitName = uiState.title.ifBlank { null },
-                            onResult = { result ->
-                                permissionDialogState = result
-                                if (result is PermissionFlowResult.PermissionGranted) {
-                                    // Retry setting reminder after permission granted
-                                    viewModel.updateNotificationEnabled(true)
-                                    showReminderDialog = true
-                                }
-                            }
-                        )
-                    }
-                },
-                onDismiss = {
-                    permissionDialogState = null
-                },
-                onNeverAskAgain = {
-                    permissionFlowHandler.handleNeverAskAgain(PermissionContext.CREATE_EDIT)
-                    permissionDialogState = null
-                }
-            )
-        }
+    // Unified permission dialogs
+    UnifiedPermissionDialogs(
+        dialogState = permissionDialogState,
+        permissionHandler = permissionHandler,
+        onDismiss = { permissionDialogState = null }
+    )
 
-        is PermissionFlowResult.ShowSettingsDialog -> {
-            SettingsNavigationDialog(
-                context = PermissionContext.CREATE_EDIT,
-                message = dialogState.message,
-                onOpenSettings = {
-                    coroutineScope.launch {
-                        permissionFlowHandler.handleOpenSettings(PermissionContext.CREATE_EDIT)
-                        permissionDialogState = null
+    // Global notification enable dialog - using shared component
+    if (showGlobalEnableDialog != null) {
+        GlobalEnableNotificationDialog(
+            habitName = showGlobalEnableDialog,
+            onConfirm = {
+                showGlobalEnableDialog = null
+                coroutineScope.launch {
+                    when (enableGlobalNotificationsUseCase.execute()) {
+                        is EnableGlobalNotificationsUseCase.GlobalEnableResult.Success -> {
+                            println("🔔 CREATE_EDIT_SCREEN: Global notifications enabled, showing reminder dialog")
+                            viewModel.updateNotificationEnabled(true)
+                            showReminderDialog = true
+                        }
+                        is EnableGlobalNotificationsUseCase.GlobalEnableResult.Error -> {
+                            println("🔔 CREATE_EDIT_SCREEN: Error enabling global notifications")
+                        }
                     }
-                },
-                onDismiss = {
-                    permissionDialogState = null
-                },
-                onDisableFeature = {
-                    // User chooses to disable notifications feature
-                    permissionDialogState = null
                 }
-            )
-        }
-
-        else -> {
-            // Handle other dialog states if needed
-            if (dialogState is PermissionFlowResult.PermissionGranted ||
-                dialogState is PermissionFlowResult.Granted) {
-                permissionDialogState = null
-            }
-        }
+            },
+            onDismiss = { showGlobalEnableDialog = null }
+        )
     }
 
     // Custom Category Dialog
@@ -1207,9 +1190,12 @@ private fun GoalStep(
                 Switch(
                     checked = uiState.isNotificationEnabled,
                     onCheckedChange = { enabled ->
+                        println("🔔 CREATE_EDIT_SCREEN: User toggled notification switch to: $enabled")
                         if (enabled) {
+                            println("🔔 CREATE_EDIT_SCREEN: Showing reminder dialog")
                             onShowReminderDialog()
                         } else {
+                            println("🔔 CREATE_EDIT_SCREEN: Disabling notification")
                             viewModel.updateNotificationEnabled(false)
                             viewModel.updateReminderTime(null)
                         }

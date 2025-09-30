@@ -4,8 +4,6 @@ import org.example.habitstreak.domain.model.NotificationConfig
 
 /**
  * Platform-agnostic interface for scheduling notifications
- * Following Interface Segregation Principle - focused only on scheduling
- * Permission handling moved to PermissionManager (Single Responsibility)
  */
 interface NotificationScheduler {
     /**

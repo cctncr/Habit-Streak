@@ -24,7 +24,7 @@ class DesktopPermissionManager : PermissionManager {
         return if (SystemTray.isSupported()) {
             PermissionResult.Granted
         } else {
-            PermissionResult.DeniedPermanently
+            PermissionResult.GloballyDisabled
         }
     }
 
