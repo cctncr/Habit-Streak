@@ -212,6 +212,7 @@
 
     <!-- Settings items -->
     <string name="setting_push_notifications">Bildirimler</string>
+    <string name="notification_preferences">Bildirim Tercihleri</string>
     <string name="setting_push_notifications_desc">Alışkanlıklarınız için hatırlatma alın</string>
     <string name="setting_sound">Ses</string>
     <string name="setting_sound_desc">Bildirimlerle ses çal</string>

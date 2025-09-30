@@ -14,9 +14,11 @@ import androidx.work.workDataOf
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.service.NotificationScheduler
 import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
 import org.koin.core.context.GlobalContext
 import java.util.concurrent.TimeUnit
 import kotlinx.datetime.*
+import kotlinx.coroutines.runBlocking
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -41,10 +43,14 @@ class AndroidNotificationScheduler(
     }
 
     init {
-        createNotificationChannel()
+        // Create channel with default settings on init
+        // Will be recreated with user preferences when notification is scheduled
+        runBlocking {
+            createNotificationChannel(soundEnabled = true, vibrationEnabled = true)
+        }
     }
 
-    private fun createNotificationChannel() {
+    private suspend fun createNotificationChannel(soundEnabled: Boolean, vibrationEnabled: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
@@ -52,8 +58,20 @@ class AndroidNotificationScheduler(
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Daily reminders for your habits"
-                enableVibration(true)
+                enableVibration(vibrationEnabled)
                 setShowBadge(true)
+
+                // Set sound based on preference
+                if (soundEnabled) {
+                    setSound(
+                        android.provider.Settings.System.DEFAULT_NOTIFICATION_URI,
+                        android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                            .build()
+                    )
+                } else {
+                    setSound(null, null)
+                }
             }
 
             val notificationManager = context.getSystemService(
@@ -65,6 +83,25 @@ class AndroidNotificationScheduler(
 
     override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
         return try {
+            // Update notification channel with user preferences
+            val koinContext = GlobalContext.getOrNull()
+            if (koinContext != null) {
+                try {
+                    val getPrefsUseCase = koinContext.get<GetNotificationPreferencesUseCase>()
+                    val prefs = getPrefsUseCase.execute()
+                    createNotificationChannel(
+                        soundEnabled = prefs.soundEnabled,
+                        vibrationEnabled = prefs.vibrationEnabled
+                    )
+                } catch (e: Exception) {
+                    // Fallback to config values if use case fails
+                    createNotificationChannel(
+                        soundEnabled = config.soundEnabled,
+                        vibrationEnabled = config.vibrationEnabled
+                    )
+                }
+            }
+
             // Try AlarmManager first for exact timing
             if (canScheduleExactAlarms()) {
                 scheduleExactAlarm(config)

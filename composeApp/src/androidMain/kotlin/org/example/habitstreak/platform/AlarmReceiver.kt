@@ -14,6 +14,7 @@ import kotlinx.datetime.TimeZone
 import kotlin.time.ExperimentalTime
 import org.example.habitstreak.MainActivity
 import org.example.habitstreak.domain.usecase.notification.CheckHabitActiveDayUseCase
+import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
 import org.koin.core.context.GlobalContext
 
 /**
@@ -82,6 +83,22 @@ class AlarmReceiver : BroadcastReceiver() {
             Context.NOTIFICATION_SERVICE
         ) as NotificationManager
 
+        // Get notification preferences
+        val koinContext = GlobalContext.getOrNull()
+        var soundEnabled = true
+        var vibrationEnabled = true
+
+        if (koinContext != null) {
+            try {
+                val getPrefsUseCase = koinContext.get<GetNotificationPreferencesUseCase>()
+                val prefs = kotlinx.coroutines.runBlocking { getPrefsUseCase.execute() }
+                soundEnabled = prefs.soundEnabled
+                vibrationEnabled = prefs.vibrationEnabled
+            } catch (e: Exception) {
+                // Use defaults if preferences can't be loaded
+            }
+        }
+
         // Create intent to open app when notification is clicked
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -110,6 +127,17 @@ class AlarmReceiver : BroadcastReceiver() {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setDefaults(0) // Disable all defaults, we'll set them manually
+
+        // Set sound based on preference
+        if (soundEnabled) {
+            notificationBuilder.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
+        }
+
+        // Set vibration based on preference
+        if (vibrationEnabled) {
+            notificationBuilder.setVibrate(longArrayOf(0, 250, 250, 250))
+        }
 
         if (isActive) {
             // Active day - show completion action

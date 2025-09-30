@@ -19,5 +19,8 @@ data class HabitDetailUiState(
     val notificationConfig: NotificationConfig? = null,
     val isNotificationEnabled: Boolean = false,
     val notificationTime: LocalTime? = null,
-    val notificationError: NotificationError? = null
+    val notificationError: NotificationError? = null,
+    // Notification preferences
+    val notificationSoundEnabled: Boolean = true,
+    val notificationVibrationEnabled: Boolean = true
 )

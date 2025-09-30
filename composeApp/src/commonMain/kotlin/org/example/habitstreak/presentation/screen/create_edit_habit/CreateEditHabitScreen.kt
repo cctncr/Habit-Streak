@@ -72,6 +72,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -98,6 +99,8 @@ import org.example.habitstreak.presentation.permission.PermissionFlowResult
 import org.example.habitstreak.presentation.permission.rememberBasePermissionHandler
 import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificationStatusUseCase
 import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
+import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
 import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
@@ -124,7 +127,9 @@ fun CreateEditHabitScreen(
     onNavigateBack: () -> Unit,
     viewModel: CreateEditHabitViewModel = koinViewModel(key = habitId) { parametersOf(habitId) },
     checkGlobalNotificationStatusUseCase: CheckGlobalNotificationStatusUseCase = koinInject(),
-    enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase = koinInject()
+    enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase = koinInject(),
+    updateNotificationPreferencesUseCase: UpdateNotificationPreferencesUseCase = koinInject(),
+    getNotificationPreferencesUseCase: GetNotificationPreferencesUseCase = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -146,6 +151,21 @@ fun CreateEditHabitScreen(
     var showAdvancedSettings by remember { mutableStateOf(false) }
     var permissionDialogState by remember { mutableStateOf<PermissionFlowResult?>(null) }
     var showGlobalEnableDialog by remember { mutableStateOf<String?>(null) }
+
+    // Notification preferences state
+    var soundEnabled by remember { mutableStateOf(true) }
+    var vibrationEnabled by remember { mutableStateOf(true) }
+
+    // Load preferences on init
+    LaunchedEffect(Unit) {
+        try {
+            val prefs = getNotificationPreferencesUseCase.execute()
+            soundEnabled = prefs.soundEnabled
+            vibrationEnabled = prefs.vibrationEnabled
+        } catch (e: Exception) {
+            // Use defaults
+        }
+    }
 
     // Unified permission handler
     val permissionHandler = rememberBasePermissionHandler(
@@ -537,9 +557,21 @@ fun CreateEditHabitScreen(
     if (showGlobalEnableDialog != null) {
         GlobalEnableNotificationDialog(
             habitName = showGlobalEnableDialog,
+            soundEnabled = soundEnabled,
+            vibrationEnabled = vibrationEnabled,
+            onSoundChanged = { soundEnabled = it },
+            onVibrationChanged = { vibrationEnabled = it },
             onConfirm = {
                 showGlobalEnableDialog = null
                 coroutineScope.launch {
+                    // Save preferences first
+                    try {
+                        updateNotificationPreferencesUseCase.execute(soundEnabled, vibrationEnabled)
+                    } catch (e: Exception) {
+                        println("🔔 CREATE_EDIT_SCREEN: Error saving preferences: ${e.message}")
+                    }
+
+                    // Then enable global notifications
                     when (enableGlobalNotificationsUseCase.execute()) {
                         is EnableGlobalNotificationsUseCase.GlobalEnableResult.Success -> {
                             println("🔔 CREATE_EDIT_SCREEN: Global notifications enabled, showing reminder dialog")

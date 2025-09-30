@@ -8,6 +8,8 @@ import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificati
 import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificationStatusUseCase
 import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
 import org.example.habitstreak.domain.usecase.notification.DisableGlobalNotificationsUseCase
+import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
 import org.koin.dsl.module
 
 val notificationModule = module {
@@ -57,6 +59,18 @@ val notificationModule = module {
             preferencesRepository = get(),
             notificationService = get(),
             habitRepository = get()
+        )
+    }
+
+    single {
+        UpdateNotificationPreferencesUseCase(
+            preferencesRepository = get()
+        )
+    }
+
+    single {
+        GetNotificationPreferencesUseCase(
+            preferencesRepository = get()
         )
     }
 }

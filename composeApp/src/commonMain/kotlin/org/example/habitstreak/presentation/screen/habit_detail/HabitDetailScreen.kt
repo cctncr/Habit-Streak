@@ -317,6 +317,10 @@ fun HabitDetailScreen(
         showGlobalEnableDialog?.let { habitName ->
             GlobalEnableNotificationDialog(
                 habitName = habitName,
+                soundEnabled = uiState.notificationSoundEnabled,
+                vibrationEnabled = uiState.notificationVibrationEnabled,
+                onSoundChanged = { viewModel.updateNotificationSound(it) },
+                onVibrationChanged = { viewModel.updateNotificationVibration(it) },
                 onConfirm = {
                     showGlobalEnableDialog = null
                     viewModel.enableGlobalNotifications()

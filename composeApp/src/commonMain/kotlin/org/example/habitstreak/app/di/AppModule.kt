@@ -105,6 +105,8 @@ val appModule = module {
             manageHabitNotificationUseCase = get(),
             checkGlobalNotificationStatusUseCase = get(),
             enableGlobalNotificationsUseCase = get(),
+            updateNotificationPreferencesUseCase = get(),
+            getNotificationPreferencesUseCase = get(),
             dateProvider = get()
         )
     }

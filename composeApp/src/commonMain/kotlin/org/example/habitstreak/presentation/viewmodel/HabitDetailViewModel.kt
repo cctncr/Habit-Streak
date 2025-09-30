@@ -14,6 +14,8 @@ import org.example.habitstreak.domain.usecase.habit.CalculateHabitStatsUseCase
 import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificationUseCase
 import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificationStatusUseCase
 import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
+import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.ui.state.HabitDetailUiState
@@ -28,6 +30,8 @@ class HabitDetailViewModel(
     private val manageHabitNotificationUseCase: ManageHabitNotificationUseCase,
     private val checkGlobalNotificationStatusUseCase: CheckGlobalNotificationStatusUseCase,
     private val enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase,
+    private val updateNotificationPreferencesUseCase: UpdateNotificationPreferencesUseCase,
+    private val getNotificationPreferencesUseCase: GetNotificationPreferencesUseCase,
     private val dateProvider: DateProvider
 ) : ViewModel() {
 
@@ -40,6 +44,7 @@ class HabitDetailViewModel(
     init {
         loadData()
         observeNotificationConfig()
+        loadNotificationPreferences()
     }
 
     fun loadData() {
@@ -305,9 +310,44 @@ class HabitDetailViewModel(
         _uiState.update { it.copy(error = null) }
     }
 
+    private fun loadNotificationPreferences() {
+        viewModelScope.launch {
+            try {
+                val prefs = getNotificationPreferencesUseCase.execute()
+                _uiState.update {
+                    it.copy(
+                        notificationSoundEnabled = prefs.soundEnabled,
+                        notificationVibrationEnabled = prefs.vibrationEnabled
+                    )
+                }
+            } catch (e: Exception) {
+                // Use defaults if preferences can't be loaded
+            }
+        }
+    }
+
+    fun updateNotificationSound(enabled: Boolean) {
+        _uiState.update { it.copy(notificationSoundEnabled = enabled) }
+    }
+
+    fun updateNotificationVibration(enabled: Boolean) {
+        _uiState.update { it.copy(notificationVibrationEnabled = enabled) }
+    }
+
     fun enableGlobalNotifications() {
         println("🔔 HABIT_DETAIL_VIEWMODEL: enableGlobalNotifications called")
         viewModelScope.launch {
+            // Save preferences first
+            try {
+                updateNotificationPreferencesUseCase.execute(
+                    soundEnabled = _uiState.value.notificationSoundEnabled,
+                    vibrationEnabled = _uiState.value.notificationVibrationEnabled
+                )
+            } catch (e: Exception) {
+                println("🔔 HABIT_DETAIL_VIEWMODEL: Error saving preferences: ${e.message}")
+            }
+
+            // Then enable global notifications
             when (val result = enableGlobalNotificationsUseCase.execute()) {
                 is EnableGlobalNotificationsUseCase.GlobalEnableResult.Success -> {
                     println("🔔 HABIT_DETAIL_VIEWMODEL: Global notifications enabled successfully, now enabling habit notification")
