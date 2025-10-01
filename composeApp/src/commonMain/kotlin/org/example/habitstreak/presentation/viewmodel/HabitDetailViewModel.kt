@@ -192,7 +192,7 @@ class HabitDetailViewModel(
                 println("🔔 HABIT_DETAIL_VIEWMODEL: Enabling notification - checking global status first")
 
                 // First check global notification status
-                when (val globalStatus = checkGlobalNotificationStatusUseCase.execute()) {
+                when (checkGlobalNotificationStatusUseCase.execute()) {
                     is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.NeedsSystemPermission -> {
                         println("🔔 HABIT_DETAIL_VIEWMODEL: System permission needed, requesting permission")
                         _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)

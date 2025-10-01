@@ -5,8 +5,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.launch
+import org.example.habitstreak.domain.service.PermissionManager
 import org.example.habitstreak.domain.service.PermissionResult
-import org.example.habitstreak.platform.IOSPermissionManager
 import org.koin.compose.koinInject
 import platform.UserNotifications.UNAuthorizationStatusAuthorized
 import platform.UserNotifications.UNAuthorizationStatusDenied
@@ -18,7 +18,7 @@ import platform.UserNotifications.UNAuthorizationStatusProvisional
  */
 @OptIn(ExperimentalForeignApi::class)
 class IOSPlatformPermissionLauncher(
-    private val permissionManager: IOSPermissionManager,
+    private val permissionManager: PermissionManager,
     private val onResult: (granted: Boolean, canAskAgain: Boolean) -> Unit
 ) : PlatformPermissionLauncher {
 
@@ -66,7 +66,7 @@ class IOSPlatformPermissionLauncher(
 actual fun rememberPlatformPermissionLauncher(
     onPermissionResult: (granted: Boolean, canAskAgain: Boolean) -> Unit
 ): PlatformPermissionLauncher {
-    val permissionManager = koinInject<IOSPermissionManager>()
+    val permissionManager = koinInject<PermissionManager>()
     val coroutineScope = rememberCoroutineScope()
 
     return remember(permissionManager) {

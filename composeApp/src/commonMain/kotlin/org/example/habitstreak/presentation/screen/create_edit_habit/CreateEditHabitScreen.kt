@@ -1066,7 +1066,7 @@ private fun CategorySelectionStep(
 
 @Composable
 private fun GoalStep(
-    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
+    uiState: CreateEditHabitUiState,
     viewModel: CreateEditHabitViewModel,
     onShowReminderDialog: () -> Unit
 ) {

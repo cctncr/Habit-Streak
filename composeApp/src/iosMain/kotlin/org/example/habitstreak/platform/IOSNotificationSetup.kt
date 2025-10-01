@@ -6,6 +6,7 @@ import platform.UserNotifications.UNUserNotificationCenter
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.service.NotificationScheduler
 import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.domain.usecase.habit.ToggleHabitCompletionUseCase
 
@@ -21,9 +22,10 @@ object IOSNotificationSetup : KoinComponent {
             val habitRepository: HabitRepository by inject()
             val notificationService: NotificationService by inject()
             val toggleHabitCompletionUseCase: ToggleHabitCompletionUseCase by inject()
-            val scheduler: IOSNotificationScheduler by inject()
+            val scheduler: NotificationScheduler by inject()
 
-            scheduler.setupNotificationCategories()
+            // Setup notification categories if scheduler is IOSNotificationScheduler
+            (scheduler as? IOSNotificationScheduler)?.setupNotificationCategories()
 
             val delegate = IOSNotificationDelegate(
                 habitRepository = habitRepository,
