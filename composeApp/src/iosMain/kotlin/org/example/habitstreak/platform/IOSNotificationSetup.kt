@@ -21,8 +21,8 @@ object IOSNotificationSetup : KoinComponent {
             val habitRepository: HabitRepository by inject()
             val notificationService: NotificationService by inject()
             val toggleHabitCompletionUseCase: ToggleHabitCompletionUseCase by inject()
+            val scheduler: IOSNotificationScheduler by inject()
 
-            val scheduler = IOSNotificationScheduler()
             scheduler.setupNotificationCategories()
 
             val delegate = IOSNotificationDelegate(

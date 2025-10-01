@@ -9,6 +9,10 @@ import org.koin.dsl.module
 
 actual fun platformModule() = module {
     single { DatabaseDriverFactory().createDriver() }
-    single<NotificationScheduler> { IOSNotificationScheduler() }
+    single<NotificationScheduler> {
+        IOSNotificationScheduler(
+            getNotificationPreferencesUseCase = get()
+        )
+    }
     single<PermissionManager> { IOSPermissionManager() }
 }

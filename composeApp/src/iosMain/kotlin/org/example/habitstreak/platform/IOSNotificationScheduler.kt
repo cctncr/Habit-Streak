@@ -5,6 +5,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.datetime.*
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.service.NotificationScheduler
+import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
 import platform.Foundation.*
 import platform.UserNotifications.*
 import kotlin.coroutines.resume
@@ -13,9 +14,12 @@ import kotlin.concurrent.Volatile
 /**
  * iOS implementation of NotificationScheduler
  * Following Single Responsibility - only handles scheduling
+ * Now supports user sound preferences via GetNotificationPreferencesUseCase
  */
 @OptIn(ExperimentalForeignApi::class)
-class IOSNotificationScheduler : NotificationScheduler {
+class IOSNotificationScheduler(
+    private val getNotificationPreferencesUseCase: GetNotificationPreferencesUseCase
+) : NotificationScheduler {
 
     private val notificationCenter = UNUserNotificationCenter.currentNotificationCenter()
 
@@ -32,10 +36,20 @@ class IOSNotificationScheduler : NotificationScheduler {
     override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
         ensureCategoriesSetup()
         return try {
+            // Get user sound preferences
+            val prefs = getNotificationPreferencesUseCase.execute()
+
             val content = UNMutableNotificationContent().apply {
                 setTitle("Habit Reminder")
                 setBody(config.message)
-                setSound(UNNotificationSound.defaultSound)
+
+                // Apply sound preference based on user settings
+                if (prefs.soundEnabled) {
+                    setSound(UNNotificationSound.defaultSound)
+                } else {
+                    setSound(null) // Silent notification
+                }
+
                 setCategoryIdentifier("HABIT_REMINDER")
                 setUserInfo(mapOf("habitId" to config.habitId))
             }
