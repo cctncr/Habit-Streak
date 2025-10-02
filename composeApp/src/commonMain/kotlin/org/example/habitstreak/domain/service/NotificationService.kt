@@ -107,12 +107,21 @@ class NotificationService(
     }
 
     /**
-     * Cancel all notifications
+     * Cancel all scheduled notifications
+     *
+     * Note: This ONLY cancels the scheduled notifications in the system scheduler.
+     * It does NOT modify the database notification configs (isEnabled stays unchanged).
+     *
+     * This is intentional because:
+     * - When global notifications are disabled, we want to cancel scheduling but keep configs
+     * - When global notifications are re-enabled, we want to restore from the saved configs
+     * - This preserves user's individual habit notification settings
      */
     suspend fun cancelAllNotifications(): Result<Unit> {
         return try {
             scheduler.cancelAllNotifications()
-            notificationRepository.disableAllNotifications()
+            // DO NOT call notificationRepository.disableAllNotifications()
+            // Keep database state intact so configs can be restored when global notifications are re-enabled
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

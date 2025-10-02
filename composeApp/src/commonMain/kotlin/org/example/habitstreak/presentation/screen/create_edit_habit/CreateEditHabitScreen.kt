@@ -101,6 +101,7 @@ import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificati
 import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
 import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
 import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.NotificationOperationResult
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
 import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
@@ -566,20 +567,24 @@ fun CreateEditHabitScreen(
                 coroutineScope.launch {
                     // Save preferences first
                     try {
-                        updateNotificationPreferencesUseCase.execute(soundEnabled, vibrationEnabled)
+                        updateNotificationPreferencesUseCase.updateBoth(soundEnabled, vibrationEnabled)
                     } catch (e: Exception) {
                         println("🔔 CREATE_EDIT_SCREEN: Error saving preferences: ${e.message}")
                     }
 
                     // Then enable global notifications
-                    when (enableGlobalNotificationsUseCase.execute()) {
-                        is EnableGlobalNotificationsUseCase.GlobalEnableResult.Success -> {
+                    when (val result = enableGlobalNotificationsUseCase.execute()) {
+                        is NotificationOperationResult.Success,
+                        is NotificationOperationResult.PartialSuccess -> {
                             println("🔔 CREATE_EDIT_SCREEN: Global notifications enabled, showing reminder dialog")
                             viewModel.updateNotificationEnabled(true)
                             showReminderDialog = true
                         }
-                        is EnableGlobalNotificationsUseCase.GlobalEnableResult.Error -> {
-                            println("🔔 CREATE_EDIT_SCREEN: Error enabling global notifications")
+                        is NotificationOperationResult.Error -> {
+                            println("🔔 CREATE_EDIT_SCREEN: Error enabling global notifications: ${result.error.message}")
+                        }
+                        is NotificationOperationResult.PermissionRequired -> {
+                            println("🔔 CREATE_EDIT_SCREEN: Permission required for global notifications")
                         }
                     }
                 }

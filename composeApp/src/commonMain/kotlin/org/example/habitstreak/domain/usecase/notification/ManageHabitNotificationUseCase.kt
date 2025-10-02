@@ -16,13 +16,7 @@ class ManageHabitNotificationUseCase(
     private val permissionService: NotificationPermissionService
 ) {
 
-    sealed class NotificationResult {
-        data object Success : NotificationResult()
-        data class Error(val error: NotificationError) : NotificationResult()
-        data object PermissionRequired : NotificationResult()
-    }
-
-    suspend fun enableNotification(habitId: String, time: LocalTime): NotificationResult {
+    suspend fun enableNotification(habitId: String, time: LocalTime): NotificationOperationResult {
         println("🔔 MANAGE_HABIT_NOTIFICATION_USECASE: enableNotification called for habitId=$habitId, time=$time")
         println("🔔 MANAGE_HABIT_NOTIFICATION_USECASE: Checking permission status...")
         return when (val permissionStatus = permissionService.checkPermissionStatus()) {
@@ -31,42 +25,42 @@ class ManageHabitNotificationUseCase(
                 notificationService.enableNotification(habitId, time).fold(
                     onSuccess = {
                         println("🔔 MANAGE_HABIT_NOTIFICATION_USECASE: Notification service returned success")
-                        NotificationResult.Success
+                        NotificationOperationResult.Success
                     },
                     onFailure = { error ->
                         when (error) {
-                            is NotificationError -> NotificationResult.Error(error)
-                            else -> NotificationResult.Error(NotificationError.GeneralError(error))
+                            is NotificationError -> NotificationOperationResult.Error(error)
+                            else -> NotificationOperationResult.Error(NotificationError.GeneralError(error))
                         }
                     }
                 )
             }
             is PermissionResult.DeniedCanAskAgain -> {
                 println("🔔 MANAGE_HABIT_NOTIFICATION_USECASE: Permission denied but can ask again")
-                NotificationResult.Error(NotificationError.PermissionDenied(canRequestAgain = true))
+                NotificationOperationResult.Error(NotificationError.PermissionDenied(canRequestAgain = true))
             }
             is PermissionResult.DeniedPermanently -> {
                 println("🔔 MANAGE_HABIT_NOTIFICATION_USECASE: Permission permanently denied")
-                NotificationResult.Error(NotificationError.PermissionDenied(canRequestAgain = false))
+                NotificationOperationResult.Error(NotificationError.PermissionDenied(canRequestAgain = false))
             }
             is PermissionResult.GloballyDisabled -> {
                 println("🔔 MANAGE_HABIT_NOTIFICATION_USECASE: Notifications globally disabled")
-                NotificationResult.Error(NotificationError.GloballyDisabled("Notifications are disabled in device settings"))
+                NotificationOperationResult.Error(NotificationError.GloballyDisabled("Notifications are disabled in device settings"))
             }
             is PermissionResult.Error -> {
                 println("🔔 MANAGE_HABIT_NOTIFICATION_USECASE: Permission check error: ${permissionStatus.error}")
-                NotificationResult.Error(permissionStatus.error)
+                NotificationOperationResult.Error(permissionStatus.error)
             }
         }
     }
 
-    suspend fun disableNotification(habitId: String): NotificationResult {
+    suspend fun disableNotification(habitId: String): NotificationOperationResult {
         return notificationService.disableNotification(habitId).fold(
-            onSuccess = { NotificationResult.Success },
+            onSuccess = { NotificationOperationResult.Success },
             onFailure = { error ->
                 when (error) {
-                    is NotificationError -> NotificationResult.Error(error)
-                    else -> NotificationResult.Error(NotificationError.GeneralError(error))
+                    is NotificationError -> NotificationOperationResult.Error(error)
+                    else -> NotificationOperationResult.Error(NotificationError.GeneralError(error))
                 }
             }
         )

@@ -57,14 +57,14 @@ val notificationModule = module {
     single {
         DisableGlobalNotificationsUseCase(
             preferencesRepository = get(),
-            notificationService = get(),
-            habitRepository = get()
+            notificationService = get()
         )
     }
 
     single {
         UpdateNotificationPreferencesUseCase(
-            preferencesRepository = get()
+            preferencesRepository = get(),
+            notificationService = get()
         )
     }
 

@@ -16,6 +16,7 @@ import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificati
 import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
 import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
 import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.NotificationOperationResult
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.ui.state.HabitDetailUiState
@@ -218,7 +219,7 @@ class HabitDetailViewModel(
                 val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
                 println("🔔 HABIT_DETAIL_VIEWMODEL: Calling enableNotification use case with time=$time")
                 when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
-                    is ManageHabitNotificationUseCase.NotificationResult.Success -> {
+                    is NotificationOperationResult.Success -> {
                         _uiState.update { state ->
                             state.copy(
                                 isNotificationEnabled = true,
@@ -227,7 +228,7 @@ class HabitDetailViewModel(
                             )
                         }
                     }
-                    is ManageHabitNotificationUseCase.NotificationResult.Error -> {
+                    is NotificationOperationResult.Error -> {
                         setNotificationError(result.error)
                         _uiState.update { it.copy(isNotificationEnabled = false) }
 
@@ -235,15 +236,26 @@ class HabitDetailViewModel(
                             _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
                         }
                     }
-                    is ManageHabitNotificationUseCase.NotificationResult.PermissionRequired -> {
+                    is NotificationOperationResult.PermissionRequired -> {
                         _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
                         setNotificationError(NotificationError.PermissionDenied(canRequestAgain = true))
                         _uiState.update { it.copy(isNotificationEnabled = false) }
                     }
+                    is NotificationOperationResult.PartialSuccess -> {
+                        // Should not happen for single habit operation
+                        println("⚠️ HABIT_DETAIL_VIEWMODEL: Unexpected PartialSuccess for single habit")
+                        _uiState.update { state ->
+                            state.copy(
+                                isNotificationEnabled = true,
+                                notificationTime = time,
+                                notificationError = null
+                            )
+                        }
+                    }
                 }
             } else {
                 when (val result = manageHabitNotificationUseCase.disableNotification(habitId)) {
-                    is ManageHabitNotificationUseCase.NotificationResult.Success -> {
+                    is NotificationOperationResult.Success -> {
                         _uiState.update { state ->
                             state.copy(
                                 isNotificationEnabled = false,
@@ -251,7 +263,7 @@ class HabitDetailViewModel(
                             )
                         }
                     }
-                    is ManageHabitNotificationUseCase.NotificationResult.Error -> {
+                    is NotificationOperationResult.Error -> {
                         setNotificationError(result.error)
                     }
                     else -> {
@@ -273,7 +285,7 @@ class HabitDetailViewModel(
                 toggleNotification(true)
             } else {
                 when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
-                    is ManageHabitNotificationUseCase.NotificationResult.Success -> {
+                    is NotificationOperationResult.Success -> {
                         _uiState.update { state ->
                             state.copy(
                                 isNotificationEnabled = true,
@@ -282,7 +294,7 @@ class HabitDetailViewModel(
                             )
                         }
                     }
-                    is ManageHabitNotificationUseCase.NotificationResult.Error -> {
+                    is NotificationOperationResult.Error -> {
                         setNotificationError(result.error)
                         _uiState.update { it.copy(isNotificationEnabled = false) }
                     }
@@ -339,7 +351,7 @@ class HabitDetailViewModel(
         viewModelScope.launch {
             // Save preferences first
             try {
-                updateNotificationPreferencesUseCase.execute(
+                updateNotificationPreferencesUseCase.updateBoth(
                     soundEnabled = _uiState.value.notificationSoundEnabled,
                     vibrationEnabled = _uiState.value.notificationVibrationEnabled
                 )
@@ -349,14 +361,19 @@ class HabitDetailViewModel(
 
             // Then enable global notifications
             when (val result = enableGlobalNotificationsUseCase.execute()) {
-                is EnableGlobalNotificationsUseCase.GlobalEnableResult.Success -> {
-                    println("🔔 HABIT_DETAIL_VIEWMODEL: Global notifications enabled successfully, now enabling habit notification")
+                is NotificationOperationResult.Success,
+                is NotificationOperationResult.PartialSuccess -> {
+                    println("🔔 HABIT_DETAIL_VIEWMODEL: Global notifications enabled, now enabling habit notification")
                     // Now try to enable the habit notification
                     toggleNotification(true)
                 }
-                is EnableGlobalNotificationsUseCase.GlobalEnableResult.Error -> {
-                    println("🔔 HABIT_DETAIL_VIEWMODEL: Error enabling global notifications: ${result.message}")
-                    setNotificationError(NotificationError.GeneralError(Exception(result.message)))
+                is NotificationOperationResult.Error -> {
+                    println("🔔 HABIT_DETAIL_VIEWMODEL: Error enabling global notifications: ${result.error.message}")
+                    setNotificationError(NotificationError.GeneralError(result.error))
+                }
+                is NotificationOperationResult.PermissionRequired -> {
+                    println("🔔 HABIT_DETAIL_VIEWMODEL: Permission required for global notifications")
+                    setNotificationError(NotificationError.PermissionDenied(canRequestAgain = true))
                 }
             }
         }
@@ -367,7 +384,7 @@ class HabitDetailViewModel(
         viewModelScope.launch {
             val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
             when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
-                is ManageHabitNotificationUseCase.NotificationResult.Success -> {
+                is NotificationOperationResult.Success -> {
                     _uiState.update { state ->
                         state.copy(
                             isNotificationEnabled = true,
@@ -376,7 +393,7 @@ class HabitDetailViewModel(
                         )
                     }
                 }
-                is ManageHabitNotificationUseCase.NotificationResult.Error -> {
+                is NotificationOperationResult.Error -> {
                     setNotificationError(result.error)
                     _uiState.update { it.copy(isNotificationEnabled = false) }
                 }
@@ -404,8 +421,8 @@ class HabitDetailViewModel(
     )
 
     sealed class UiEvent {
-        object RequestNotificationPermission : UiEvent()
-        object OpenAppSettings : UiEvent()
+        data object RequestNotificationPermission : UiEvent()
+        data object OpenAppSettings : UiEvent()
         data class ShowGlobalEnableDialog(val habitName: String?) : UiEvent()
     }
 }

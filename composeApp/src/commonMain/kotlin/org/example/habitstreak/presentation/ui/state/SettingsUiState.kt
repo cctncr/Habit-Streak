@@ -12,9 +12,5 @@ data class SettingsUiState(
     val isLoading: Boolean = false,
     val message: String? = null,
     // Permission-related states
-    val showPermissionDialog: Boolean = false,
-    val showPermissionSettingsDialog: Boolean = false,
-    val showPermissionSoftDenialDialog: Boolean = false,
-    val permissionMessage: String? = null,
     val hasNotificationPermission: Boolean = false
 )

@@ -58,6 +58,8 @@ import org.example.habitstreak.presentation.ui.components.permission.PermissionR
 import org.example.habitstreak.presentation.ui.components.permission.SettingsNavigationDialog
 import org.example.habitstreak.presentation.ui.components.permission.UnifiedPermissionDialogs
 import org.example.habitstreak.presentation.permission.rememberBasePermissionHandler
+import org.example.habitstreak.presentation.permission.PermissionFlowResult
+import org.example.habitstreak.presentation.ui.utils.getPlatformCapabilities
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,8 +72,11 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // Permission dialog state (local to screen)
+    var permissionDialogState by remember { mutableStateOf<PermissionFlowResult?>(null) }
+
     // Unified permission handler
-    val permissionHandler = rememberBasePermissionHandler() { granted, canAskAgain ->
+    val permissionHandler = rememberBasePermissionHandler { granted, canAskAgain ->
         if (granted) {
             viewModel.onPermissionGrantedExternally()
         } else {
@@ -149,12 +154,16 @@ fun SettingsScreen(
                             checked = uiState.notificationsEnabled,
                             onCheckedChange = { enabled ->
                                 println("🔔 SETTINGS_SCREEN: User toggled notification switch to: $enabled")
-                                viewModel.toggleNotifications(enabled)
+                                viewModel.toggleNotifications(enabled) { result ->
+                                    permissionDialogState = result
+                                }
                             },
                             enabled = !uiState.isLoading
                         )
 
                         AnimatedVisibility(visible = uiState.notificationsEnabled) {
+                            val platformCapabilities = remember { getPlatformCapabilities() }
+
                             Column {
                                 SettingsSwitchItem(
                                     icon = Icons.AutoMirrored.Outlined.VolumeUp,
@@ -164,14 +173,18 @@ fun SettingsScreen(
                                     onCheckedChange = { viewModel.toggleSound(it) },
                                     enabled = !uiState.isLoading
                                 )
-                                SettingsSwitchItem(
-                                    icon = Icons.Outlined.Vibration,
-                                    title = stringResource(Res.string.setting_vibration),
-                                    subtitle = stringResource(Res.string.setting_vibration_desc),
-                                    checked = uiState.vibrationEnabled,
-                                    onCheckedChange = { viewModel.toggleVibration(it) },
-                                    enabled = !uiState.isLoading
-                                )
+
+                                // Only show vibration on platforms that support it
+                                if (platformCapabilities.supportsVibrationControl) {
+                                    SettingsSwitchItem(
+                                        icon = Icons.Outlined.Vibration,
+                                        title = stringResource(Res.string.setting_vibration),
+                                        subtitle = stringResource(Res.string.setting_vibration_desc),
+                                        checked = uiState.vibrationEnabled,
+                                        onCheckedChange = { viewModel.toggleVibration(it) },
+                                        enabled = !uiState.isLoading
+                                    )
+                                }
                             }
                         }
                     }
@@ -220,52 +233,15 @@ fun SettingsScreen(
         }
     }
 
-    // Permission Rationale Dialog
-    if (uiState.showPermissionDialog) {
-        val rationaleMessage = uiState.permissionMessage ?: stringResource(Res.string.permission_settings_rationale)
-        val benefitMessage = stringResource(Res.string.permission_settings_benefit)
-
-        PermissionRationaleDialog(
-            rationaleMessage = rationaleMessage,
-            benefitMessage = benefitMessage,
-            onRequestPermission = {
-                permissionHandler.launchPlatformPermissionRequest()
-            },
-            onDismiss = { viewModel.onPermissionDialogDismiss() },
-            onNeverAskAgain = { viewModel.onNeverAskAgain() }
-        )
-    }
-
-    // Settings Navigation Dialog
-    if (uiState.showPermissionSettingsDialog) {
-        SettingsNavigationDialog(
-            message = uiState.permissionMessage ?: stringResource(Res.string.default_settings_permission_message),
-            onOpenSettings = { viewModel.onOpenDeviceSettings() },
-            onDismiss = { viewModel.onPermissionSettingsDialogDismiss() },
-            onDisableFeature = { viewModel.onDisableNotificationFeature() }
-        )
-    }
-
-    // Soft Denial Dialog
-    if (uiState.showPermissionSoftDenialDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.onPermissionSoftDenialDismiss() },
-            title = { Text("Permission Needed") },
-            text = {
-                Text(uiState.permissionMessage ?: "Notifications help you stay consistent with your habits.")
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onPermissionRetry() }) {
-                    Text("Try Again")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.onPermissionSoftDenialDismiss() }) {
-                    Text("Not Now")
-                }
-            }
-        )
-    }
+    // Unified permission dialogs
+    UnifiedPermissionDialogs(
+        dialogState = permissionDialogState,
+        permissionHandler = permissionHandler,
+        onDismiss = {
+            permissionDialogState = null
+            viewModel.refreshPermissionState()
+        }
+    )
 }
 
 @Composable

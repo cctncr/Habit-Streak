@@ -4,12 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalTime
-import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
-import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
 import org.example.habitstreak.domain.usecase.notification.DisableGlobalNotificationsUseCase
+import org.example.habitstreak.domain.usecase.notification.NotificationOperationResult
+import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
 import org.example.habitstreak.presentation.ui.state.SettingsUiState
 import org.example.habitstreak.core.locale.AppLocale
 import org.example.habitstreak.core.locale.ILocaleService
@@ -22,15 +21,14 @@ import org.example.habitstreak.presentation.permission.PermissionFlowResult
 
 class SettingsViewModel(
     private val preferencesRepository: PreferencesRepository,
-    private val notificationService: NotificationService?,
-    private val habitRepository: HabitRepository,
     private val localeService: ILocaleService,
     private val localeStateHolder: ILocaleStateHolder,
     private val themeService: IThemeService,
     private val themeStateHolder: IThemeStateHolder,
     private val permissionFlowHandler: PermissionFlowHandler,
     private val enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase,
-    private val disableGlobalNotificationsUseCase: DisableGlobalNotificationsUseCase
+    private val disableGlobalNotificationsUseCase: DisableGlobalNotificationsUseCase,
+    private val updateNotificationPreferencesUseCase: UpdateNotificationPreferencesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -80,29 +78,45 @@ class SettingsViewModel(
         }
     }
 
-    fun toggleNotifications(enabled: Boolean) {
+    fun toggleNotifications(
+        enabled: Boolean,
+        onPermissionFlowResult: (PermissionFlowResult) -> Unit
+    ) {
         println("🔔 SETTINGS_VIEWMODEL: toggleNotifications called with enabled=$enabled")
         if (enabled) {
             println("🔔 SETTINGS_VIEWMODEL: Requesting notification permission")
-            requestNotificationPermission()
+            requestNotificationPermission(onPermissionFlowResult)
         } else {
             println("🔔 SETTINGS_VIEWMODEL: Disabling notifications")
             disableNotifications()
         }
     }
 
-    private fun requestNotificationPermission() {
+    private fun requestNotificationPermission(
+        onResult: (PermissionFlowResult) -> Unit
+    ) {
         println("🔔 SETTINGS_VIEWMODEL: requestNotificationPermission started")
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             println("🔔 SETTINGS_VIEWMODEL: UI loading state set to true")
 
-            permissionFlowHandler.requestPermissionWithFlow(
-                onResult = { result ->
-                    println("🔔 SETTINGS_VIEWMODEL: Permission flow result received: ${result::class.simpleName}")
-                    handlePermissionFlowResult(result)
+            permissionFlowHandler.requestPermissionWithFlow { result ->
+                viewModelScope.launch {
+                    _uiState.update { it.copy(isLoading = false) }
+
+                    when (result) {
+                        is PermissionFlowResult.Granted,
+                        is PermissionFlowResult.PermissionGranted -> {
+                            println("🔔 SETTINGS_VIEWMODEL: Permission granted, enabling notifications")
+                            enableNotifications()
+                        }
+                        else -> {
+                            println("🔔 SETTINGS_VIEWMODEL: Permission flow result: ${result::class.simpleName}")
+                            onResult(result)
+                        }
+                    }
                 }
-            )
+            }
         }
     }
 
@@ -113,11 +127,17 @@ class SettingsViewModel(
             try {
                 // Use DisableGlobalNotificationsUseCase instead of duplicate logic
                 when (val result = disableGlobalNotificationsUseCase.execute()) {
-                    is DisableGlobalNotificationsUseCase.GlobalDisableResult.Success -> {
+                    is NotificationOperationResult.Success -> {
                         println("🔔 SETTINGS_VIEWMODEL: Notifications disabled successfully")
                     }
-                    is DisableGlobalNotificationsUseCase.GlobalDisableResult.Error -> {
-                        println("🔔 SETTINGS_VIEWMODEL: Error disabling notifications: ${result.message}")
+                    is NotificationOperationResult.PartialSuccess -> {
+                        println("🔔 SETTINGS_VIEWMODEL: Partial success disabling - ${result.successCount} succeeded, ${result.failureCount} failed")
+                    }
+                    is NotificationOperationResult.Error -> {
+                        println("🔔 SETTINGS_VIEWMODEL: Error disabling notifications: ${result.error.message}")
+                    }
+                    is NotificationOperationResult.PermissionRequired -> {
+                        println("🔔 SETTINGS_VIEWMODEL: Unexpected permission required for disable")
                     }
                 }
 
@@ -138,77 +158,11 @@ class SettingsViewModel(
         }
     }
 
-    private fun handlePermissionFlowResult(result: PermissionFlowResult) {
-        println("🔔 SETTINGS_VIEWMODEL: handlePermissionFlowResult called with: ${result::class.simpleName}")
-        viewModelScope.launch {
-            when (result) {
-                is PermissionFlowResult.Granted -> {
-                    println("🔔 SETTINGS_VIEWMODEL: Permission granted, enabling notifications")
-                    enableNotifications()
-                }
-
-                is PermissionFlowResult.PermissionGranted -> {
-                    println("🔔 SETTINGS_VIEWMODEL: PermissionGranted with message: ${result.message}")
-                    enableNotifications()
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            message = result.message,
-                            hasNotificationPermission = true
-                        )
-                    }
-                }
-
-                is PermissionFlowResult.ShowRationaleDialog -> {
-                    println("🔔 SETTINGS_VIEWMODEL: ShowRationaleDialog, showing dialog")
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            showPermissionDialog = true,
-                            permissionMessage = result.rationaleMessage
-                        )
-                    }
-                }
-
-                is PermissionFlowResult.ShowSoftDenialDialog -> {
-                    println("🔔 SETTINGS_VIEWMODEL: ShowSoftDenialDialog, showing denial dialog")
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            showPermissionSoftDenialDialog = true,
-                            permissionMessage = result.message
-                        )
-                    }
-                }
-
-                is PermissionFlowResult.ShowSettingsDialog -> {
-                    println("🔔 SETTINGS_VIEWMODEL: ShowSettingsDialog, showing settings dialog")
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            showPermissionSettingsDialog = true,
-                            permissionMessage = result.message
-                        )
-                    }
-                }
-
-                is PermissionFlowResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            message = result.message
-                        )
-                    }
-                }
-            }
-        }
-    }
-
     private suspend fun enableNotifications() {
         try {
             // Use EnableGlobalNotificationsUseCase instead of duplicate logic
             when (val result = enableGlobalNotificationsUseCase.execute()) {
-                is EnableGlobalNotificationsUseCase.GlobalEnableResult.Success -> {
+                is NotificationOperationResult.Success -> {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -218,11 +172,30 @@ class SettingsViewModel(
                         )
                     }
                 }
-                is EnableGlobalNotificationsUseCase.GlobalEnableResult.Error -> {
+                is NotificationOperationResult.PartialSuccess -> {
+                    val total = result.successCount + result.failureCount
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            message = "Failed to enable notifications: ${result.message}"
+                            notificationsEnabled = true,
+                            hasNotificationPermission = true,
+                            message = "Enabled ${result.successCount} of $total habit notifications. ${result.failureCount} failed."
+                        )
+                    }
+                }
+                is NotificationOperationResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            message = "Failed to enable notifications: ${result.error.message}"
+                        )
+                    }
+                }
+                is NotificationOperationResult.PermissionRequired -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            message = "Permission required"
                         )
                     }
                 }
@@ -241,13 +214,27 @@ class SettingsViewModel(
 
     fun toggleSound(enabled: Boolean) {
         viewModelScope.launch {
-            preferencesRepository.setSoundEnabled(enabled)
+            try {
+                // Use UpdateNotificationPreferencesUseCase to update preference and sync notifications
+                updateNotificationPreferencesUseCase.updateSound(enabled)
+                println("🔔 SETTINGS_VIEWMODEL: Sound preference updated to $enabled and notifications synced")
+            } catch (e: Exception) {
+                println("🔔 SETTINGS_VIEWMODEL: Error updating sound preference: ${e.message}")
+                _uiState.update { it.copy(message = "Failed to update sound preference") }
+            }
         }
     }
 
     fun toggleVibration(enabled: Boolean) {
         viewModelScope.launch {
-            preferencesRepository.setVibrationEnabled(enabled)
+            try {
+                // Use UpdateNotificationPreferencesUseCase to update preference and sync notifications
+                updateNotificationPreferencesUseCase.updateVibration(enabled)
+                println("🔔 SETTINGS_VIEWMODEL: Vibration preference updated to $enabled and notifications synced")
+            } catch (e: Exception) {
+                println("🔔 SETTINGS_VIEWMODEL: Error updating vibration preference: ${e.message}")
+                _uiState.update { it.copy(message = "Failed to update vibration preference") }
+            }
         }
     }
 
@@ -267,91 +254,12 @@ class SettingsViewModel(
         _uiState.update { it.copy(message = null) }
     }
 
-    // Permission dialog handlers
-    fun onPermissionDialogDismiss() {
-        _uiState.update {
-            it.copy(
-                showPermissionDialog = false,
-                permissionMessage = null
-            )
-        }
-    }
-
-    fun onPermissionRequested() {
-        viewModelScope.launch {
-            onPermissionDialogDismiss()
-
-            permissionFlowHandler.handleSystemPermissionResult(
-                onResult = { result ->
-                    handlePermissionFlowResult(result)
-                }
-            )
-        }
-    }
-
-    fun onNeverAskAgain() {
-        permissionFlowHandler.handleNeverAskAgain()
-        onPermissionDialogDismiss()
-    }
-
-    fun onPermissionSettingsDialogDismiss() {
-        _uiState.update {
-            it.copy(
-                showPermissionSettingsDialog = false,
-                permissionMessage = null
-            )
-        }
-    }
-
-    fun onOpenDeviceSettings() {
-        viewModelScope.launch {
-            try {
-                val success = permissionFlowHandler.handleOpenSettings()
-                if (!success) {
-                    _uiState.update {
-                        it.copy(message = "Unable to open device settings. Please open Settings manually and navigate to notifications.")
-                    }
-                }
-                // Always dismiss the dialog regardless of success
-                onPermissionSettingsDialogDismiss()
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(message = "Error opening settings: ${e.message}")
-                }
-                onPermissionSettingsDialogDismiss()
-            }
-        }
-    }
-
-    fun onDisableNotificationFeature() {
-        disableNotifications()
-        onPermissionSettingsDialogDismiss()
-    }
-
-    fun onPermissionSoftDenialDismiss() {
-        _uiState.update {
-            it.copy(
-                showPermissionSoftDenialDialog = false,
-                permissionMessage = null
-            )
-        }
-    }
-
-    fun onPermissionRetry() {
-        onPermissionSoftDenialDismiss()
-        requestNotificationPermission()
-    }
-
     // Call this when permission is granted outside the app (e.g., from system settings)
     fun onPermissionGrantedExternally() {
         viewModelScope.launch {
             val hasPermission = permissionFlowHandler.hasPermission()
             _uiState.update {
-                it.copy(
-                    hasNotificationPermission = hasPermission,
-                    showPermissionSettingsDialog = false,
-                    showPermissionSoftDenialDialog = false
-                )
+                it.copy(hasNotificationPermission = hasPermission)
             }
 
             if (hasPermission && _uiState.value.notificationsEnabled) {

@@ -6,12 +6,14 @@ import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import habitstreak.composeapp.generated.resources.Res
 import habitstreak.composeapp.generated.resources.*
+import org.example.habitstreak.presentation.ui.utils.getPlatformCapabilities
 
 /**
  * Reusable component for notification sound and vibration preferences
@@ -25,6 +27,8 @@ fun NotificationPreferencesSection(
     onVibrationChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val platformCapabilities = remember { getPlatformCapabilities() }
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -43,13 +47,16 @@ fun NotificationPreferencesSection(
             onCheckedChange = onSoundChanged
         )
 
-        PreferenceSwitch(
-            icon = Icons.Outlined.Vibration,
-            title = stringResource(Res.string.setting_vibration),
-            subtitle = stringResource(Res.string.setting_vibration_desc),
-            checked = vibrationEnabled,
-            onCheckedChange = onVibrationChanged
-        )
+        // Only show vibration on platforms that support it
+        if (platformCapabilities.supportsVibrationControl) {
+            PreferenceSwitch(
+                icon = Icons.Outlined.Vibration,
+                title = stringResource(Res.string.setting_vibration),
+                subtitle = stringResource(Res.string.setting_vibration_desc),
+                checked = vibrationEnabled,
+                onCheckedChange = onVibrationChanged
+            )
+        }
     }
 }
 

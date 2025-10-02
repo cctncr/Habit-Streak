@@ -113,15 +113,14 @@ val appModule = module {
     factory {
         SettingsViewModel(
             preferencesRepository = get(),
-            notificationService = get(),
-            habitRepository = get(),
             localeService = get(),
             localeStateHolder = get(),
             themeService = get(),
             themeStateHolder = get(),
             permissionFlowHandler = get(),
             enableGlobalNotificationsUseCase = get(),
-            disableGlobalNotificationsUseCase = get()
+            disableGlobalNotificationsUseCase = get(),
+            updateNotificationPreferencesUseCase = get()
         )
     }
 }
