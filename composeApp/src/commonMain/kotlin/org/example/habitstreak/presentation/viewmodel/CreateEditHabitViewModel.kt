@@ -13,9 +13,13 @@ import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
+import org.example.habitstreak.domain.model.NotificationPeriod
 import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.usecase.habit.CreateHabitUseCase
+import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificationUseCase
+import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPeriodUseCase
 import org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -24,6 +28,9 @@ class CreateEditHabitViewModel(
     private val createHabitUseCase: CreateHabitUseCase,
     private val habitRepository: HabitRepository,
     private val categoryRepository: CategoryRepository,
+    private val preferencesRepository: PreferencesRepository,
+    private val manageHabitNotificationUseCase: ManageHabitNotificationUseCase,
+    private val updateNotificationPeriodUseCase: UpdateNotificationPeriodUseCase,
     private val habitId: String?
 ) : ViewModel() {
 
@@ -33,7 +40,16 @@ class CreateEditHabitViewModel(
 
     init {
         loadCategories()
+        observeGlobalNotificationStatus()
         habitId?.let { loadHabit(it) }
+    }
+
+    private fun observeGlobalNotificationStatus() {
+        viewModelScope.launch {
+            preferencesRepository.isNotificationsEnabled().collect { enabled ->
+                _uiState.update { it.copy(isGlobalNotificationEnabled = enabled) }
+            }
+        }
     }
 
     private fun loadCategories() {
@@ -206,6 +222,28 @@ class CreateEditHabitViewModel(
         _uiState.update { it.copy(isNotificationEnabled = enabled) }
     }
 
+    fun updateNotificationPeriod(period: NotificationPeriod) {
+        _uiState.update { it.copy(notificationPeriod = period) }
+    }
+
+    /**
+     * Update both reminder time and notification period together
+     * This ensures both are set atomically to avoid race conditions
+     */
+    fun updateReminderTimeAndPeriod(time: LocalTime, period: NotificationPeriod) {
+        _uiState.update {
+            it.copy(
+                reminderTime = time,
+                notificationPeriod = period,
+                isNotificationEnabled = true
+            )
+        }
+    }
+
+    fun clearNotificationError() {
+        _uiState.update { it.copy(notificationError = null) }
+    }
+
     fun updateArchived(isArchived: Boolean) {
         _uiState.update { it.copy(isArchived = isArchived) }
     }
@@ -247,6 +285,28 @@ class CreateEditHabitViewModel(
                                         newCategories = state.selectedCategories
                                     )
 
+                                    // Update notification if reminder changed
+                                    viewModelScope.launch {
+                                        if (state.reminderTime != null && state.isNotificationEnabled) {
+                                            // Enable or update notification
+                                            manageHabitNotificationUseCase.enableNotification(
+                                                habitId = habitId,
+                                                time = state.reminderTime
+                                            )
+
+                                            // Update notification period if not default
+                                            if (state.notificationPeriod != NotificationPeriod.EveryDay) {
+                                                updateNotificationPeriodUseCase.execute(
+                                                    habitId = habitId,
+                                                    period = state.notificationPeriod
+                                                )
+                                            }
+                                        } else if (state.reminderTime == null) {
+                                            // Disable notification if reminder was removed
+                                            manageHabitNotificationUseCase.disableNotification(habitId)
+                                        }
+                                    }
+
                                     onSuccess()
                                 },
                                 onFailure = { error ->
@@ -275,6 +335,23 @@ class CreateEditHabitViewModel(
                     )
                 ).fold(
                     onSuccess = { habit ->
+                        // If reminder is set, enable notification for the habit
+                        if (state.reminderTime != null && state.isNotificationEnabled) {
+                            viewModelScope.launch {
+                                manageHabitNotificationUseCase.enableNotification(
+                                    habitId = habit.id,
+                                    time = state.reminderTime
+                                )
+
+                                // Update notification period if not default
+                                if (state.notificationPeriod != NotificationPeriod.EveryDay) {
+                                    updateNotificationPeriodUseCase.execute(
+                                        habitId = habit.id,
+                                        period = state.notificationPeriod
+                                    )
+                                }
+                            }
+                        }
                         onSuccess()
                     },
                     onFailure = { error ->

@@ -15,6 +15,12 @@ import org.koin.dsl.module
 actual fun platformModule() = module {
     single { DatabaseDriverFactory(androidContext()).createDriver() }
     single<ActivityProvider> { ActivityProviderImpl(androidApplication()) }
-    single<NotificationScheduler> { AndroidNotificationScheduler(androidContext()) }
+    single<NotificationScheduler> {
+        AndroidNotificationScheduler(
+            context = androidContext(),
+            periodValidator = get(),
+            preferencesUseCase = get()
+        )
+    }
     single<PermissionManager> { AndroidPermissionManager(androidContext(), get()) }
 }

@@ -2,6 +2,7 @@ package org.example.habitstreak.domain.repository
 
 import kotlinx.coroutines.flow.Flow
 import org.example.habitstreak.domain.model.NotificationConfig
+import org.example.habitstreak.domain.model.NotificationPeriod
 
 /**
  * Repository interface for notification configurations
@@ -47,4 +48,9 @@ interface NotificationRepository {
      * Disable all notifications
      */
     suspend fun disableAllNotifications()
+
+    /**
+     * Update notification period for a habit
+     */
+    suspend fun updateNotificationPeriod(habitId: String, period: NotificationPeriod)
 }

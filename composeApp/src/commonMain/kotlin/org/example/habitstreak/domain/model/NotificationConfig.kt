@@ -1,12 +1,15 @@
 package org.example.habitstreak.domain.model
 
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.LocalDateTime
+import kotlin.time.ExperimentalTime
 
 /**
  * Enhanced notification configuration following ISP and SRP
  * More specific interfaces can be extracted if needed
  */
+@OptIn(ExperimentalTime::class)
 data class NotificationConfig(
     val id: String? = null,
     val habitId: String,
@@ -16,6 +19,9 @@ data class NotificationConfig(
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
     val priority: NotificationPriority = NotificationPriority.DEFAULT,
+    val period: NotificationPeriod = NotificationPeriod.EveryDay,
+    val habitFrequency: HabitFrequency? = null,
+    val habitCreatedAt: Instant? = null,
     val createdAt: LocalDateTime? = null,
     val updatedAt: LocalDateTime? = null
 )

@@ -202,12 +202,17 @@ fun HabitDetailScreen(
                         isEnabled = uiState.isNotificationEnabled,
                         notificationTime = uiState.notificationTime,
                         notificationError = uiState.notificationError,
+                        notificationPeriod = uiState.notificationPeriod,
+                        isGlobalNotificationEnabled = uiState.isGlobalNotificationEnabled,
+                        habitFrequency = habit.frequency,
                         onToggleEnabled = { enabled ->
-                            println("🔔 HABIT_DETAIL_SCREEN: User toggled notification switch to: $enabled")
                             viewModel.toggleNotification(enabled)
                         },
-                        onTimeChanged = { time ->
-                            viewModel.updateNotificationTime(time)
+                        onTimeAndPeriodChanged = { time, period ->
+                            viewModel.updateNotificationTimeAndPeriod(time, period)
+                        },
+                        onEnableGlobalNotifications = {
+                            viewModel.enableGlobalNotifications()
                         },
                         onErrorDismiss = {
                             viewModel.clearNotificationError()

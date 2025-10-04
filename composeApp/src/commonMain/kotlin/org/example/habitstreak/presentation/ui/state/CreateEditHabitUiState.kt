@@ -5,6 +5,8 @@ import org.example.habitstreak.domain.model.Category
 import org.example.habitstreak.domain.model.HabitColor
 import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.HabitIcon
+import org.example.habitstreak.domain.model.NotificationError
+import org.example.habitstreak.domain.model.NotificationPeriod
 
 data class CreateEditHabitUiState(
     val title: String = "",
@@ -16,6 +18,9 @@ data class CreateEditHabitUiState(
     val availableCategories: List<Category> = emptyList(),
     val reminderTime: LocalTime? = null,
     val isNotificationEnabled: Boolean = false,
+    val notificationPeriod: NotificationPeriod = NotificationPeriod.EveryDay,
+    val isGlobalNotificationEnabled: Boolean = true,
+    val notificationError: NotificationError? = null,
     val targetCount: Int = 1,
     val unit: String = "",
     val isEditMode: Boolean = false,

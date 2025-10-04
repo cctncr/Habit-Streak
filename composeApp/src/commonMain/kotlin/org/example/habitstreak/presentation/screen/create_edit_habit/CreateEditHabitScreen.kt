@@ -92,7 +92,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
-import org.example.habitstreak.presentation.ui.components.common.ReminderTimeDialog
 import org.example.habitstreak.presentation.ui.components.permission.UnifiedPermissionDialogs
 import org.example.habitstreak.presentation.ui.components.permission.GlobalEnableNotificationDialog
 import org.example.habitstreak.presentation.permission.PermissionFlowResult
@@ -105,6 +104,7 @@ import org.example.habitstreak.domain.usecase.notification.NotificationOperation
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
 import org.example.habitstreak.presentation.ui.components.selection.IconSelectionGrid
+import org.example.habitstreak.presentation.ui.components.NotificationSettingsCard
 import org.example.habitstreak.presentation.screen.create_edit_habit.components.AdvancedFrequencyDialog
 import org.example.habitstreak.presentation.screen.create_edit_habit.components.getFrequencyDisplayText
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
@@ -147,7 +147,6 @@ fun CreateEditHabitScreen(
 
     var showIconSheet by remember { mutableStateOf(false) }
     var showColorSheet by remember { mutableStateOf(false) }
-    var showReminderDialog by remember { mutableStateOf(false) }
     var showFrequencyDialog by remember { mutableStateOf(false) }
     var showAdvancedSettings by remember { mutableStateOf(false) }
     var permissionDialogState by remember { mutableStateOf<PermissionFlowResult?>(null) }
@@ -175,7 +174,6 @@ fun CreateEditHabitScreen(
         // Platform permission result handling will be done via handler internal logic
         if (granted) {
             viewModel.updateNotificationEnabled(true)
-            showReminderDialog = true
         }
     }
 
@@ -311,53 +309,7 @@ fun CreateEditHabitScreen(
 
                             3 -> GoalStep(
                                 uiState = uiState,
-                                viewModel = viewModel,
-                                onShowReminderDialog = {
-                                    println("🔔 CREATE_EDIT_SCREEN: onShowReminderDialog called")
-                                    coroutineScope.launch {
-                                        println("🔔 CREATE_EDIT_SCREEN: Checking global notification status...")
-
-                                        // First check global notification status
-                                        when (val globalStatus = checkGlobalNotificationStatusUseCase.execute()) {
-                                            is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.NeedsSystemPermission -> {
-                                                println("🔔 CREATE_EDIT_SCREEN: System permission needed, requesting permission flow")
-                                                permissionHandler.requestPermissionFlow { result ->
-                                                    println("🔔 CREATE_EDIT_SCREEN: Permission flow result: ${result::class.simpleName}")
-                                                    when (result) {
-                                                        is PermissionFlowResult.Granted -> {
-                                                            println("🔔 CREATE_EDIT_SCREEN: Permission granted, enabling notification and showing dialog")
-                                                            viewModel.updateNotificationEnabled(true)
-                                                            showReminderDialog = true
-                                                        }
-                                                        is PermissionFlowResult.PermissionGranted -> {
-                                                            println("🔔 CREATE_EDIT_SCREEN: Permission granted with message, enabling notification and showing dialog")
-                                                            viewModel.updateNotificationEnabled(true)
-                                                            showReminderDialog = true
-                                                        }
-                                                        is PermissionFlowResult.ShowRationaleDialog,
-                                                        is PermissionFlowResult.ShowSettingsDialog -> {
-                                                            permissionDialogState = result
-                                                        }
-                                                        else -> {
-                                                            println("🔔 CREATE_EDIT_SCREEN: Permission denied - keeping switch off")
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.NeedsGlobalEnable -> {
-                                                println("🔔 CREATE_EDIT_SCREEN: Global notifications disabled, showing enable dialog")
-                                                showGlobalEnableDialog = uiState.title.takeIf { it.isNotBlank() } ?: "New Habit"
-                                            }
-
-                                            is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.AlreadyEnabled,
-                                            is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.CanEnable -> {
-                                                println("🔔 CREATE_EDIT_SCREEN: Global status OK, showing reminder dialog")
-                                                showReminderDialog = true
-                                            }
-                                        }
-                                    }
-                                }
+                                viewModel = viewModel
                             )
                         }
                     }
@@ -524,18 +476,6 @@ fun CreateEditHabitScreen(
         }
     }
 
-    if (showReminderDialog) {
-        ReminderTimeDialog(
-            selectedTime = uiState.reminderTime,
-            onTimeSelected = { time ->
-                viewModel.updateReminderTime(time)
-                viewModel.updateNotificationEnabled(true)
-                showReminderDialog = false
-            },
-            onDismiss = { showReminderDialog = false }
-        )
-    }
-
     if (showFrequencyDialog) {
         AdvancedFrequencyDialog(
             currentFrequency = uiState.frequency,
@@ -569,22 +509,20 @@ fun CreateEditHabitScreen(
                     try {
                         updateNotificationPreferencesUseCase.updateBoth(soundEnabled, vibrationEnabled)
                     } catch (e: Exception) {
-                        println("🔔 CREATE_EDIT_SCREEN: Error saving preferences: ${e.message}")
+                        // Error saving preferences
                     }
 
                     // Then enable global notifications
                     when (val result = enableGlobalNotificationsUseCase.execute()) {
                         is NotificationOperationResult.Success,
                         is NotificationOperationResult.PartialSuccess -> {
-                            println("🔔 CREATE_EDIT_SCREEN: Global notifications enabled, showing reminder dialog")
                             viewModel.updateNotificationEnabled(true)
-                            showReminderDialog = true
                         }
                         is NotificationOperationResult.Error -> {
-                            println("🔔 CREATE_EDIT_SCREEN: Error enabling global notifications: ${result.error.message}")
+                            // Error enabling global notifications
                         }
                         is NotificationOperationResult.PermissionRequired -> {
-                            println("🔔 CREATE_EDIT_SCREEN: Permission required for global notifications")
+                            // Permission required
                         }
                     }
                 }
@@ -1072,8 +1010,7 @@ private fun CategorySelectionStep(
 @Composable
 private fun GoalStep(
     uiState: CreateEditHabitUiState,
-    viewModel: CreateEditHabitViewModel,
-    onShowReminderDialog: () -> Unit
+    viewModel: CreateEditHabitViewModel
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
@@ -1183,63 +1120,37 @@ private fun GoalStep(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Reminder settings
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = if (uiState.reminderTime != null)
-                    MaterialTheme.colorScheme.primaryContainer
-                else
-                    MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        Icons.Outlined.NotificationsActive,
-                        contentDescription = null
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = stringResource(Res.string.daily_reminder),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = if (uiState.reminderTime != null)
-                                stringResource(Res.string.reminder_at_time, formatTime(uiState.reminderTime))
-                            else
-                                stringResource(Res.string.get_notified_to_complete),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+        // Notification Settings
+        NotificationSettingsCard(
+            isEnabled = uiState.isNotificationEnabled,
+            notificationTime = uiState.reminderTime,
+            notificationError = uiState.notificationError,
+            notificationPeriod = uiState.notificationPeriod,
+            isGlobalNotificationEnabled = uiState.isGlobalNotificationEnabled,
+            habitFrequency = uiState.frequency,
+            onToggleEnabled = { enabled ->
+                if (enabled) {
+                    // Just enable the switch - actual notification will be created on save
+                    viewModel.updateNotificationEnabled(true)
+                } else {
+                    viewModel.updateNotificationEnabled(false)
+                    viewModel.updateReminderTime(null)
                 }
-                Switch(
-                    checked = uiState.isNotificationEnabled,
-                    onCheckedChange = { enabled ->
-                        println("🔔 CREATE_EDIT_SCREEN: User toggled notification switch to: $enabled")
-                        if (enabled) {
-                            println("🔔 CREATE_EDIT_SCREEN: Showing reminder dialog")
-                            onShowReminderDialog()
-                        } else {
-                            println("🔔 CREATE_EDIT_SCREEN: Disabling notification")
-                            viewModel.updateNotificationEnabled(false)
-                            viewModel.updateReminderTime(null)
-                        }
-                    }
-                )
+            },
+            onTimeAndPeriodChanged = { time, period ->
+                // Update both time and period together atomically
+                viewModel.updateReminderTimeAndPeriod(time, period)
+            },
+            onEnableGlobalNotifications = {
+                // Not applicable for create/edit screen - global notifications managed in settings
+            },
+            onErrorDismiss = {
+                viewModel.clearNotificationError()
+            },
+            onOpenSettings = {
+                // Not applicable for create/edit screen
             }
-        }
+        )
     }
 }
 

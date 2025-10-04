@@ -11,11 +11,14 @@ import org.example.habitstreak.domain.model.NotificationError
 import org.example.habitstreak.domain.repository.HabitRecordRepository
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.usecase.habit.CalculateHabitStatsUseCase
+import org.example.habitstreak.domain.model.NotificationPeriod
+import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificationUseCase
 import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificationStatusUseCase
 import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
 import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
 import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPeriodUseCase
 import org.example.habitstreak.domain.usecase.notification.NotificationOperationResult
 import org.example.habitstreak.domain.util.DateProvider
 import org.example.habitstreak.presentation.model.YearMonth
@@ -33,6 +36,8 @@ class HabitDetailViewModel(
     private val enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase,
     private val updateNotificationPreferencesUseCase: UpdateNotificationPreferencesUseCase,
     private val getNotificationPreferencesUseCase: GetNotificationPreferencesUseCase,
+    private val updateNotificationPeriodUseCase: UpdateNotificationPeriodUseCase,
+    private val preferencesRepository: PreferencesRepository,
     private val dateProvider: DateProvider
 ) : ViewModel() {
 
@@ -46,6 +51,7 @@ class HabitDetailViewModel(
         loadData()
         observeNotificationConfig()
         loadNotificationPreferences()
+        observeGlobalNotificationStatus()
     }
 
     fun loadData() {
@@ -179,6 +185,7 @@ class HabitDetailViewModel(
                         notificationConfig = config,
                         isNotificationEnabled = config?.isEnabled == true,
                         notificationTime = config?.time,
+                        notificationPeriod = config?.period ?: NotificationPeriod.EveryDay,
                         notificationError = if (currentError?.shouldPreserve() == true) currentError else null
                     )
                 }
@@ -187,22 +194,18 @@ class HabitDetailViewModel(
     }
 
     fun toggleNotification(enabled: Boolean) {
-        println("🔔 HABIT_DETAIL_VIEWMODEL: toggleNotification called with enabled=$enabled")
         viewModelScope.launch {
             if (enabled) {
-                println("🔔 HABIT_DETAIL_VIEWMODEL: Enabling notification - checking global status first")
 
                 // First check global notification status
                 when (checkGlobalNotificationStatusUseCase.execute()) {
                     is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.NeedsSystemPermission -> {
-                        println("🔔 HABIT_DETAIL_VIEWMODEL: System permission needed, requesting permission")
                         _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
                         _uiState.update { it.copy(isNotificationEnabled = false) }
                         return@launch
                     }
 
                     is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.NeedsGlobalEnable -> {
-                        println("🔔 HABIT_DETAIL_VIEWMODEL: Global notifications disabled, showing enable dialog")
                         _uiEvents.tryEmit(UiEvent.ShowGlobalEnableDialog(_uiState.value.habit?.title))
                         _uiState.update { it.copy(isNotificationEnabled = false) }
                         return@launch
@@ -210,14 +213,12 @@ class HabitDetailViewModel(
 
                     is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.AlreadyEnabled,
                     is CheckGlobalNotificationStatusUseCase.GlobalNotificationStatus.CanEnable -> {
-                        println("🔔 HABIT_DETAIL_VIEWMODEL: Global status OK, proceeding with habit notification")
                         // Proceed with normal notification enabling
                     }
                 }
 
                 // Enable habit notification
                 val time = _uiState.value.notificationTime ?: LocalTime(9, 0)
-                println("🔔 HABIT_DETAIL_VIEWMODEL: Calling enableNotification use case with time=$time")
                 when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
                     is NotificationOperationResult.Success -> {
                         _uiState.update { state ->
@@ -243,7 +244,6 @@ class HabitDetailViewModel(
                     }
                     is NotificationOperationResult.PartialSuccess -> {
                         // Should not happen for single habit operation
-                        println("⚠️ HABIT_DETAIL_VIEWMODEL: Unexpected PartialSuccess for single habit")
                         _uiState.update { state ->
                             state.copy(
                                 isNotificationEnabled = true,
@@ -274,33 +274,42 @@ class HabitDetailViewModel(
         }
     }
 
-    fun updateNotificationTime(time: LocalTime?) {
-        if (time == null) {
-            _uiState.update { it.copy(notificationTime = time) }
-            return
-        }
-
+    /**
+     * Update both notification time and period together to avoid race condition
+     * This ensures period is set correctly when time is changed
+     */
+    fun updateNotificationTimeAndPeriod(time: LocalTime, period: NotificationPeriod) {
         viewModelScope.launch {
-            if (!_uiState.value.isNotificationEnabled) {
-                toggleNotification(true)
-            } else {
-                when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
-                    is NotificationOperationResult.Success -> {
-                        _uiState.update { state ->
-                            state.copy(
-                                isNotificationEnabled = true,
-                                notificationTime = time,
-                                notificationError = null
-                            )
+            // First update period in database
+            when (val periodResult = updateNotificationPeriodUseCase.execute(habitId, period)) {
+                is NotificationOperationResult.Success -> {
+                    // Then enable/update notification with new time
+                    // This will pick up the updated period from database
+                    when (val result = manageHabitNotificationUseCase.enableNotification(habitId, time)) {
+                        is NotificationOperationResult.Success -> {
+                            _uiState.update { state ->
+                                state.copy(
+                                    isNotificationEnabled = true,
+                                    notificationTime = time,
+                                    notificationPeriod = period,
+                                    notificationError = null
+                                )
+                            }
+                        }
+                        is NotificationOperationResult.Error -> {
+                            setNotificationError(result.error)
+                            _uiState.update { it.copy(isNotificationEnabled = false) }
+                        }
+                        else -> {
+                            // Handle other cases
                         }
                     }
-                    is NotificationOperationResult.Error -> {
-                        setNotificationError(result.error)
-                        _uiState.update { it.copy(isNotificationEnabled = false) }
-                    }
-                    else -> {
-                        // Handle other cases
-                    }
+                }
+                is NotificationOperationResult.Error -> {
+                    setNotificationError(periodResult.error)
+                }
+                else -> {
+                    // Handle other cases
                 }
             }
         }
@@ -347,7 +356,6 @@ class HabitDetailViewModel(
     }
 
     fun enableGlobalNotifications() {
-        println("🔔 HABIT_DETAIL_VIEWMODEL: enableGlobalNotifications called")
         viewModelScope.launch {
             // Save preferences first
             try {
@@ -356,23 +364,19 @@ class HabitDetailViewModel(
                     vibrationEnabled = _uiState.value.notificationVibrationEnabled
                 )
             } catch (e: Exception) {
-                println("🔔 HABIT_DETAIL_VIEWMODEL: Error saving preferences: ${e.message}")
             }
 
             // Then enable global notifications
             when (val result = enableGlobalNotificationsUseCase.execute()) {
                 is NotificationOperationResult.Success,
                 is NotificationOperationResult.PartialSuccess -> {
-                    println("🔔 HABIT_DETAIL_VIEWMODEL: Global notifications enabled, now enabling habit notification")
                     // Now try to enable the habit notification
                     toggleNotification(true)
                 }
                 is NotificationOperationResult.Error -> {
-                    println("🔔 HABIT_DETAIL_VIEWMODEL: Error enabling global notifications: ${result.error.message}")
                     setNotificationError(NotificationError.GeneralError(result.error))
                 }
                 is NotificationOperationResult.PermissionRequired -> {
-                    println("🔔 HABIT_DETAIL_VIEWMODEL: Permission required for global notifications")
                     setNotificationError(NotificationError.PermissionDenied(canRequestAgain = true))
                 }
             }
@@ -407,6 +411,34 @@ class HabitDetailViewModel(
     fun onPermissionDenied(canRequestAgain: Boolean) {
         setNotificationError(NotificationError.PermissionDenied(canRequestAgain))
         _uiState.update { it.copy(isNotificationEnabled = false) }
+    }
+
+    private fun observeGlobalNotificationStatus() {
+        viewModelScope.launch {
+            preferencesRepository.isNotificationsEnabled().collect { enabled ->
+                _uiState.update { it.copy(isGlobalNotificationEnabled = enabled) }
+            }
+        }
+    }
+
+    fun updateNotificationPeriod(period: NotificationPeriod) {
+        viewModelScope.launch {
+            when (val result = updateNotificationPeriodUseCase.execute(habitId, period)) {
+                is NotificationOperationResult.Success -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            notificationPeriod = period,
+                            notificationError = null
+                        )
+                    }
+                }
+                is NotificationOperationResult.Error -> {
+                    setNotificationError(result.error)
+                }
+                else -> {
+                }
+            }
+        }
     }
 
     data class HabitStats(

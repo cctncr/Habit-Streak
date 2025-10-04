@@ -11,16 +11,17 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import org.example.habitstreak.domain.model.DayOfWeek
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.service.NotificationScheduler
-import org.example.habitstreak.domain.repository.HabitRepository
+import org.example.habitstreak.domain.service.NotificationPeriodValidator
 import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
-import org.koin.core.context.GlobalContext
 import java.util.concurrent.TimeUnit
 import kotlinx.datetime.*
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import kotlinx.datetime.DayOfWeek as KotlinxDayOfWeek
 
 /**
  * Android implementation of NotificationScheduler
@@ -28,7 +29,9 @@ import kotlin.time.ExperimentalTime
  * Follows Single Responsibility - only handles scheduling, not permissions
  */
 class AndroidNotificationScheduler(
-    private val context: Context
+    private val context: Context,
+    private val periodValidator: NotificationPeriodValidator,
+    private val preferencesUseCase: GetNotificationPreferencesUseCase
 ) : NotificationScheduler {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -81,34 +84,60 @@ class AndroidNotificationScheduler(
         }
     }
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
         return try {
+            // Validate config has required habit data
+            if (config.habitFrequency == null || config.habitCreatedAt == null) {
+                return Result.failure(Exception("NotificationConfig missing habitFrequency or habitCreatedAt"))
+            }
+
+            // Cancel previous notifications first
+            cancelNotification(config.habitId)
+
             // Update notification channel with user preferences
-            val koinContext = GlobalContext.getOrNull()
-            if (koinContext != null) {
-                try {
-                    val getPrefsUseCase = koinContext.get<GetNotificationPreferencesUseCase>()
-                    val prefs = getPrefsUseCase.execute()
-                    createNotificationChannel(
-                        soundEnabled = prefs.soundEnabled,
-                        vibrationEnabled = prefs.vibrationEnabled
-                    )
-                } catch (e: Exception) {
-                    // Fallback to config values if use case fails
-                    createNotificationChannel(
-                        soundEnabled = config.soundEnabled,
-                        vibrationEnabled = config.vibrationEnabled
-                    )
+            try {
+                val prefs = preferencesUseCase.execute()
+                createNotificationChannel(
+                    soundEnabled = prefs.soundEnabled,
+                    vibrationEnabled = prefs.vibrationEnabled
+                )
+            } catch (e: Exception) {
+                // Fallback to config values if use case fails
+                createNotificationChannel(
+                    soundEnabled = config.soundEnabled,
+                    vibrationEnabled = config.vibrationEnabled
+                )
+            }
+
+            // Get notification days based on period
+            val now = Clock.System.now()
+            val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val weekStartDate = today.minus(today.dayOfWeek.ordinal, DateTimeUnit.DAY)
+
+            val habitCreatedAt = config.habitCreatedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+            // Use config data directly without creating domain objects
+            val notificationDays = periodValidator.getNotificationDays(
+                period = config.period,
+                habitFrequency = config.habitFrequency,
+                habitCreatedAt = habitCreatedAt,
+                weekStartDate = weekStartDate
+            )
+
+            // Get habit title for notification (fallback to habitId if not available)
+            val habitTitle = config.message.substringAfter("Time to complete: ", config.habitId)
+
+            // Schedule alarm for each notification day
+            notificationDays.forEach { dayOfWeek ->
+                if (canScheduleExactAlarms()) {
+                    scheduleForDayOfWeek(config, habitTitle, dayOfWeek)
+                } else {
+                    // Fallback to WorkManager for this day
+                    scheduleWithWorkManager(config)
                 }
             }
 
-            // Try AlarmManager first for exact timing
-            if (canScheduleExactAlarms()) {
-                scheduleExactAlarm(config)
-            } else {
-                // Fallback to WorkManager
-                scheduleWithWorkManager(config)
-            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -117,8 +146,12 @@ class AndroidNotificationScheduler(
 
     override suspend fun cancelNotification(habitId: String): Result<Unit> {
         return try {
-            // Cancel both AlarmManager and WorkManager
-            cancelAlarm(habitId)
+            // Cancel all day-specific alarms for this habit
+            DayOfWeek.entries.forEach { dayOfWeek ->
+                cancelAlarmForDayOfWeek(habitId, dayOfWeek)
+            }
+
+            // Also cancel WorkManager
             WorkManager.getInstance(context)
                 .cancelUniqueWork(NOTIFICATION_WORK_TAG + habitId)
             Result.success(Unit)
@@ -165,33 +198,55 @@ class AndroidNotificationScheduler(
     }
 
     @OptIn(ExperimentalTime::class)
-    private suspend fun scheduleExactAlarm(config: NotificationConfig) {
+    private suspend fun scheduleForDayOfWeek(
+        config: NotificationConfig,
+        habitTitle: String,
+        dayOfWeek: DayOfWeek
+    ) {
         val now = Clock.System.now()
         val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        var targetDateTime = today.atTime(config.time)
 
-        // If time has passed today, schedule for tomorrow
-        if (targetDateTime.toInstant(TimeZone.currentSystemDefault()) <= now) {
-            targetDateTime = today.plus(1, DateTimeUnit.DAY).atTime(config.time)
-        }
+        // Find next occurrence of this day of week
+        val targetDate = findNextDayOfWeek(today, dayOfWeek)
+        val targetDateTime = targetDate.atTime(config.time)
 
         val triggerTime = targetDateTime.toInstant(TimeZone.currentSystemDefault()).toEpochMilliseconds()
-        val pendingIntent = createAlarmPendingIntent(config)
+        val pendingIntent = createAlarmPendingIntent(config, habitTitle, dayOfWeek)
 
-        // Use setExactAndAllowWhileIdle for exact timing
+        // Use setRepeating for weekly repeat
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(
+            alarmManager.setRepeating(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
+                AlarmManager.INTERVAL_DAY * 7, // Repeat weekly
                 pendingIntent
             )
         } else {
-            alarmManager.setExact(
+            alarmManager.setRepeating(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
+                AlarmManager.INTERVAL_DAY * 7,
                 pendingIntent
             )
         }
+    }
+
+    private fun findNextDayOfWeek(fromDate: LocalDate, targetDay: DayOfWeek): LocalDate {
+        val kotlinxTargetDay = when (targetDay) {
+            DayOfWeek.MONDAY -> KotlinxDayOfWeek.MONDAY
+            DayOfWeek.TUESDAY -> KotlinxDayOfWeek.TUESDAY
+            DayOfWeek.WEDNESDAY -> KotlinxDayOfWeek.WEDNESDAY
+            DayOfWeek.THURSDAY -> KotlinxDayOfWeek.THURSDAY
+            DayOfWeek.FRIDAY -> KotlinxDayOfWeek.FRIDAY
+            DayOfWeek.SATURDAY -> KotlinxDayOfWeek.SATURDAY
+            DayOfWeek.SUNDAY -> KotlinxDayOfWeek.SUNDAY
+        }
+
+        var date = fromDate
+        while (date.dayOfWeek != kotlinxTargetDay) {
+            date = date.plus(1, DateTimeUnit.DAY)
+        }
+        return date
     }
 
     private suspend fun scheduleWithWorkManager(config: NotificationConfig) {
@@ -203,11 +258,13 @@ class AndroidNotificationScheduler(
         )
     }
 
-    private fun cancelAlarm(habitId: String) {
+    private fun cancelAlarmForDayOfWeek(habitId: String, dayOfWeek: DayOfWeek) {
         val intent = Intent(context, AlarmReceiver::class.java)
+        val requestCode = (habitId.hashCode() * 10) + dayOfWeek.ordinal
+
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            habitId.hashCode(),
+            requestCode,
             intent,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
@@ -222,18 +279,23 @@ class AndroidNotificationScheduler(
         }
     }
 
-    private suspend fun createAlarmPendingIntent(config: NotificationConfig): PendingIntent {
-        val habitTitle = getHabitTitle(config.habitId)
-
+    private suspend fun createAlarmPendingIntent(
+        config: NotificationConfig,
+        habitTitle: String,
+        dayOfWeek: DayOfWeek
+    ): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(AlarmReceiver.EXTRA_HABIT_ID, config.habitId)
             putExtra(AlarmReceiver.EXTRA_HABIT_TITLE, habitTitle)
             putExtra(AlarmReceiver.EXTRA_MESSAGE, config.message)
         }
 
+        // Unique request code for each day of week
+        val requestCode = (config.habitId.hashCode() * 10) + dayOfWeek.ordinal
+
         return PendingIntent.getBroadcast(
             context,
-            config.habitId.hashCode(),
+            requestCode,
             intent,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
@@ -243,27 +305,13 @@ class AndroidNotificationScheduler(
         )
     }
 
-    private suspend fun getHabitTitle(habitId: String): String {
-        return try {
-            val koinContext = GlobalContext.getOrNull()
-            if (koinContext != null) {
-                val habitRepository = koinContext.get<HabitRepository>()
-                val result = habitRepository.getHabitById(habitId)
-                result.getOrNull()?.title ?: "Habit"
-            } else {
-                "Habit"
-            }
-        } catch (e: Exception) {
-            "Habit"
-        }
-    }
-
     @OptIn(ExperimentalTime::class)
     private suspend fun createWorkRequest(config: NotificationConfig) =
         PeriodicWorkRequestBuilder<NotificationWorker>(
             24, TimeUnit.HOURS
         ).apply {
-            val habitTitle = getHabitTitle(config.habitId)
+            // Extract habit title from message or use habitId as fallback
+            val habitTitle = config.message.substringAfter("Time to complete: ", config.habitId)
 
             setInputData(
                 workDataOf(

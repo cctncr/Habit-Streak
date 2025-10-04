@@ -2,13 +2,15 @@ CREATE TABLE IF NOT EXISTS NotificationConfig (
     habitId TEXT NOT NULL PRIMARY KEY,
     time TEXT NOT NULL,
     isEnabled INTEGER NOT NULL DEFAULT 1,
-    message TEXT NOT NULL
+    message TEXT NOT NULL,
+    period TEXT NOT NULL DEFAULT '{"type":"EveryDay"}',
+    FOREIGN KEY (habitId) REFERENCES Habit(id) ON DELETE CASCADE
 );
 
 -- Queries
 insertOrReplace:
-INSERT OR REPLACE INTO NotificationConfig (habitId, time, isEnabled, message)
-VALUES (?, ?, ?, ?);
+INSERT OR REPLACE INTO NotificationConfig (habitId, time, isEnabled, message, period)
+VALUES (?, ?, ?, ?, ?);
 
 getByHabitId:
 SELECT * FROM NotificationConfig
@@ -20,6 +22,11 @@ SELECT * FROM NotificationConfig;
 updateEnabled:
 UPDATE NotificationConfig
 SET isEnabled = ?
+WHERE habitId = ?;
+
+updatePeriod:
+UPDATE NotificationConfig
+SET period = ?
 WHERE habitId = ?;
 
 delete:

@@ -35,6 +35,8 @@ class AlarmReceiver : BroadcastReceiver() {
         val habitTitle = intent.getStringExtra(EXTRA_HABIT_TITLE) ?: "Habit"
         val message = intent.getStringExtra(EXTRA_MESSAGE) ?: "Time to complete your habit!"
 
+        println("🔔 ALARM_RECEIVER: Received alarm for habit: $habitTitle (ID: $habitId)")
+
         val koinContext = GlobalContext.getOrNull()
         if (koinContext == null) {
             // Fallback to basic notification if DI not available

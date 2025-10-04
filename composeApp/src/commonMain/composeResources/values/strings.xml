@@ -589,4 +589,21 @@
     <string name="habit_not_found_refresh">Habit not found. Please refresh and try again.</string>
     <string name="completed_from_notification">Completed from notification</string>
     <string name="default_settings_permission_message">To enable notifications, please go to device settings.</string>
+
+    <!-- Notification Components -->
+    <string name="reminder">Reminder</string>
+    <string name="reminder_days">Reminder Days</string>
+    <string name="select_time">Select time</string>
+    <string name="select_days">Select days</string>
+    <string name="every_day">Every Day</string>
+    <string name="active_days_only">Active Days Only</string>
+    <string name="select_specific_days">Select Days</string>
+    <string name="set_reminder_time">Set Reminder Time</string>
+    <string name="select_reminder_days">Select Reminder Days</string>
+    <string name="clear">Clear</string>
+    <string name="set">Set</string>
+    <string name="active_days_description">Only on days when this habit is scheduled</string>
+    <string name="select_days_description">Choose specific days of the week</string>
+    <string name="every_day_description">Send reminders every day</string>
+    <string name="at_least_one_day">Please select at least one day</string>
 </resources>

@@ -94,7 +94,17 @@ val appModule = module {
 
     // ViewModels - Following Dependency Injection best practices
     factory { HabitsViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    factory { (habitId: String?) -> CreateEditHabitViewModel(get(), get(), get(), habitId) }
+    factory { (habitId: String?) ->
+        CreateEditHabitViewModel(
+            createHabitUseCase = get(),
+            habitRepository = get(),
+            categoryRepository = get(),
+            preferencesRepository = get(),
+            manageHabitNotificationUseCase = get(),
+            updateNotificationPeriodUseCase = get(),
+            habitId = habitId
+        )
+    }
     factory { StatisticsViewModel(get(), get()) }
     factory { (habitId: String) ->
         HabitDetailViewModel(
@@ -107,6 +117,8 @@ val appModule = module {
             enableGlobalNotificationsUseCase = get(),
             updateNotificationPreferencesUseCase = get(),
             getNotificationPreferencesUseCase = get(),
+            updateNotificationPeriodUseCase = get(),
+            preferencesRepository = get(),
             dateProvider = get()
         )
     }

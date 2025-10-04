@@ -5,6 +5,7 @@ import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.model.NotificationError
+import org.example.habitstreak.domain.model.NotificationPeriod
 import org.example.habitstreak.presentation.model.YearMonth
 import org.example.habitstreak.presentation.viewmodel.HabitDetailViewModel
 
@@ -19,7 +20,9 @@ data class HabitDetailUiState(
     val notificationConfig: NotificationConfig? = null,
     val isNotificationEnabled: Boolean = false,
     val notificationTime: LocalTime? = null,
+    val notificationPeriod: NotificationPeriod = NotificationPeriod.EveryDay,
     val notificationError: NotificationError? = null,
+    val isGlobalNotificationEnabled: Boolean = true,
     // Notification preferences
     val notificationSoundEnabled: Boolean = true,
     val notificationVibrationEnabled: Boolean = true

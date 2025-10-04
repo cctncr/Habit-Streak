@@ -590,4 +590,21 @@
     <string name="completed_from_notification">Bildirimden tamamlandı</string>
     <string name="default_settings_permission_message">Bildirimleri etkinleştirmek için lütfen cihaz ayarlarına gidin.</string>
 
+    <!-- Notification Components -->
+    <string name="reminder">Hatırlatıcı</string>
+    <string name="reminder_days">Hatırlatıcı Günleri</string>
+    <string name="select_time">Saat seç</string>
+    <string name="select_days">Günleri seç</string>
+    <string name="every_day">Her Gün</string>
+    <string name="active_days_only">Sadece Aktif Günler</string>
+    <string name="select_specific_days">Günleri Seç</string>
+    <string name="set_reminder_time">Hatırlatıcı Saati Ayarla</string>
+    <string name="select_reminder_days">Hatırlatıcı Günlerini Seç</string>
+    <string name="clear">Temizle</string>
+    <string name="set">Ayarla</string>
+    <string name="active_days_description">Sadece bu alışkanlığın planlandığı günlerde</string>
+    <string name="select_days_description">Haftanın belirli günlerini seç</string>
+    <string name="every_day_description">Her gün hatırlatıcı gönder</string>
+    <string name="at_least_one_day">Lütfen en az bir gün seçin</string>
+
 </resources>

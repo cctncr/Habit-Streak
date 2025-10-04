@@ -4,12 +4,14 @@ import org.example.habitstreak.data.repository.NotificationRepositoryImpl
 import org.example.habitstreak.domain.repository.NotificationRepository
 import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.domain.service.NotificationPermissionService
+import org.example.habitstreak.domain.service.NotificationPeriodValidator
 import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificationUseCase
 import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificationStatusUseCase
 import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
 import org.example.habitstreak.domain.usecase.notification.DisableGlobalNotificationsUseCase
 import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
 import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPeriodUseCase
 import org.koin.dsl.module
 
 val notificationModule = module {
@@ -30,6 +32,10 @@ val notificationModule = module {
         NotificationPermissionService(
             permissionManager = get()
         )
+    }
+
+    single {
+        NotificationPeriodValidator()
     }
 
     single {
@@ -71,6 +77,12 @@ val notificationModule = module {
     single {
         GetNotificationPreferencesUseCase(
             preferencesRepository = get()
+        )
+    }
+
+    single {
+        UpdateNotificationPeriodUseCase(
+            notificationService = get()
         )
     }
 }
