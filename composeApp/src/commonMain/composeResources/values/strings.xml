@@ -606,4 +606,23 @@
     <string name="select_days_description">Choose specific days of the week</string>
     <string name="every_day_description">Send reminders every day</string>
     <string name="at_least_one_day">Please select at least one day</string>
+
+    <!-- Notification Error Messages (Phase 1 - Bug Fixes) -->
+    <string name="error_habit_created_reminder_failed">Habit created but reminder setup failed. Enable it manually from habit details.</string>
+    <string name="error_habit_updated_reminder_failed">Habit updated but reminder failed</string>
+    <string name="error_reminder_permission_required">Habit created. Please grant permission to enable reminder.</string>
+    <string name="error_reminder_enable_manually">Enable reminder manually</string>
+
+    <!-- Notification Success Messages -->
+    <string name="success_partial_notifications_enabled">Enabled %1$d of %2$d habits</string>
+
+    <!-- iOS Notification Content -->
+    <string name="notification_habit_reminder_title">Habit Reminder</string>
+    <string name="notification_mark_complete_action">Mark Complete</string>
+    <string name="notification_snooze_action">Snooze</string>
+    <string name="notification_rest_day_title">%s Rest Day</string>
+    <string name="notification_rest_day_message">%s is not scheduled for today. Take a well-deserved break!</string>
+    <string name="notification_reminder_title">%s Reminder</string>
+    <string name="notification_default_message">Time to complete your habit!</string>
+    <string name="notification_habit_message">Time to complete: %s</string>
 </resources>

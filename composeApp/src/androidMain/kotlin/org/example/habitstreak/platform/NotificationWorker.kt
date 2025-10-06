@@ -1,17 +1,11 @@
 package org.example.habitstreak.platform
 
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import kotlinx.datetime.TimeZone
 import kotlin.time.ExperimentalTime
-import org.example.habitstreak.MainActivity
 import org.example.habitstreak.domain.usecase.notification.CheckHabitActiveDayUseCase
+import org.example.habitstreak.domain.usecase.notification.NotificationPreferencesUseCase
 import org.koin.core.context.GlobalContext
 
 /**
@@ -85,77 +79,32 @@ class NotificationWorker(
         }
     }
 
-    private fun showNotification(habitId: String, habitTitle: String, message: String, isActive: Boolean) {
-        val notificationManager = applicationContext.getSystemService(
-            Context.NOTIFICATION_SERVICE
-        ) as NotificationManager
+    private suspend fun showNotification(habitId: String, habitTitle: String, message: String, isActive: Boolean) {
+        // Get notification preferences
+        val koinContext = GlobalContext.getOrNull()
+        var soundEnabled = true
+        var vibrationEnabled = true
 
-        // Create intent to open app when notification is clicked
-        val intent = Intent(applicationContext, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("habit_id", habitId)
-            putExtra("navigate_to_habit", true)
-        }
-
-        val pendingIntent = PendingIntent.getActivity(
-            applicationContext,
-            habitId.hashCode(),
-            intent,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
+        if (koinContext != null) {
+            try {
+                val prefsUseCase = koinContext.get<NotificationPreferencesUseCase>()
+                val prefs = prefsUseCase.get()
+                soundEnabled = prefs.soundEnabled
+                vibrationEnabled = prefs.vibrationEnabled
+            } catch (e: Exception) {
+                // Use defaults if preferences can't be loaded
             }
-        )
-
-        // Create notification with different content based on habit activity
-        val notificationBuilder = NotificationCompat.Builder(
-            applicationContext,
-            AndroidNotificationScheduler.CHANNEL_ID
-        )
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-
-        if (isActive) {
-            // Active day - show completion action
-            notificationBuilder
-                .setContentTitle("$habitTitle Reminder")
-                .setContentText(message)
-                .addAction(
-                    android.R.drawable.ic_input_add,
-                    "Mark Complete",
-                    createCompleteActionIntent(habitId)
-                )
-        } else {
-            // Inactive day - different message, no completion action
-            notificationBuilder
-                .setContentTitle("$habitTitle Rest Day")
-                .setContentText("$habitTitle is not scheduled for today. Take a well-deserved break!")
         }
 
-        val notification = notificationBuilder.build()
-
-        // Show notification
-        notificationManager.notify(habitId.hashCode(), notification)
-    }
-
-    private fun createCompleteActionIntent(habitId: String): PendingIntent {
-        val intent = Intent(applicationContext, NotificationActionReceiver::class.java).apply {
-            action = "COMPLETE_HABIT"
-            putExtra("habit_id", habitId)
-        }
-
-        return PendingIntent.getBroadcast(
-            applicationContext,
-            habitId.hashCode() + 1,
-            intent,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
+        // Use shared NotificationDisplayHelper for consistent notification display
+        NotificationDisplayHelper.showHabitNotification(
+            context = applicationContext,
+            habitId = habitId,
+            habitTitle = habitTitle,
+            message = message,
+            isActive = isActive,
+            soundEnabled = soundEnabled,
+            vibrationEnabled = vibrationEnabled
         )
     }
 

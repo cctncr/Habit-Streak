@@ -11,15 +11,12 @@ import org.example.habitstreak.domain.repository.NotificationRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.repository.StatisticsRepository
 import org.example.habitstreak.domain.service.HabitValidationService
-import org.example.habitstreak.domain.service.NotificationService
 import org.example.habitstreak.domain.usecase.InitializeCategoriesUseCase
 import org.example.habitstreak.domain.usecase.habit.CreateHabitUseCase
 import org.example.habitstreak.domain.usecase.habit.ToggleHabitCompletionUseCase
 import org.example.habitstreak.domain.usecase.habit.GetHabitsWithCompletionUseCase
 import org.example.habitstreak.domain.usecase.habit.ArchiveHabitUseCase
 import org.example.habitstreak.domain.usecase.habit.CalculateHabitStatsUseCase
-import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificationUseCase
-import org.example.habitstreak.presentation.viewmodel.*
 import org.koin.dsl.module
 import org.example.habitstreak.data.local.HabitDatabase
 import org.example.habitstreak.data.repository.CategoryRepositoryImpl
@@ -30,11 +27,8 @@ import org.example.habitstreak.core.locale.*
 import org.example.habitstreak.core.theme.*
 import org.example.habitstreak.presentation.permission.PermissionFlowHandler
 import org.example.habitstreak.data.cache.PermissionStateCache
+import org.example.habitstreak.presentation.viewmodel.*
 
-/**
- * Main application module with improved SOLID compliance.
- * Modularized for better organization and maintainability.
- */
 val appModule = module {
     // Core utilities
     single<DateProvider> { DateProviderImpl() }
@@ -65,11 +59,11 @@ val appModule = module {
         )
     }
 
-    // Domain Services - Business logic following SRP
+    // Domain Services
     single { HabitValidationService() }
     single { org.example.habitstreak.domain.service.HabitFilterService() }
 
-    // Permission Services - Following SRP for permission management
+    // Permission Services
     single { PermissionStateCache() }
     single {
         PermissionFlowHandler(
@@ -100,8 +94,8 @@ val appModule = module {
             habitRepository = get(),
             categoryRepository = get(),
             preferencesRepository = get(),
-            manageHabitNotificationUseCase = get(),
-            updateNotificationPeriodUseCase = get(),
+            habitNotificationUseCase = get(),
+            globalNotificationUseCase = get(),
             habitId = habitId
         )
     }
@@ -112,12 +106,9 @@ val appModule = module {
             habitRepository = get(),
             habitRecordRepository = get(),
             calculateHabitStatsUseCase = get(),
-            manageHabitNotificationUseCase = get(),
-            checkGlobalNotificationStatusUseCase = get(),
-            enableGlobalNotificationsUseCase = get(),
-            updateNotificationPreferencesUseCase = get(),
-            getNotificationPreferencesUseCase = get(),
-            updateNotificationPeriodUseCase = get(),
+            habitNotificationUseCase = get(),
+            globalNotificationUseCase = get(),
+            notificationPreferencesUseCase = get(),
             preferencesRepository = get(),
             dateProvider = get()
         )
@@ -130,9 +121,8 @@ val appModule = module {
             themeService = get(),
             themeStateHolder = get(),
             permissionFlowHandler = get(),
-            enableGlobalNotificationsUseCase = get(),
-            disableGlobalNotificationsUseCase = get(),
-            updateNotificationPreferencesUseCase = get()
+            globalNotificationUseCase = get(),
+            notificationPreferencesUseCase = get()
         )
     }
 }

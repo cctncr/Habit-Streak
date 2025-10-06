@@ -607,4 +607,23 @@
     <string name="every_day_description">Her gün hatırlatıcı gönder</string>
     <string name="at_least_one_day">Lütfen en az bir gün seçin</string>
 
+    <!-- Notification Error Messages (Phase 1 - Bug Fixes) -->
+    <string name="error_habit_created_reminder_failed">Alışkanlık oluşturuldu ancak hatırlatıcı kurulumu başarısız oldu. Alışkanlık detaylarından manuel olarak etkinleştirin.</string>
+    <string name="error_habit_updated_reminder_failed">Alışkanlık güncellendi ancak hatırlatıcı başarısız oldu</string>
+    <string name="error_reminder_permission_required">Alışkanlık oluşturuldu. Hatırlatıcıyı etkinleştirmek için lütfen izin verin.</string>
+    <string name="error_reminder_enable_manually">Hatırlatıcıyı manuel olarak etkinleştir</string>
+
+    <!-- Notification Success Messages -->
+    <string name="success_partial_notifications_enabled">%2$d alışkanlıktan %1$d tanesi etkinleştirildi</string>
+
+    <!-- iOS Notification Content -->
+    <string name="notification_habit_reminder_title">Alışkanlık Hatırlatıcısı</string>
+    <string name="notification_mark_complete_action">Tamamla</string>
+    <string name="notification_snooze_action">Ertele</string>
+    <string name="notification_rest_day_title">%s Dinlenme Günü</string>
+    <string name="notification_rest_day_message">%s bugün için planlanmamış. İyi bir dinlenme hak ediyorsunuz!</string>
+    <string name="notification_reminder_title">%s Hatırlatıcısı</string>
+    <string name="notification_default_message">Alışkanlığınızı tamamlama zamanı!</string>
+    <string name="notification_habit_message">Tamamlanacak: %s</string>
+
 </resources>

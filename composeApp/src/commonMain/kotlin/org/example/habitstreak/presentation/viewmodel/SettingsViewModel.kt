@@ -5,10 +5,9 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.example.habitstreak.domain.repository.PreferencesRepository
-import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
-import org.example.habitstreak.domain.usecase.notification.DisableGlobalNotificationsUseCase
+import org.example.habitstreak.domain.usecase.notification.GlobalNotificationUseCase
 import org.example.habitstreak.domain.usecase.notification.NotificationOperationResult
-import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.NotificationPreferencesUseCase
 import org.example.habitstreak.presentation.ui.state.SettingsUiState
 import org.example.habitstreak.core.locale.AppLocale
 import org.example.habitstreak.core.locale.ILocaleService
@@ -26,9 +25,8 @@ class SettingsViewModel(
     private val themeService: IThemeService,
     private val themeStateHolder: IThemeStateHolder,
     private val permissionFlowHandler: PermissionFlowHandler,
-    private val enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase,
-    private val disableGlobalNotificationsUseCase: DisableGlobalNotificationsUseCase,
-    private val updateNotificationPreferencesUseCase: UpdateNotificationPreferencesUseCase
+    private val globalNotificationUseCase: GlobalNotificationUseCase,
+    private val notificationPreferencesUseCase: NotificationPreferencesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -125,8 +123,8 @@ class SettingsViewModel(
             _uiState.update { it.copy(isLoading = true) }
 
             try {
-                // Use DisableGlobalNotificationsUseCase instead of duplicate logic
-                when (val result = disableGlobalNotificationsUseCase.execute()) {
+                // Use GlobalNotificationUseCase.disable instead of duplicate logic
+                when (val result = globalNotificationUseCase.disable()) {
                     is NotificationOperationResult.Success -> {
                         println("🔔 SETTINGS_VIEWMODEL: Notifications disabled successfully")
                     }
@@ -160,8 +158,8 @@ class SettingsViewModel(
 
     private suspend fun enableNotifications() {
         try {
-            // Use EnableGlobalNotificationsUseCase instead of duplicate logic
-            when (val result = enableGlobalNotificationsUseCase.execute()) {
+            // Use GlobalNotificationUseCase.enable instead of duplicate logic
+            when (val result = globalNotificationUseCase.enable()) {
                 is NotificationOperationResult.Success -> {
                     _uiState.update {
                         it.copy(
@@ -210,13 +208,13 @@ class SettingsViewModel(
         }
     }
 
-    // Duplicate methods removed - now using EnableGlobalNotificationsUseCase and DisableGlobalNotificationsUseCase
+    // Duplicate methods removed - now using GlobalNotificationUseCase
 
     fun toggleSound(enabled: Boolean) {
         viewModelScope.launch {
             try {
-                // Use UpdateNotificationPreferencesUseCase to update preference and sync notifications
-                updateNotificationPreferencesUseCase.updateSound(enabled)
+                // Use NotificationPreferencesUseCase to update preference and sync notifications
+                notificationPreferencesUseCase.updateSound(enabled)
                 println("🔔 SETTINGS_VIEWMODEL: Sound preference updated to $enabled and notifications synced")
             } catch (e: Exception) {
                 println("🔔 SETTINGS_VIEWMODEL: Error updating sound preference: ${e.message}")
@@ -228,8 +226,8 @@ class SettingsViewModel(
     fun toggleVibration(enabled: Boolean) {
         viewModelScope.launch {
             try {
-                // Use UpdateNotificationPreferencesUseCase to update preference and sync notifications
-                updateNotificationPreferencesUseCase.updateVibration(enabled)
+                // Use NotificationPreferencesUseCase to update preference and sync notifications
+                notificationPreferencesUseCase.updateVibration(enabled)
                 println("🔔 SETTINGS_VIEWMODEL: Vibration preference updated to $enabled and notifications synced")
             } catch (e: Exception) {
                 println("🔔 SETTINGS_VIEWMODEL: Error updating vibration preference: ${e.message}")

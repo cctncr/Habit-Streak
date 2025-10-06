@@ -1,65 +1,18 @@
 package org.example.habitstreak.domain.model
 
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalTime
-import kotlinx.datetime.LocalDateTime
-import kotlin.time.ExperimentalTime
 
 /**
- * Enhanced notification configuration following ISP and SRP
- * More specific interfaces can be extracted if needed
+ * Simplified notification configuration for a habit
+ * Contains only data that should be persisted
+ *
+ * Sound/vibration preferences are global settings
+ * Habit frequency/createdAt are runtime dependencies (passed separately)
  */
-@OptIn(ExperimentalTime::class)
 data class NotificationConfig(
-    val id: String? = null,
     val habitId: String,
     val time: LocalTime,
     val isEnabled: Boolean = true,
-    val message: String = "Time to complete your habit!",
-    val soundEnabled: Boolean = true,
-    val vibrationEnabled: Boolean = true,
-    val priority: NotificationPriority = NotificationPriority.DEFAULT,
-    val period: NotificationPeriod = NotificationPeriod.EveryDay,
-    val habitFrequency: HabitFrequency? = null,
-    val habitCreatedAt: Instant? = null,
-    val createdAt: LocalDateTime? = null,
-    val updatedAt: LocalDateTime? = null
+    val message: String,
+    val period: NotificationPeriod = NotificationPeriod.EveryDay
 )
-
-/**
- * Notification priority levels
- */
-enum class NotificationPriority {
-    LOW,
-    DEFAULT,
-    HIGH,
-    URGENT
-}
-
-/**
- * Basic notification interface (ISP compliance)
- */
-interface BasicNotification {
-    val habitId: String
-    val time: LocalTime
-    val isEnabled: Boolean
-}
-
-/**
- * Extended notification interface for advanced features
- */
-interface AdvancedNotification : BasicNotification {
-    val message: String
-    val soundEnabled: Boolean
-    val vibrationEnabled: Boolean
-    val priority: NotificationPriority
-}
-
-/**
- * Extension function to convert config to basic interface
- */
-fun NotificationConfig.toBasic(): BasicNotification = object : BasicNotification {
-    override val habitId: String = this@toBasic.habitId
-    override val time: LocalTime = this@toBasic.time
-    override val isEnabled: Boolean = this@toBasic.isEnabled
-}

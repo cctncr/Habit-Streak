@@ -7,9 +7,9 @@ enum class AppTheme(val code: String, val displayName: String) {
     SYSTEM("system", "System default"),
     LIGHT("light", "Light"),
     DARK("dark", "Dark"),
-    PURPLE("purple", "Purple Night"),  // Custom theme 1
-    GREEN("green", "Forest Green"),   // Custom theme 2
-    BLUE("blue", "Ocean Blue");       // Custom theme 3
+    PURPLE("purple", "Purple Night"),
+    GREEN("green", "Forest Green"),
+    BLUE("blue", "Ocean Blue");
 
     companion object {
         fun fromCode(code: String): AppTheme {
@@ -22,13 +22,6 @@ enum class AppTheme(val code: String, val displayName: String) {
         fun getAvailableThemes(): List<AppTheme> {
             return entries.toList()
         }
-
-        /**
-         * Get custom themes only (excluding system, light, dark)
-         */
-        fun getCustomThemes(): List<AppTheme> {
-            return listOf(PURPLE, GREEN, BLUE)
-        }
     }
 }
 
@@ -36,19 +29,6 @@ enum class AppTheme(val code: String, val displayName: String) {
  * Theme mode that determines how the theme should be applied
  */
 sealed class ThemeMode {
-    object System : ThemeMode()
-    object Light : ThemeMode()
-    object Dark : ThemeMode()
+    data object System : ThemeMode()
     data class Custom(val theme: AppTheme) : ThemeMode()
-
-    companion object {
-        fun fromAppTheme(appTheme: AppTheme): ThemeMode {
-            return when (appTheme) {
-                AppTheme.SYSTEM -> System
-                AppTheme.LIGHT -> Light
-                AppTheme.DARK -> Dark
-                else -> Custom(appTheme)
-            }
-        }
-    }
 }

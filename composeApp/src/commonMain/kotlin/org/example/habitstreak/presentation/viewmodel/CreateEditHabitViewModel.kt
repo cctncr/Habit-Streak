@@ -3,8 +3,11 @@ package org.example.habitstreak.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
@@ -18,25 +21,33 @@ import org.example.habitstreak.domain.repository.CategoryRepository
 import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.domain.usecase.habit.CreateHabitUseCase
-import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificationUseCase
-import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPeriodUseCase
+import org.example.habitstreak.domain.usecase.notification.HabitNotificationUseCase
+import org.example.habitstreak.domain.usecase.notification.GlobalNotificationUseCase
 import org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import org.example.habitstreak.domain.usecase.notification.NotificationOperationResult
+import org.example.habitstreak.domain.model.NotificationError
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.error_habit_created_reminder_failed
+import habitstreak.composeapp.generated.resources.error_reminder_permission_required
+import org.jetbrains.compose.resources.getString
 
 class CreateEditHabitViewModel(
     private val createHabitUseCase: CreateHabitUseCase,
     private val habitRepository: HabitRepository,
     private val categoryRepository: CategoryRepository,
     private val preferencesRepository: PreferencesRepository,
-    private val manageHabitNotificationUseCase: ManageHabitNotificationUseCase,
-    private val updateNotificationPeriodUseCase: UpdateNotificationPeriodUseCase,
+    private val habitNotificationUseCase: HabitNotificationUseCase,
+    private val globalNotificationUseCase: GlobalNotificationUseCase,
     private val habitId: String?
 ) : ViewModel() {
 
-
     private val _uiState = MutableStateFlow(CreateEditHabitUiState())
     val uiState: StateFlow<CreateEditHabitUiState> = _uiState.asStateFlow()
+
+    private val _uiEvents = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
+    val uiEvents: SharedFlow<UiEvent> = _uiEvents.asSharedFlow()
 
     init {
         loadCategories()
@@ -218,8 +229,44 @@ class CreateEditHabitViewModel(
         _uiState.update { it.copy(reminderTime = time) }
     }
 
+    fun toggleNotification(enabled: Boolean) {
+        viewModelScope.launch {
+            if (enabled) {
+                // ✅ STEP 1: Check global notification status FIRST
+                when (globalNotificationUseCase.checkStatus()) {
+                    is GlobalNotificationUseCase.GlobalStatus.NeedsSystemPermission -> {
+                        _uiEvents.tryEmit(UiEvent.RequestNotificationPermission)
+                        _uiState.update { it.copy(isNotificationEnabled = false) }
+                        return@launch
+                    }
+
+                    is GlobalNotificationUseCase.GlobalStatus.NeedsGlobalEnable -> {
+                        _uiEvents.tryEmit(UiEvent.ShowGlobalEnableDialog(
+                            _uiState.value.title.ifBlank { null }
+                        ))
+                        _uiState.update { it.copy(isNotificationEnabled = false) }
+                        return@launch
+                    }
+
+                    else -> {
+                        // Proceed with enabling
+                    }
+                }
+
+                // ✅ STEP 2: Enable notification (only if permission/global OK)
+                // Just update state - actual scheduling happens on saveHabit
+                _uiState.update { it.copy(isNotificationEnabled = true) }
+
+            } else {
+                // Disable notification
+                _uiState.update { it.copy(isNotificationEnabled = false) }
+            }
+        }
+    }
+
+    @Deprecated("Use toggleNotification() instead", ReplaceWith("toggleNotification(enabled)"))
     fun updateNotificationEnabled(enabled: Boolean) {
-        _uiState.update { it.copy(isNotificationEnabled = enabled) }
+        toggleNotification(enabled)
     }
 
     fun updateNotificationPeriod(period: NotificationPeriod) {
@@ -288,22 +335,23 @@ class CreateEditHabitViewModel(
                                     // Update notification if reminder changed
                                     viewModelScope.launch {
                                         if (state.reminderTime != null && state.isNotificationEnabled) {
-                                            // Enable or update notification
-                                            manageHabitNotificationUseCase.enableNotification(
-                                                habitId = habitId,
-                                                time = state.reminderTime
-                                            )
-
-                                            // Update notification period if not default
+                                            // Update time and period atomically
                                             if (state.notificationPeriod != NotificationPeriod.EveryDay) {
-                                                updateNotificationPeriodUseCase.execute(
+                                                habitNotificationUseCase.updateTimeAndPeriod(
                                                     habitId = habitId,
+                                                    time = state.reminderTime,
                                                     period = state.notificationPeriod
+                                                )
+                                            } else {
+                                                // Just update time if period is default
+                                                habitNotificationUseCase.enable(
+                                                    habitId = habitId,
+                                                    time = state.reminderTime
                                                 )
                                             }
                                         } else if (state.reminderTime == null) {
                                             // Disable notification if reminder was removed
-                                            manageHabitNotificationUseCase.disableNotification(habitId)
+                                            habitNotificationUseCase.disable(habitId)
                                         }
                                     }
 
@@ -338,21 +386,53 @@ class CreateEditHabitViewModel(
                         // If reminder is set, enable notification for the habit
                         if (state.reminderTime != null && state.isNotificationEnabled) {
                             viewModelScope.launch {
-                                manageHabitNotificationUseCase.enableNotification(
-                                    habitId = habit.id,
-                                    time = state.reminderTime
-                                )
-
-                                // Update notification period if not default
-                                if (state.notificationPeriod != NotificationPeriod.EveryDay) {
-                                    updateNotificationPeriodUseCase.execute(
+                                // Use atomic update if period is not default
+                                val notificationResult = if (state.notificationPeriod != NotificationPeriod.EveryDay) {
+                                    habitNotificationUseCase.updateTimeAndPeriod(
                                         habitId = habit.id,
+                                        time = state.reminderTime,
                                         period = state.notificationPeriod
                                     )
+                                } else {
+                                    habitNotificationUseCase.enable(
+                                        habitId = habit.id,
+                                        time = state.reminderTime
+                                    )
+                                }
+
+                                when (notificationResult) {
+                                    is NotificationOperationResult.Success -> {
+                                        // Success - all good
+                                        onSuccess()
+                                    }
+                                    is NotificationOperationResult.Error -> {
+                                        // Show warning but still navigate
+                                        val errorMessage = getString(Res.string.error_habit_created_reminder_failed)
+                                        _uiState.update {
+                                            it.copy(
+                                                error = errorMessage,
+                                                notificationError = notificationResult.error
+                                            )
+                                        }
+                                        onSuccess()
+                                    }
+                                    is NotificationOperationResult.PermissionRequired -> {
+                                        val errorMessage = getString(Res.string.error_reminder_permission_required)
+                                        _uiState.update {
+                                            it.copy(
+                                                error = errorMessage,
+                                                notificationError = NotificationError.PermissionDenied(canRequestAgain = true)
+                                            )
+                                        }
+                                        onSuccess()
+                                    }
+                                    else -> onSuccess()
                                 }
                             }
+                        } else {
+                            // No notification - just navigate
+                            onSuccess()
                         }
-                        onSuccess()
                     },
                     onFailure = { error ->
                         _uiState.update { it.copy(error = error.message) }
@@ -409,5 +489,15 @@ class CreateEditHabitViewModel(
                 availableCategories = _uiState.value.availableCategories
             )
         }
+    }
+
+    /**
+     * UI Events for permission flow
+     * Following the same pattern as HabitDetailViewModel
+     */
+    sealed class UiEvent {
+        data object RequestNotificationPermission : UiEvent()
+        data class ShowGlobalEnableDialog(val habitName: String?) : UiEvent()
+        data object OpenAppSettings : UiEvent()
     }
 }

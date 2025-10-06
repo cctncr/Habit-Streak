@@ -1,20 +1,14 @@
 package org.example.habitstreak.platform
 
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.datetime.TimeZone
 import kotlin.time.ExperimentalTime
-import org.example.habitstreak.MainActivity
 import org.example.habitstreak.domain.usecase.notification.CheckHabitActiveDayUseCase
-import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.NotificationPreferencesUseCase
 import org.koin.core.context.GlobalContext
 
 /**
@@ -67,10 +61,46 @@ class AlarmReceiver : BroadcastReceiver() {
                         showNotification(context, habitId, habitTitle, message, isActive = true)
                     }
                 )
+
+                // ✅ FIX: Reschedule alarm for next occurrence (weekly repeat)
+                rescheduleNotification(koinContext, habitId)
             } catch (e: Exception) {
                 // Show notification with complete button on error (safe fallback)
                 showNotification(context, habitId, habitTitle, message, isActive = true)
+
+                // Still try to reschedule
+                try {
+                    rescheduleNotification(koinContext, habitId)
+                } catch (rescheduleError: Exception) {
+                    println("❌ ALARM_RECEIVER: Failed to reschedule: ${rescheduleError.message}")
+                }
             }
+        }
+    }
+
+    /**
+     * Reschedule notification for next week occurrence
+     * This is needed because we use setExact/setExactAndAllowWhileIdle (one-time alarms)
+     * instead of setRepeating (inexact on modern Android)
+     */
+    private suspend fun rescheduleNotification(koinContext: org.koin.core.Koin, habitId: String) {
+        try {
+            val notificationRepo = koinContext.get<org.example.habitstreak.domain.repository.NotificationRepository>()
+            val habitRepo = koinContext.get<org.example.habitstreak.domain.repository.HabitRepository>()
+            val scheduler = koinContext.get<org.example.habitstreak.domain.service.NotificationScheduler>()
+
+            val config = notificationRepo.getNotificationConfig(habitId)
+            val habit = habitRepo.getHabitById(habitId).getOrNull()
+
+            if (config != null && habit != null && config.isEnabled) {
+                // Reschedule for next occurrence
+                scheduler.scheduleNotification(config, habit.frequency, habit.createdAt)
+                println("✅ ALARM_RECEIVER: Rescheduled notification for habit: $habitId")
+            } else {
+                println("⚠️ ALARM_RECEIVER: Cannot reschedule - config or habit not found/disabled")
+            }
+        } catch (e: Exception) {
+            println("❌ ALARM_RECEIVER: Reschedule failed: ${e.message}")
         }
     }
 
@@ -81,10 +111,6 @@ class AlarmReceiver : BroadcastReceiver() {
         message: String,
         isActive: Boolean
     ) {
-        val notificationManager = context.getSystemService(
-            Context.NOTIFICATION_SERVICE
-        ) as NotificationManager
-
         // Get notification preferences
         val koinContext = GlobalContext.getOrNull()
         var soundEnabled = true
@@ -92,8 +118,8 @@ class AlarmReceiver : BroadcastReceiver() {
 
         if (koinContext != null) {
             try {
-                val getPrefsUseCase = koinContext.get<GetNotificationPreferencesUseCase>()
-                val prefs = kotlinx.coroutines.runBlocking { getPrefsUseCase.execute() }
+                val prefsUseCase = koinContext.get<NotificationPreferencesUseCase>()
+                val prefs = kotlinx.coroutines.runBlocking { prefsUseCase.get() }
                 soundEnabled = prefs.soundEnabled
                 vibrationEnabled = prefs.vibrationEnabled
             } catch (e: Exception) {
@@ -101,85 +127,18 @@ class AlarmReceiver : BroadcastReceiver() {
             }
         }
 
-        // Create intent to open app when notification is clicked
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("habit_id", habitId)
-            putExtra("navigate_to_habit", true)
+        // Use shared NotificationDisplayHelper for consistent notification display
+        CoroutineScope(Dispatchers.IO).launch {
+            NotificationDisplayHelper.showHabitNotification(
+                context = context,
+                habitId = habitId,
+                habitTitle = habitTitle,
+                message = message,
+                isActive = isActive,
+                soundEnabled = soundEnabled,
+                vibrationEnabled = vibrationEnabled
+            )
         }
-
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            habitId.hashCode(),
-            intent,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
-        )
-
-        // Create notification with different content based on habit activity
-        val notificationBuilder = NotificationCompat.Builder(
-            context,
-            AndroidNotificationScheduler.CHANNEL_ID
-        )
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setDefaults(0) // Disable all defaults, we'll set them manually
-
-        // Set sound based on preference
-        if (soundEnabled) {
-            notificationBuilder.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
-        }
-
-        // Set vibration based on preference
-        if (vibrationEnabled) {
-            notificationBuilder.setVibrate(longArrayOf(0, 250, 250, 250))
-        }
-
-        if (isActive) {
-            // Active day - show completion action
-            notificationBuilder
-                .setContentTitle("$habitTitle Reminder")
-                .setContentText(message)
-                .addAction(
-                    android.R.drawable.ic_input_add,
-                    "Mark Complete",
-                    createCompleteActionIntent(context, habitId)
-                )
-        } else {
-            // Inactive day - different message, no completion action
-            notificationBuilder
-                .setContentTitle("$habitTitle Rest Day")
-                .setContentText("$habitTitle is not scheduled for today. Take a well-deserved break!")
-        }
-
-        val notification = notificationBuilder.build()
-
-        // Show notification
-        notificationManager.notify(habitId.hashCode(), notification)
-    }
-
-    private fun createCompleteActionIntent(context: Context, habitId: String): PendingIntent {
-        val intent = Intent(context, NotificationActionReceiver::class.java).apply {
-            action = "COMPLETE_HABIT"
-            putExtra("habit_id", habitId)
-        }
-
-        return PendingIntent.getBroadcast(
-            context,
-            habitId.hashCode() + 1,
-            intent,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
-        )
     }
 
 }

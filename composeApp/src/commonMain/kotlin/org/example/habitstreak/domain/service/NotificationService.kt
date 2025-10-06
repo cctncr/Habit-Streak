@@ -8,6 +8,10 @@ import org.example.habitstreak.domain.repository.HabitRepository
 import org.example.habitstreak.domain.repository.NotificationRepository
 import org.example.habitstreak.domain.repository.PreferencesRepository
 import org.example.habitstreak.core.error.*
+import habitstreak.composeapp.generated.resources.Res
+import habitstreak.composeapp.generated.resources.notification_default_message
+import habitstreak.composeapp.generated.resources.notification_habit_message
+import org.jetbrains.compose.resources.getString
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
@@ -32,29 +36,34 @@ class NotificationService(
                 return Result.failure(NotificationsDisabledException())
             }
 
-            // Get habit details
+            // Get habit details (for scheduling)
             val habit = habitRepository.getHabitById(habitId).getOrNull()
                 ?: return Result.failure(HabitNotFoundException(habitId))
 
-            // Get existing config or create new one
+            // Get existing config (to preserve period)
             val existingConfig = notificationRepository.getNotificationConfig(habitId)
 
-            // Create and save notification config with habit data
+            // Create simplified config
+            val habitMessage = getString(Res.string.notification_habit_message)
             val config = NotificationConfig(
                 habitId = habitId,
                 time = time,
                 isEnabled = true,
-                message = message ?: "Time to complete: ${habit.title}",
-                period = existingConfig?.period ?: NotificationPeriod.EveryDay,
-                habitFrequency = habit.frequency,
-                habitCreatedAt = habit.createdAt
+                message = message ?: habitMessage.replace("%s", habit.title),
+                period = existingConfig?.period ?: NotificationPeriod.EveryDay
             )
 
             // Save to repository
             notificationRepository.saveNotificationConfig(config)
 
-            // Schedule the notification
-            scheduler.scheduleNotification(config)
+            // Schedule with habit data (passed separately)
+            scheduler.scheduleNotification(
+                config = config,
+                habitFrequency = habit.frequency,
+                habitCreatedAt = habit.createdAt
+            )
+
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -83,11 +92,18 @@ class NotificationService(
             val config = notificationRepository.getNotificationConfig(habitId)
                 ?: return Result.failure(NotificationNotFoundException(habitId))
 
+            val habit = habitRepository.getHabitById(habitId).getOrNull()
+                ?: return Result.failure(HabitNotFoundException(habitId))
+
             val updatedConfig = config.copy(time = newTime)
             notificationRepository.saveNotificationConfig(updatedConfig)
 
             if (config.isEnabled) {
-                scheduler.updateNotification(updatedConfig)
+                scheduler.updateNotification(
+                    updatedConfig,
+                    habit.frequency,
+                    habit.createdAt
+                )
             }
 
             Result.success(Unit)
@@ -103,7 +119,14 @@ class NotificationService(
         val configs = notificationRepository.getAllNotificationConfigs()
         configs.forEach { config ->
             if (config.isEnabled) {
-                scheduler.scheduleNotification(config)
+                val habit = habitRepository.getHabitById(config.habitId).getOrNull()
+                if (habit != null) {
+                    scheduler.scheduleNotification(
+                        config,
+                        habit.frequency,
+                        habit.createdAt
+                    )
+                }
             }
         }
     }
@@ -128,7 +151,14 @@ class NotificationService(
      */
     suspend fun cancelAllNotifications(): Result<Unit> {
         return try {
+            val configs = notificationRepository.getAllNotificationConfigs()
+            configs.forEach { config ->
+                scheduler.cancelNotification(config.habitId)
+            }
+
+            // Also call scheduler's cancelAll for WorkManager cleanup
             scheduler.cancelAllNotifications()
+
             // DO NOT call notificationRepository.disableAllNotifications()
             // Keep database state intact so configs can be restored when global notifications are re-enabled
             Result.success(Unit)
@@ -156,14 +186,14 @@ class NotificationService(
             // Update period in database
             notificationRepository.updateNotificationPeriod(habitId, period)
 
-            // If notification is enabled, reschedule with new period and habit data
+            // If notification is enabled, reschedule with new period
             if (config.isEnabled) {
-                val updatedConfig = config.copy(
-                    period = period,
-                    habitFrequency = habit.frequency,
-                    habitCreatedAt = habit.createdAt
+                val updatedConfig = config.copy(period = period)
+                scheduler.updateNotification(
+                    updatedConfig,
+                    habit.frequency,
+                    habit.createdAt
                 )
-                scheduler.updateNotification(updatedConfig)
             }
 
             Result.success(Unit)

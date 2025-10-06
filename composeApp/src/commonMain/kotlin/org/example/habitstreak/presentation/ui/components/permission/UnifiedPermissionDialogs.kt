@@ -28,6 +28,7 @@ fun UnifiedPermissionDialogs(
                 benefitMessage = dialogState.benefitMessage,
                 habitName = null, // Handler has habitName internally
                 onRequestPermission = {
+                    onDismiss()  // ✅ Close rationale dialog first
                     permissionHandler.launchPlatformPermissionRequest()
                 },
                 onDismiss = onDismiss,

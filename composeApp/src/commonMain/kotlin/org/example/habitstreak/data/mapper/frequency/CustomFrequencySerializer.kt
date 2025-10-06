@@ -3,9 +3,6 @@ package org.example.habitstreak.data.mapper.frequency
 import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.RepeatUnit
 
-/**
- * Serializer for Custom frequency type following Single Responsibility Principle.
- */
 class CustomFrequencySerializer : FrequencySerializer {
 
     override fun serialize(frequency: HabitFrequency): Pair<String, String> {

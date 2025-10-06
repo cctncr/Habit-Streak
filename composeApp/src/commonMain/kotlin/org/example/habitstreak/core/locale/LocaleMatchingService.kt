@@ -1,7 +1,5 @@
 package org.example.habitstreak.core.locale
 
-import org.example.habitstreak.core.locale.AppLocale
-
 object LocaleMatchingService {
 
     /**

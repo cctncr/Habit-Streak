@@ -11,7 +11,7 @@ actual fun platformModule() = module {
     single { DatabaseDriverFactory().createDriver() }
     single<NotificationScheduler> {
         IOSNotificationScheduler(
-            getNotificationPreferencesUseCase = get(),
+            preferencesRepository = get(),
             periodValidator = get()
         )
     }

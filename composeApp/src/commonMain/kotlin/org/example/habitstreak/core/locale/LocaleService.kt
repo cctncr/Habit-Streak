@@ -1,9 +1,5 @@
 package org.example.habitstreak.core.locale
 
-import kotlinx.coroutines.flow.first
-import org.example.habitstreak.core.locale.AppLocale
-import org.example.habitstreak.core.locale.SystemLocaleProvider
-
 class LocaleService(
     private val localeRepository: ILocaleRepository,
     private val localeStateHolder: ILocaleStateHolder
@@ -26,7 +22,7 @@ class LocaleService(
     }
 
     override fun getAvailableLocales(): List<AppLocale> {
-        return AppLocale.values().toList()
+        return AppLocale.entries
     }
 
     override fun getSystemLocale(): AppLocale {

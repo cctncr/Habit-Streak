@@ -3,6 +3,7 @@ package org.example.habitstreak.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -115,7 +116,6 @@ class HabitsViewModel(
         _currentViewMode.value = modeOrdinal
     }
 
-    // Yeni eklenen fonksiyon - Tüm habit records'larını observe ediyor
     private fun observeAllRecordsForHistoryUpdate() {
         viewModelScope.launch {
             combine(
@@ -133,16 +133,15 @@ class HabitsViewModel(
         }
     }
 
-    // Yeni fonksiyon - Records'lardan completion histories'i güncelliyor
     private suspend fun updateCompletionHistoriesFromRecords(
         allRecords: List<HabitRecord>,
         habits: List<Habit>
     ) {
         val today = dateProvider.today()
-        val startDate = today.minus(DatePeriod(days = 180)) // 1 yıldan 6 aya düşürüldü
+        val startDate = today.minus(DatePeriod(days = 180))
 
         val recentRecords = allRecords.filter {
-            it.date >= startDate && it.date <= today
+            it.date in startDate..today
         }
 
         if (recentRecords.isEmpty()) return
@@ -161,7 +160,6 @@ class HabitsViewModel(
             }
         }
 
-        // Batch update ve streak hesaplama ayrıştırıldı
         _uiState.update { state ->
             state.copy(
                 completionHistories = newHistories,
@@ -169,8 +167,7 @@ class HabitsViewModel(
             )
         }
 
-        // Streak hesaplamaları ayrı coroutine'de ve throttled
-        habits.chunked(5).forEach { habitChunk -> // 5'li gruplar halinde işle
+        habits.chunked(5).forEach { habitChunk ->
             viewModelScope.launch {
                 habitChunk.forEach { habit ->
                     calculateStreakUseCase(habit.id).fold(

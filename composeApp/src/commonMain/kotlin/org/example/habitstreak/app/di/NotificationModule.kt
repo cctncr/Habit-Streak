@@ -3,22 +3,20 @@ package org.example.habitstreak.app.di
 import org.example.habitstreak.data.repository.NotificationRepositoryImpl
 import org.example.habitstreak.domain.repository.NotificationRepository
 import org.example.habitstreak.domain.service.NotificationService
-import org.example.habitstreak.domain.service.NotificationPermissionService
 import org.example.habitstreak.domain.service.NotificationPeriodValidator
-import org.example.habitstreak.domain.usecase.notification.ManageHabitNotificationUseCase
-import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificationStatusUseCase
-import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
-import org.example.habitstreak.domain.usecase.notification.DisableGlobalNotificationsUseCase
-import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
-import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
-import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPeriodUseCase
+import org.example.habitstreak.domain.usecase.notification.HabitNotificationUseCase
+import org.example.habitstreak.domain.usecase.notification.GlobalNotificationUseCase
+import org.example.habitstreak.domain.usecase.notification.NotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.CheckHabitActiveDayUseCase
 import org.koin.dsl.module
 
 val notificationModule = module {
+    // Repository
     single<NotificationRepository> {
         NotificationRepositoryImpl(get())
     }
 
+    // Service
     single {
         NotificationService(
             notificationRepository = get(),
@@ -28,61 +26,39 @@ val notificationModule = module {
         )
     }
 
-    single {
-        NotificationPermissionService(
-            permissionManager = get()
-        )
-    }
-
+    // Validator
     single {
         NotificationPeriodValidator()
     }
 
+    // Use Cases (SIMPLIFIED from 8 to 4)
     single {
-        ManageHabitNotificationUseCase(
-            notificationService = get(),
-            permissionService = get()
+        HabitNotificationUseCase(
+            notificationService = get()
         )
     }
 
     single {
-        CheckGlobalNotificationStatusUseCase(
+        GlobalNotificationUseCase(
             permissionManager = get(),
-            preferencesRepository = get()
-        )
-    }
-
-    single {
-        EnableGlobalNotificationsUseCase(
             preferencesRepository = get(),
             notificationService = get(),
+            habitRepository = get(),
+            notificationRepository = get(),
+            scheduler = get()
+        )
+    }
+
+    single {
+        NotificationPreferencesUseCase(
+            preferencesRepository = get(),
+            notificationService = get()
+        )
+    }
+
+    single {
+        CheckHabitActiveDayUseCase(
             habitRepository = get()
-        )
-    }
-
-    single {
-        DisableGlobalNotificationsUseCase(
-            preferencesRepository = get(),
-            notificationService = get()
-        )
-    }
-
-    single {
-        UpdateNotificationPreferencesUseCase(
-            preferencesRepository = get(),
-            notificationService = get()
-        )
-    }
-
-    single {
-        GetNotificationPreferencesUseCase(
-            preferencesRepository = get()
-        )
-    }
-
-    single {
-        UpdateNotificationPeriodUseCase(
-            notificationService = get()
         )
     }
 }

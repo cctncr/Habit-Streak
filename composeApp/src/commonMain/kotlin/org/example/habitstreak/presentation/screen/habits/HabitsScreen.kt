@@ -113,7 +113,7 @@ fun HabitsScreen(
     var previousScrollOffset by remember { mutableStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(true) }
 
-    // Use HabitFilterService following SOLID principles - business logic extracted from UI
+    // Use HabitFilterService
     val filteredHabits = remember(habitsWithCompletion, selectedFilter, selectedCategoryId, today) {
         derivedStateOf {
             habitFilterService.filterHabits(

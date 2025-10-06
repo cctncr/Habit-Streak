@@ -96,10 +96,8 @@ import org.example.habitstreak.presentation.ui.components.permission.UnifiedPerm
 import org.example.habitstreak.presentation.ui.components.permission.GlobalEnableNotificationDialog
 import org.example.habitstreak.presentation.permission.PermissionFlowResult
 import org.example.habitstreak.presentation.permission.rememberBasePermissionHandler
-import org.example.habitstreak.domain.usecase.notification.CheckGlobalNotificationStatusUseCase
-import org.example.habitstreak.domain.usecase.notification.EnableGlobalNotificationsUseCase
-import org.example.habitstreak.domain.usecase.notification.UpdateNotificationPreferencesUseCase
-import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
+import org.example.habitstreak.domain.usecase.notification.GlobalNotificationUseCase
+import org.example.habitstreak.domain.usecase.notification.NotificationPreferencesUseCase
 import org.example.habitstreak.domain.usecase.notification.NotificationOperationResult
 import org.example.habitstreak.presentation.ui.components.selection.ColorSelectionGrid
 import org.example.habitstreak.presentation.ui.components.selection.CustomCategoryDialog
@@ -127,10 +125,8 @@ fun CreateEditHabitScreen(
     habitId: String? = null,
     onNavigateBack: () -> Unit,
     viewModel: CreateEditHabitViewModel = koinViewModel(key = habitId) { parametersOf(habitId) },
-    checkGlobalNotificationStatusUseCase: CheckGlobalNotificationStatusUseCase = koinInject(),
-    enableGlobalNotificationsUseCase: EnableGlobalNotificationsUseCase = koinInject(),
-    updateNotificationPreferencesUseCase: UpdateNotificationPreferencesUseCase = koinInject(),
-    getNotificationPreferencesUseCase: GetNotificationPreferencesUseCase = koinInject()
+    globalNotificationUseCase: GlobalNotificationUseCase = koinInject(),
+    notificationPreferencesUseCase: NotificationPreferencesUseCase = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -159,7 +155,7 @@ fun CreateEditHabitScreen(
     // Load preferences on init
     LaunchedEffect(Unit) {
         try {
-            val prefs = getNotificationPreferencesUseCase.execute()
+            val prefs = notificationPreferencesUseCase.get()
             soundEnabled = prefs.soundEnabled
             vibrationEnabled = prefs.vibrationEnabled
         } catch (e: Exception) {
@@ -173,7 +169,38 @@ fun CreateEditHabitScreen(
     ) { granted, canAskAgain ->
         // Platform permission result handling will be done via handler internal logic
         if (granted) {
-            viewModel.updateNotificationEnabled(true)
+            viewModel.toggleNotification(true)
+        }
+    }
+
+    // Listen to ViewModel events for permission flow
+    LaunchedEffect(Unit) {
+        viewModel.uiEvents.collect { event ->
+            when (event) {
+                is CreateEditHabitViewModel.UiEvent.RequestNotificationPermission -> {
+                    permissionHandler.requestPermissionFlow { result ->
+                        permissionDialogState = result
+                        if (result is PermissionFlowResult.PermissionGranted) {
+                            // Retry enabling notification after permission granted
+                            viewModel.toggleNotification(true)
+                        }
+                    }
+                }
+
+                is CreateEditHabitViewModel.UiEvent.ShowGlobalEnableDialog -> {
+                    showGlobalEnableDialog = event.habitName ?: uiState.title.ifBlank { "this habit" }
+                }
+
+                is CreateEditHabitViewModel.UiEvent.OpenAppSettings -> {
+                    coroutineScope.launch {
+                        try {
+                            permissionHandler.openSettings()
+                        } catch (e: Exception) {
+                            println("Error opening settings: ${e.message}")
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -309,7 +336,10 @@ fun CreateEditHabitScreen(
 
                             3 -> GoalStep(
                                 uiState = uiState,
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                onShowGlobalEnableDialog = { habitName ->
+                                    showGlobalEnableDialog = habitName
+                                }
                             )
                         }
                     }
@@ -507,16 +537,16 @@ fun CreateEditHabitScreen(
                 coroutineScope.launch {
                     // Save preferences first
                     try {
-                        updateNotificationPreferencesUseCase.updateBoth(soundEnabled, vibrationEnabled)
+                        notificationPreferencesUseCase.updateBoth(soundEnabled, vibrationEnabled)
                     } catch (e: Exception) {
                         // Error saving preferences
                     }
 
                     // Then enable global notifications
-                    when (val result = enableGlobalNotificationsUseCase.execute()) {
+                    when (val result = globalNotificationUseCase.enable()) {
                         is NotificationOperationResult.Success,
                         is NotificationOperationResult.PartialSuccess -> {
-                            viewModel.updateNotificationEnabled(true)
+                            viewModel.toggleNotification(true)
                         }
                         is NotificationOperationResult.Error -> {
                             // Error enabling global notifications
@@ -1010,7 +1040,8 @@ private fun CategorySelectionStep(
 @Composable
 private fun GoalStep(
     uiState: CreateEditHabitUiState,
-    viewModel: CreateEditHabitViewModel
+    viewModel: CreateEditHabitViewModel,
+    onShowGlobalEnableDialog: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
@@ -1129,13 +1160,7 @@ private fun GoalStep(
             isGlobalNotificationEnabled = uiState.isGlobalNotificationEnabled,
             habitFrequency = uiState.frequency,
             onToggleEnabled = { enabled ->
-                if (enabled) {
-                    // Just enable the switch - actual notification will be created on save
-                    viewModel.updateNotificationEnabled(true)
-                } else {
-                    viewModel.updateNotificationEnabled(false)
-                    viewModel.updateReminderTime(null)
-                }
+                viewModel.toggleNotification(enabled)  // ✅ Simple! ViewModel handles everything
             },
             onTimeAndPeriodChanged = { time, period ->
                 // Update both time and period together atomically

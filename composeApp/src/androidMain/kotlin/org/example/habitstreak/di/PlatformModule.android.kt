@@ -19,7 +19,7 @@ actual fun platformModule() = module {
         AndroidNotificationScheduler(
             context = androidContext(),
             periodValidator = get(),
-            preferencesUseCase = get()
+            preferencesRepository = get()
         )
     }
     single<PermissionManager> { AndroidPermissionManager(androidContext(), get()) }

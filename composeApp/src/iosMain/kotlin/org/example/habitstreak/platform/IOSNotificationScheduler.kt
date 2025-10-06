@@ -4,10 +4,12 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.datetime.*
 import org.example.habitstreak.domain.model.DayOfWeek
+import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.service.NotificationScheduler
 import org.example.habitstreak.domain.service.NotificationPeriodValidator
-import org.example.habitstreak.domain.usecase.notification.GetNotificationPreferencesUseCase
+import org.example.habitstreak.domain.repository.PreferencesRepository
+import kotlinx.coroutines.flow.first
 import platform.Foundation.*
 import platform.UserNotifications.*
 import kotlin.coroutines.resume
@@ -18,11 +20,11 @@ import kotlin.time.ExperimentalTime
 /**
  * iOS implementation of NotificationScheduler
  * Following Single Responsibility - only handles scheduling
- * Now supports user sound preferences via GetNotificationPreferencesUseCase
+ * Now supports user sound preferences via PreferencesRepository
  */
 @OptIn(ExperimentalForeignApi::class, ExperimentalTime::class)
 class IOSNotificationScheduler(
-    private val getNotificationPreferencesUseCase: GetNotificationPreferencesUseCase,
+    private val preferencesRepository: PreferencesRepository,
     private val periodValidator: NotificationPeriodValidator
 ) : NotificationScheduler {
 
@@ -38,38 +40,42 @@ class IOSNotificationScheduler(
         }
     }
 
-    override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
+    override suspend fun scheduleNotification(
+        config: NotificationConfig,
+        habitFrequency: HabitFrequency,
+        habitCreatedAt: Instant
+    ): Result<Unit> {
         ensureCategoriesSetup()
         return try {
-            // Validate config has required habit data
-            if (config.habitFrequency == null || config.habitCreatedAt == null) {
-                return Result.failure(Exception("NotificationConfig missing habitFrequency or habitCreatedAt"))
-            }
-
             // Cancel previous notifications first
             cancelNotification(config.habitId)
 
             // Get user sound preferences
-            val prefs = getNotificationPreferencesUseCase.execute()
+            val soundEnabled = preferencesRepository.isSoundEnabled().first()
 
             // Get notification days based on period
             val now = Clock.System.now()
             val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
             val weekStartDate = today.minus(today.dayOfWeek.ordinal, DateTimeUnit.DAY)
 
-            val habitCreatedAt = config.habitCreatedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val habitCreatedDate = habitCreatedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-            // Use config data directly without creating domain objects
+            // Use passed parameters instead of config fields
             val notificationDays = periodValidator.getNotificationDays(
                 period = config.period,
-                habitFrequency = config.habitFrequency,
-                habitCreatedAt = habitCreatedAt,
+                habitFrequency = habitFrequency,    // ✅ From parameter
+                habitCreatedAt = habitCreatedDate,  // ✅ From parameter
                 weekStartDate = weekStartDate
             )
 
-            // Schedule notification for each day
-            notificationDays.forEach { dayOfWeek ->
-                scheduleForDayOfWeek(config, prefs, dayOfWeek)
+            // Schedule notification for each day with proper error handling
+            // ✅ FIX: Use for loop to properly await suspend function calls
+            for (dayOfWeek in notificationDays) {
+                val result = scheduleForDayOfWeek(config, soundEnabled, dayOfWeek)
+                if (result.isFailure) {
+                    // Return early on first failure (fail-fast)
+                    return result
+                }
             }
 
             Result.success(Unit)
@@ -92,9 +98,13 @@ class IOSNotificationScheduler(
         }
     }
 
-    override suspend fun updateNotification(config: NotificationConfig): Result<Unit> {
+    override suspend fun updateNotification(
+        config: NotificationConfig,
+        habitFrequency: HabitFrequency,
+        habitCreatedAt: Instant
+    ): Result<Unit> {
         cancelNotification(config.habitId)
-        return scheduleNotification(config)
+        return scheduleNotification(config, habitFrequency, habitCreatedAt)
     }
 
     override suspend fun cancelAllNotifications(): Result<Unit> {
@@ -110,7 +120,9 @@ class IOSNotificationScheduler(
         return suspendCancellableCoroutine { continuation ->
             notificationCenter.getPendingNotificationRequestsWithCompletionHandler { requests ->
                 val isScheduled = requests?.any { request ->
-                    (request as? UNNotificationRequest)?.identifier == "habit_$habitId"
+                    // ✅ FIX: Use startsWith since identifiers include day of week
+                    // Format: "habit_{habitId}_{dayOfWeek}"
+                    (request as? UNNotificationRequest)?.identifier?.startsWith("habit_$habitId") == true
                 } ?: false
                 continuation.resume(isScheduled)
             }
@@ -119,15 +131,15 @@ class IOSNotificationScheduler(
 
     private suspend fun scheduleForDayOfWeek(
         config: NotificationConfig,
-        prefs: GetNotificationPreferencesUseCase.Preferences,
+        soundEnabled: Boolean,
         dayOfWeek: DayOfWeek
-    ) {
+    ): Result<Unit> {
         val content = UNMutableNotificationContent().apply {
             setTitle("Habit Reminder")
             setBody(config.message)
 
             // Apply sound preference based on user settings
-            if (prefs.soundEnabled) {
+            if (soundEnabled) {
                 setSound(UNNotificationSound.defaultSound)
             } else {
                 setSound(null) // Silent notification
@@ -155,7 +167,7 @@ class IOSNotificationScheduler(
             trigger = trigger
         )
 
-        suspendCancellableCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
             notificationCenter.addNotificationRequest(request) { error ->
                 if (error == null) {
                     continuation.resume(Result.success(Unit))
