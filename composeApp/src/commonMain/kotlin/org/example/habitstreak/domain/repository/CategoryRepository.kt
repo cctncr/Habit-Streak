@@ -17,6 +17,7 @@ interface CategoryRepository {
 
     // Habit-Category relations
     suspend fun getCategoriesForHabit(habitId: String): Result<List<Category>>
+    suspend fun getHabitsUsingCategory(categoryId: String): Result<List<String>>
     suspend fun addCategoryToHabit(habitId: String, categoryId: String): Result<Unit>
     suspend fun removeCategoryFromHabit(habitId: String, categoryId: String): Result<Unit>
     suspend fun updateHabitCategories(habitId: String, categoryIds: List<String>): Result<Unit>

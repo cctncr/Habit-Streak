@@ -62,25 +62,9 @@ class CreateHabitUseCase(
             createdAt = dateProvider.now()
         )
 
-        return habitRepository.createHabit(habit).fold(
-            onSuccess = { createdHabit ->
-                categoryRepository.updateHabitCategories(
-                    createdHabit.id,
-                    params.categories.map { it.id }
-                ).fold(
-                    onSuccess = {
-                        params.categories.forEach { category ->
-                            categoryRepository.incrementUsageCount(category.id)
-                        }
-                        Result.success(createdHabit)
-                    },
-                    onFailure = {
-                        habitRepository.deleteHabit(createdHabit.id)
-                        Result.failure(it)
-                    }
-                )
-            },
-            onFailure = { Result.failure(it) }
+        return habitRepository.createHabit(
+            habit,
+            params.categories.map { it.id }
         )
     }
 }

@@ -25,10 +25,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -41,60 +39,71 @@ import habitstreak.composeapp.generated.resources.archived_no_habits
 import habitstreak.composeapp.generated.resources.archived_no_habits_desc
 import habitstreak.composeapp.generated.resources.nav_back
 import org.example.habitstreak.domain.model.Habit
+import org.example.habitstreak.presentation.viewmodel.ArchivedHabitsViewModel
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArchivedHabitsScreen(
     onNavigateBack: () -> Unit,
-    onRestoreHabit: (String) -> Unit
+    onRestoreHabit: (String) -> Unit,
+    viewModel: ArchivedHabitsViewModel = koinViewModel()
 ) {
-    var archivedHabits by remember { mutableStateOf(listOf<Habit>()) }
+    val archivedHabits by viewModel.archivedHabits.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = stringResource(Res.string.archived_habits_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(Res.string.archived_habits_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(
+                                Res.string.nav_back
+                            )
                         )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(
-                                Res.string.nav_back))
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        if (archivedHabits.isEmpty()) {
+            EmptyArchivedState(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(32.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(archivedHabits) { habit ->
+                    ArchivedHabitCard(
+                        habit = habit,
+                        onRestore = {
+                            viewModel.restoreHabit(habit.id)
+                            onRestoreHabit(habit.id)
                         }
-                    }
-                )
-            }
-        ) { paddingValues ->
-            if (archivedHabits.isEmpty()) {
-                EmptyArchivedState(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(32.dp)
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(archivedHabits) { habit ->
-                        ArchivedHabitCard(
-                            habit = habit,
-                            onRestore = { onRestoreHabit(habit.id) }
-                        )
-                    }
+                    )
                 }
             }
         }
     }
+}
 
 @Composable
 private fun ArchivedHabitCard(

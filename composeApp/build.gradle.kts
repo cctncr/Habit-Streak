@@ -27,6 +27,14 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+            binaryOption("bundleId", "org.example.habitstreak.ComposeApp")
+        }
+    }
+
+    // Export sqldelight dependency to iOS framework
+    targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
+        binaries.all {
+            linkerOpts("-lsqlite3")
         }
     }
 
@@ -72,6 +80,7 @@ kotlin {
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
+            implementation(libs.reorderable)
         }
 
         jvmMain.dependencies {
@@ -126,4 +135,10 @@ compose.desktop {
             packageVersion = "1.0.0"
         }
     }
+}
+
+// Workaround for Compose Resources iOS sync task missing outputDir
+tasks.matching { it.name == "syncComposeResourcesForIos" }.configureEach {
+    val outputDirProperty = this.javaClass.getMethod("getOutputDir").invoke(this) as org.gradle.api.file.DirectoryProperty
+    outputDirProperty.set(project.layout.buildDirectory.dir("compose/ios/Ios"))
 }

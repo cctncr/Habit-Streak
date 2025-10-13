@@ -1,25 +1,31 @@
 CREATE TABLE IF NOT EXISTS Category (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL UNIQUE,
+    key TEXT,
     isCustom INTEGER NOT NULL DEFAULT 0,
     usageCount INTEGER NOT NULL DEFAULT 0,
-    createdAt TEXT NOT NULL
+    createdAt TEXT NOT NULL,
+    isDeleted INTEGER NOT NULL DEFAULT 0
 );
 
 -- Queries
 selectAll:
-SELECT * FROM Category ORDER BY usageCount DESC, name ASC;
+SELECT * FROM Category WHERE isDeleted = 0 ORDER BY usageCount DESC, name ASC;
 
 selectUsed:
 SELECT DISTINCT c.* FROM Category c
 INNER JOIN HabitCategory hc ON c.id = hc.categoryId
+WHERE c.isDeleted = 0
 ORDER BY c.usageCount DESC, c.name ASC;
 
 selectById:
-SELECT * FROM Category WHERE id = ?;
+SELECT * FROM Category WHERE id = ? AND isDeleted = 0;
 
 selectByName:
-SELECT * FROM Category WHERE LOWER(name) = LOWER(?);
+SELECT * FROM Category WHERE LOWER(name) = LOWER(?) AND isDeleted = 0;
+
+selectByKey:
+SELECT * FROM Category WHERE key = ?;
 
 insert:
 INSERT OR REPLACE INTO Category VALUES ?;
@@ -30,8 +36,11 @@ UPDATE Category SET usageCount = usageCount + 1 WHERE id = ?;
 decrementUsageCount:
 UPDATE Category SET usageCount = MAX(0, usageCount - 1) WHERE id = ?;
 
+softDelete:
+UPDATE Category SET isDeleted = 1 WHERE id = ?;
+
 delete:
-DELETE FROM Category WHERE id = ? AND isCustom = 1;
+DELETE FROM Category WHERE id = ?;
 
 deleteUnused:
-DELETE FROM Category WHERE usageCount = 0 AND isCustom = 1;
+DELETE FROM Category WHERE usageCount = 0 AND isCustom = 1 AND isDeleted = 0;

@@ -14,6 +14,7 @@
     <string name="month_feb">Feb</string>
     <string name="month_mar">Mar</string>
     <string name="month_apr">Apr</string>
+    <string name="month_may_abbr">May</string>
     <string name="month_jun">Jun</string>
     <string name="month_jul">Jul</string>
     <string name="month_aug">Aug</string>
@@ -22,8 +23,30 @@
     <string name="month_nov">Nov</string>
     <string name="month_dec">Dec</string>
 
+    <!-- Month Abbreviations (3 letters) -->
+    <string name="month_jan_abbr">Jan</string>
+    <string name="month_feb_abbr">Feb</string>
+    <string name="month_mar_abbr">Mar</string>
+    <string name="month_apr_abbr">Apr</string>
+    <string name="month_jun_abbr">Jun</string>
+    <string name="month_jul_abbr">Jul</string>
+    <string name="month_aug_abbr">Aug</string>
+    <string name="month_sep_abbr">Sep</string>
+    <string name="month_oct_abbr">Oct</string>
+    <string name="month_nov_abbr">Nov</string>
+    <string name="month_dec_abbr">Dec</string>
+
     <string name="time_am">AM</string>
     <string name="time_pm">PM</string>
+
+    <!-- Day Names (3-letter abbreviation) -->
+    <string name="day_mon_abbr">Mon</string>
+    <string name="day_tue_abbr">Tue</string>
+    <string name="day_wed_abbr">Wed</string>
+    <string name="day_thu_abbr">Thu</string>
+    <string name="day_fri_abbr">Fri</string>
+    <string name="day_sat_abbr">Sat</string>
+    <string name="day_sun_abbr">Sun</string>
 
     <string name="date_today">Today</string>
     <string name="date_tomorrow">Tomorrow</string>
@@ -307,6 +330,15 @@
     <string name="category_afternoon">Afternoon</string>
     <string name="category_other">Other</string>
     <string name="category_creativity">Creativity</string>
+
+    <!-- Category Deletion -->
+    <string name="delete_category_title">Delete Category?</string>
+    <string name="delete_category_message">This will remove the category from all habits.</string>
+    <string name="delete_category_affected_habits">Affected habits:</string>
+    <string name="delete_category_no_habits">No habits are using this category.</string>
+    <string name="delete_category_confirm">Delete Category</string>
+    <string name="success_category_deleted">Category deleted successfully</string>
+    <string name="error_category_delete_failed">Failed to delete category</string>
 
     <!-- Archived habits -->
     <string name="archived_habits_title">Archived Habits</string>

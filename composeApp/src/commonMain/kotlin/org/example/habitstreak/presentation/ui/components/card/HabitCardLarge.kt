@@ -10,7 +10,6 @@ import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -23,24 +22,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.model.HabitRecord
 import org.example.habitstreak.presentation.ui.components.common.HabitIconDisplay
-import org.example.habitstreak.presentation.ui.components.input.SimpleCheckHabitInputPanel
-import org.example.habitstreak.presentation.ui.components.input.CountableHabitInputPanel
 import org.example.habitstreak.presentation.ui.theme.HabitStreakTheme
 import org.example.habitstreak.domain.util.HabitFrequencyUtils
 import kotlin.time.ExperimentalTime
 
 /**
- * Large size habit card with 5 rows grid (clickable)
+ * Large size habit card with 7 rows grid (clickable)
  * Allows editing past dates
+ * Shows day labels on the left
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
+@OptIn(ExperimentalTime::class)
 @Composable
 fun HabitCardLarge(
     habit: Habit,
@@ -54,12 +50,8 @@ fun HabitCardLarge(
     onCardClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showProgressSheet by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
-
-    var currentValue by remember { mutableIntStateOf(0) }
-    var currentNote by remember { mutableStateOf("") }
 
     val isCompleted = todayProgress >= 1f
     val habitColor = HabitStreakTheme.habitColorToComposeColor(habit.color)
@@ -149,9 +141,6 @@ fun HabitCardLarge(
                                     indication = ripple(bounded = false, radius = 28.dp)
                                 ) {
                                     selectedDate = today
-                                    val record = habitRecords.find { it.date == today }
-                                    currentValue = record?.completedCount ?: 0
-                                    currentNote = record?.note ?: ""
                                     showProgressSheet = true
                                 }
                         ) {
@@ -165,9 +154,6 @@ fun HabitCardLarge(
                                 strokeWidth = 4.dp,
                                 onClick = {
                                     selectedDate = today
-                                    val record = habitRecords.find { it.date == today }
-                                    currentValue = record?.completedCount ?: 0
-                                    currentNote = record?.note ?: ""
                                     showProgressSheet = true
                                 }
                             )
@@ -258,132 +244,60 @@ fun HabitCardLarge(
                 }
             }
 
-            // Grid - 5 rows, clickable
-            val gridStartDate = today.minus(DatePeriod(days = 149)) // 30 columns * 5 rows
+            val gridDateRange = GridDateHelper.calculateDateRange(
+                today = today,
+                habitRecords = habitRecords,
+                minHistoryDays = 209,
+                alignToMonday = true
+            )
 
             HabitGrid(
                 completedDates = completionHistory,
-                startDate = gridStartDate,
+                startDate = gridDateRange.effectiveStartDate,
                 today = today,
                 accentColor = habitColor,
-                rows = 5,
-                boxSize = 32.dp,
+                rows = 7,
+                boxSize = 36.dp,
                 spacing = 3.dp,
                 cornerRadius = 6.dp,
-                maxHistoryDays = 150L,
+                maxHistoryDays = gridDateRange.actualHistoryDays,
                 habitRecords = habitRecords.filter {
-                    it.date >= gridStartDate && it.date <= today
+                    it.date >= gridDateRange.effectiveStartDate && it.date <= today
                 },
                 onDateClick = { date ->
-                    // Only allow clicking on active dates
-                    val isDateActive = HabitFrequencyUtils.isActiveOnDate(habit.frequency, date, habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date)
+                    val isDateActive = HabitFrequencyUtils.isActiveOnDate(
+                        habit.frequency,
+                        date,
+                        habit.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    )
                     if (isDateActive) {
                         selectedDate = date
-                        val record = habitRecords.find { it.date == date }
-                        currentValue = record?.completedCount ?: 0
-                        currentNote = record?.note ?: ""
                         showProgressSheet = true
                     }
                 },
                 habit = habit,
+                showDayLabels = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(300.dp)
             )
         }
     }
 
-    // Progress Bottom Sheet
-    if (showProgressSheet && selectedDate != null) {
-        ModalBottomSheet(
-            onDismissRequest = {
-                showProgressSheet = false
-                selectedDate = null
-            },
-            sheetState = bottomSheetState
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
-            ) {
-                // Title with Date
-                Column(modifier = Modifier.padding(bottom = 24.dp)) {
-                    Text(
-                        text = habit.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = if (selectedDate == today) "Today" else
-                            selectedDate?.toString() ?: "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Progress Input Panel - different for simple check vs countable habits
-                if (habit.targetCount == 1) {
-                    // Simple check habit - using common panel same as HabitDetailScreen
-                    SimpleCheckHabitInputPanel(
-                        isCompleted = currentValue >= 1,
-                        onToggle = { isCompleted ->
-                            currentValue = if (isCompleted) 1 else 0
-                        },
-                        accentColor = habitColor
-                    )
-                } else {
-                    // Countable habit - using common panel
-                    CountableHabitInputPanel(
-                        currentValue = currentValue,
-                        targetCount = habit.targetCount,
-                        unit = habit.unit,
-                        onValueChange = { value ->
-                            currentValue = value
-                        },
-                        onReset = {
-                            currentValue = 0
-                        },
-                        onFillDay = {
-                            currentValue = habit.targetCount
-                        },
-                        accentColor = habitColor
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Note Input
-                OutlinedTextField(
-                    value = currentNote,
-                    onValueChange = { currentNote = it },
-                    label = { Text("Note (optional)") },
-                    placeholder = { Text("Add a note...") },
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Save Button
-                Button(
-                    onClick = {
-                        selectedDate?.let { date ->
-                            onUpdateProgress(date, currentValue, currentNote)
-                        }
-                        showProgressSheet = false
-                        selectedDate = null
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = habitColor
-                    )
-                ) {
-                    Text("Save", fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-            }
+    HabitProgressBottomSheet(
+        visible = showProgressSheet,
+        habit = habit,
+        selectedDate = selectedDate,
+        today = today,
+        habitRecords = habitRecords,
+        onDismiss = {
+            showProgressSheet = false
+            selectedDate = null
+        },
+        onSave = { date, value, note ->
+            onUpdateProgress(date, value, note)
+            showProgressSheet = false
+            selectedDate = null
         }
-    }
+    )
 }

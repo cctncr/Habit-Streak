@@ -36,6 +36,7 @@ class HabitsViewModel(
     private val toggleHabitCompletionUseCase: ToggleHabitCompletionUseCase,
     private val calculateStreakUseCase: CalculateStreakUseCase,
     private val archiveHabitUseCase: ArchiveHabitUseCase,
+    private val reorderHabitsUseCase: org.example.habitstreak.domain.usecase.habit.ReorderHabitsUseCase,
     private val habitRecordRepository: HabitRecordRepository,
     private val categoryRepository: CategoryRepository,
     private val dateProvider: DateProvider
@@ -138,10 +139,18 @@ class HabitsViewModel(
         habits: List<Habit>
     ) {
         val today = dateProvider.today()
-        val startDate = today.minus(DatePeriod(days = 180))
+        val minHistoryDays = 180
+        val oldestRecordDate = allRecords.minOfOrNull { it.date }
+        val minStartDate = today.minus(DatePeriod(days = minHistoryDays))
+
+        val effectiveStartDate = if (oldestRecordDate != null && oldestRecordDate < minStartDate) {
+            oldestRecordDate
+        } else {
+            minStartDate
+        }
 
         val recentRecords = allRecords.filter {
-            it.date in startDate..today
+            it.date in effectiveStartDate..today
         }
 
         if (recentRecords.isEmpty()) return
@@ -289,5 +298,29 @@ class HabitsViewModel(
 
     fun isHabitLoading(habitId: String): Boolean {
         return _habitLoadingStates.value[habitId] == true
+    }
+
+    fun reorderHabits(fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            val currentHabits = habitsWithCompletion.value.map { it.habit }
+            if (fromIndex < 0 || toIndex < 0 || fromIndex >= currentHabits.size || toIndex >= currentHabits.size) {
+                return@launch
+            }
+
+            reorderHabitsUseCase(
+                org.example.habitstreak.domain.usecase.habit.ReorderHabitsUseCase.Params(
+                    habits = currentHabits,
+                    fromIndex = fromIndex,
+                    toIndex = toIndex
+                )
+            ).fold(
+                onSuccess = { },
+                onFailure = { error ->
+                    _uiState.update { state ->
+                        state.copy(error = error.message ?: "Failed to reorder habits")
+                    }
+                }
+            )
+        }
     }
 }

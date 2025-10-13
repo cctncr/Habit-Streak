@@ -101,8 +101,10 @@ class CreateEditHabitViewModel(
                                     selectedCategories = categories,
                                     availableCategories = _uiState.value.availableCategories,
                                     reminderTime = reminderTime,
+                                    isNotificationEnabled = it.isReminderEnabled,
                                     targetCount = it.targetCount,
                                     unit = it.unit,
+                                    isArchived = it.isArchived,
                                     isEditMode = true
                                 )
                             },
@@ -316,7 +318,8 @@ class CreateEditHabitViewModel(
                                     reminderTime = state.reminderTime?.toString(),
                                     isReminderEnabled = state.reminderTime != null,
                                     targetCount = state.targetCount,
-                                    unit = state.unit
+                                    unit = state.unit,
+                                    isArchived = state.isArchived
                                 )
                             ).fold(
                                 onSuccess = {

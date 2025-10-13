@@ -3,6 +3,7 @@ package org.example.habitstreak.platform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.*
+import org.example.habitstreak.domain.model.HabitFrequency
 import org.example.habitstreak.domain.model.NotificationConfig
 import org.example.habitstreak.domain.service.NotificationScheduler
 import java.awt.*
@@ -72,7 +73,11 @@ class DesktopNotificationScheduler : NotificationScheduler {
     }
 
     @OptIn(ExperimentalTime::class)
-    override suspend fun scheduleNotification(config: NotificationConfig): Result<Unit> {
+    override suspend fun scheduleNotification(
+        config: NotificationConfig,
+        habitFrequency: HabitFrequency,
+        habitCreatedAt: Instant
+    ): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
                 // Cancel existing timer if any
@@ -121,9 +126,14 @@ class DesktopNotificationScheduler : NotificationScheduler {
         }
     }
 
-    override suspend fun updateNotification(config: NotificationConfig): Result<Unit> {
+    @OptIn(ExperimentalTime::class)
+    override suspend fun updateNotification(
+        config: NotificationConfig,
+        habitFrequency: HabitFrequency,
+        habitCreatedAt: Instant
+    ): Result<Unit> {
         cancelNotification(config.habitId)
-        return scheduleNotification(config)
+        return scheduleNotification(config, habitFrequency, habitCreatedAt)
     }
 
     override suspend fun cancelAllNotifications(): Result<Unit> {

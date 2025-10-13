@@ -17,14 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import habitstreak.composeapp.generated.resources.Res
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -36,6 +34,38 @@ import org.example.habitstreak.domain.model.Habit
 import org.example.habitstreak.domain.util.HabitFrequencyUtils
 import org.example.habitstreak.presentation.ui.utils.drawStripedPattern
 import kotlin.time.ExperimentalTime
+import org.jetbrains.compose.resources.stringResource
+import habitstreak.composeapp.generated.resources.month_apr_abbr
+import habitstreak.composeapp.generated.resources.month_aug_abbr
+import habitstreak.composeapp.generated.resources.month_dec_abbr
+import habitstreak.composeapp.generated.resources.month_feb_abbr
+import habitstreak.composeapp.generated.resources.month_jan_abbr
+import habitstreak.composeapp.generated.resources.month_jul_abbr
+import habitstreak.composeapp.generated.resources.month_jun_abbr
+import habitstreak.composeapp.generated.resources.month_mar_abbr
+import habitstreak.composeapp.generated.resources.month_may_abbr
+import habitstreak.composeapp.generated.resources.month_nov_abbr
+import habitstreak.composeapp.generated.resources.month_oct_abbr
+import habitstreak.composeapp.generated.resources.month_sep_abbr
+import habitstreak.composeapp.generated.resources.month_january
+import habitstreak.composeapp.generated.resources.month_february
+import habitstreak.composeapp.generated.resources.month_march
+import habitstreak.composeapp.generated.resources.month_april
+import habitstreak.composeapp.generated.resources.month_may
+import habitstreak.composeapp.generated.resources.month_june
+import habitstreak.composeapp.generated.resources.month_july
+import habitstreak.composeapp.generated.resources.month_august
+import habitstreak.composeapp.generated.resources.month_september
+import habitstreak.composeapp.generated.resources.month_october
+import habitstreak.composeapp.generated.resources.month_november
+import habitstreak.composeapp.generated.resources.month_december
+import habitstreak.composeapp.generated.resources.day_mon_abbr
+import habitstreak.composeapp.generated.resources.day_tue_abbr
+import habitstreak.composeapp.generated.resources.day_wed_abbr
+import habitstreak.composeapp.generated.resources.day_thu_abbr
+import habitstreak.composeapp.generated.resources.day_fri_abbr
+import habitstreak.composeapp.generated.resources.day_sat_abbr
+import habitstreak.composeapp.generated.resources.day_sun_abbr
 
 @OptIn(ExperimentalTime::class)
 @Composable
@@ -52,7 +82,8 @@ fun HabitGrid(
     accentColor: Color = MaterialTheme.colorScheme.primary,
     habitRecords: List<HabitRecord> = emptyList(),
     onDateClick: ((LocalDate) -> Unit)? = null,
-    habit: Habit? = null
+    habit: Habit? = null,
+    showDayLabels: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -79,53 +110,158 @@ fun HabitGrid(
         }
     }
 
-    LazyRow(
-        state = listState,
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(spacing),
-        reverseLayout = false
-    ) {
-        items(count = totalColumns) { columnIndex ->
-            Column(
-                verticalArrangement = Arrangement.spacedBy(spacing)
+    val dayLabels = listOf(
+        stringResource(Res.string.day_mon_abbr),
+        stringResource(Res.string.day_tue_abbr),
+        stringResource(Res.string.day_wed_abbr),
+        stringResource(Res.string.day_thu_abbr),
+        stringResource(Res.string.day_fri_abbr),
+        stringResource(Res.string.day_sat_abbr),
+        stringResource(Res.string.day_sun_abbr)
+    )
+
+    if (showDayLabels && rows == 7) {
+        Box(modifier = modifier) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(spacing)
             ) {
-                val firstDateInColumn = LocalDate.fromEpochDays(
-                    gridStartDate.toEpochDays() + (columnIndex * rows)
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(spacing),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                for (rowIndex in 0 until rows) {
-                    val date = LocalDate.fromEpochDays(
-                        firstDateInColumn.toEpochDays() + rowIndex
-                    )
-
-                    if (date <= today && date >= gridStartDate) {
-                        val hasNote = habitRecords.any { it.date == date && it.note.isNotBlank() }
-                        val isDateActive = habit?.let {
-                            val createdDate = it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
-                            HabitFrequencyUtils.isActiveOnDate(it.frequency, date, createdDate)
-                        } ?: true // Default to true when no habit provided (for backward compatibility)
-
-                        key(date) {
-                            DateCell(
-                                date = date,
-                                progress = completedDates[date] ?: 0f,
-                                hasNote = hasNote,
-                                isToday = date == today,
-                                isFirstOfMonth = date.day == 1,
-                                accentColor = accentColor,
-                                boxSize = boxSize,
-                                cornerRadius = cornerRadius,
-                                onClick = onDateClick?.let { { it(date) } },
-                                isActive = isDateActive
+                    dayLabels.forEach { label ->
+                        Box(
+                            modifier = Modifier
+                                .size(boxSize)
+                                .padding(end = 4.dp),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = (boxSize.value * 0.28).sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
-                    } else if (date > today) {
-                        FutureDateCell(
-                            boxSize = boxSize,
-                            cornerRadius = cornerRadius
+                    }
+                }
+
+                LazyRow(
+                    state = listState,
+                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                    reverseLayout = false,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(top = 16.dp)
+                ) {
+                    items(count = totalColumns) { columnIndex ->
+                        val firstDateInColumn = LocalDate.fromEpochDays(
+                            gridStartDate.toEpochDays() + (columnIndex * rows)
                         )
-                    } else {
-                        Spacer(modifier = Modifier.size(boxSize))
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(spacing)
+                        ) {
+                            for (rowIndex in 0 until rows) {
+                                val date = LocalDate.fromEpochDays(
+                                    firstDateInColumn.toEpochDays() + rowIndex
+                                )
+
+                                if (date <= today && date >= gridStartDate) {
+                                    val hasNote = habitRecords.any { it.date == date && it.note.isNotBlank() }
+                                    val isDateActive = habit?.let {
+                                        val createdDate = it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                                        HabitFrequencyUtils.isActiveOnDate(it.frequency, date, createdDate)
+                                    } ?: true
+
+                                    key(date) {
+                                        DateCell(
+                                            date = date,
+                                            progress = completedDates[date] ?: 0f,
+                                            hasNote = hasNote,
+                                            isToday = date == today,
+                                            isFirstOfMonth = date.day == 1,
+                                            accentColor = accentColor,
+                                            boxSize = boxSize,
+                                            cornerRadius = cornerRadius,
+                                            onClick = onDateClick?.let { { it(date) } },
+                                            isActive = isDateActive
+                                        )
+                                    }
+                                } else if (date > today) {
+                                    FutureDateCell(
+                                        boxSize = boxSize,
+                                        cornerRadius = cornerRadius
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.size(boxSize))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(spacing),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    } else {
+        LazyRow(
+            state = listState,
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(spacing),
+            reverseLayout = false
+        ) {
+            items(count = totalColumns) { columnIndex ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(spacing)
+                ) {
+                    val firstDateInColumn = LocalDate.fromEpochDays(
+                        gridStartDate.toEpochDays() + (columnIndex * rows)
+                    )
+
+                    for (rowIndex in 0 until rows) {
+                        val date = LocalDate.fromEpochDays(
+                            firstDateInColumn.toEpochDays() + rowIndex
+                        )
+
+                        if (date <= today && date >= gridStartDate) {
+                            val hasNote = habitRecords.any { it.date == date && it.note.isNotBlank() }
+                            val isDateActive = habit?.let {
+                                val createdDate = it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                                HabitFrequencyUtils.isActiveOnDate(it.frequency, date, createdDate)
+                            } ?: true
+
+                            key(date) {
+                                DateCell(
+                                    date = date,
+                                    progress = completedDates[date] ?: 0f,
+                                    hasNote = hasNote,
+                                    isToday = date == today,
+                                    isFirstOfMonth = date.day == 1,
+                                    accentColor = accentColor,
+                                    boxSize = boxSize,
+                                    cornerRadius = cornerRadius,
+                                    onClick = onDateClick?.let { { it(date) } },
+                                    isActive = isDateActive
+                                )
+                            }
+                        } else if (date > today) {
+                            FutureDateCell(
+                                boxSize = boxSize,
+                                cornerRadius = cornerRadius
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.size(boxSize))
+                        }
                     }
                 }
             }
@@ -208,8 +344,8 @@ private fun DateCell(
             }
             isFirstOfMonth && progress == 0f && !hasNote -> {
                 Text(
-                    text = getMonthAbbreviation(date.month.number).take(1),
-                    fontSize = (boxSize.value * 0.3).sp,
+                    text = getMonthAbbreviation(date.month.number),
+                    fontSize = (boxSize.value * 0.25).sp,
                     fontWeight = FontWeight.Bold,
                     color = if (progress >= 0.5f) Color.White
                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -248,21 +384,21 @@ private fun FutureDateCell(
     )
 }
 
+@Composable
 private fun getMonthAbbreviation(month: Int): String {
     return when (month) {
-        1 -> "Jan"
-        2 -> "Feb"
-        3 -> "Mar"
-        4 -> "Apr"
-        5 -> "May"
-        6 -> "Jun"
-        7 -> "Jul"
-        8 -> "Aug"
-        9 -> "Sep"
-        10 -> "Oct"
-        11 -> "Nov"
-        12 -> "Dec"
+        1 -> stringResource(Res.string.month_jan_abbr)
+        2 -> stringResource(Res.string.month_feb_abbr)
+        3 -> stringResource(Res.string.month_mar_abbr)
+        4 -> stringResource(Res.string.month_apr_abbr)
+        5 -> stringResource(Res.string.month_may_abbr)
+        6 -> stringResource(Res.string.month_jun_abbr)
+        7 -> stringResource(Res.string.month_jul_abbr)
+        8 -> stringResource(Res.string.month_aug_abbr)
+        9 -> stringResource(Res.string.month_sep_abbr)
+        10 -> stringResource(Res.string.month_oct_abbr)
+        11 -> stringResource(Res.string.month_nov_abbr)
+        12 -> stringResource(Res.string.month_dec_abbr)
         else -> ""
     }
 }
-

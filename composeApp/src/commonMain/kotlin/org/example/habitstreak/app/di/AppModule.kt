@@ -82,12 +82,16 @@ val appModule = module {
     factory { org.example.habitstreak.domain.usecase.habit.CalculateStreakUseCase(get(), get(), get()) }
     factory { CalculateHabitStatsUseCase(get(), get()) }
     factory { ArchiveHabitUseCase(get()) }
+    factory { org.example.habitstreak.domain.usecase.habit.RestoreHabitUseCase(get()) }
+    factory { org.example.habitstreak.domain.usecase.habit.ReorderHabitsUseCase(get()) }
     factory { InitializeCategoriesUseCase(get()) }
+    factory { org.example.habitstreak.domain.usecase.category.GetHabitsUsingCategoryUseCase(get(), get()) }
     factory { org.example.habitstreak.domain.usecase.notification.CompleteHabitFromNotificationUseCase(get()) }
     factory { org.example.habitstreak.domain.usecase.notification.CheckHabitActiveDayUseCase(get()) }
 
     // ViewModels - Following Dependency Injection best practices
-    factory { HabitsViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    factory { HabitsViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { ArchivedHabitsViewModel(get(), get()) }
     factory { (habitId: String?) ->
         CreateEditHabitViewModel(
             createHabitUseCase = get(),

@@ -165,7 +165,8 @@ fun AppNavigation(
                         currentScreen = navigationState.currentScreen
                     },
                     onRestoreHabit = { habitId ->
-                        // TODO: Implement restore functionality
+                        navigationState.navigateBack()
+                        currentScreen = navigationState.currentScreen
                     }
                 )
             }

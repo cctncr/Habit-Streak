@@ -101,11 +101,15 @@ class CategoryRepositoryImpl(
                 val category = categoryQueries.selectById(categoryId).executeAsOneOrNull()?.toDomain()
                     ?: throw IllegalArgumentException("Kategori bulunamadı")
 
-                if (!category.isCustom) {
-                    throw org.example.habitstreak.core.error.DefaultCategoryDeleteException()
-                }
+                // Remove category from all habits
+                habitCategoryQueries.deleteByCategory(categoryId)
 
-                categoryQueries.delete(categoryId)
+                // Soft-delete predefined categories, hard-delete custom ones
+                if (category.isCustom) {
+                    categoryQueries.delete(categoryId)
+                } else {
+                    categoryQueries.softDelete(categoryId)
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -144,6 +148,15 @@ class CategoryRepositoryImpl(
         try {
             val categories = habitCategoryQueries.selectByHabit(habitId).executeAsList().map { it.toDomain() }
             Result.success(categories)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getHabitsUsingCategory(categoryId: String): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val habitIds = habitCategoryQueries.selectByCategory(categoryId).executeAsList().map { it.id }
+            Result.success(habitIds)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -209,19 +222,30 @@ class CategoryRepositoryImpl(
     override suspend fun initializePredefinedCategories(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             database.transaction {
-                Category.PREDEFINED_CATEGORIES.forEach { categoryName ->
-                    // Check if category already exists
-                    val existing = categoryQueries.selectByName(categoryName).executeAsOneOrNull()
+                org.example.habitstreak.domain.provider.PredefinedCategoryProvider.PREDEFINED_CATEGORIES.forEach { predefinedCategory ->
+                    val categoryKey = predefinedCategory.key
+                    val categoryName = categoryKey.replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase() else it.toString()
+                    }
+
+                    // Check if category exists (including soft-deleted ones)
+                    val existing = categoryQueries.selectByKey(categoryKey).executeAsOneOrNull()
+
                     if (existing == null) {
+                        // Category never existed, create it
                         val category = Category(
                             id = UuidGenerator.generateUUID(),
                             name = categoryName,
+                            key = categoryKey,
                             isCustom = false,
                             usageCount = 0,
-                            createdAt = dateProvider.now()
+                            createdAt = dateProvider.now(),
+                            isDeleted = false
                         )
                         categoryQueries.insert(category.toData())
                     }
+                    // If category exists (even if soft-deleted), don't recreate it
+                    // This respects user's deletion choice
                 }
             }
             Result.success(Unit)

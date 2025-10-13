@@ -25,7 +25,7 @@ class HabitRepositoryImpl(
     private val categoryQueries = database.categoryQueries
 
     @OptIn(ExperimentalTime::class)
-    override suspend fun createHabit(habit: Habit): Result<Habit> = withContext(Dispatchers.IO) {
+    override suspend fun createHabit(habit: Habit, categoryIds: List<String>): Result<Habit> = withContext(Dispatchers.IO) {
         try {
             val habitWithId = if (habit.id.isEmpty()) {
                 habit.copy(id = UuidGenerator.generateUUID())
@@ -44,6 +44,11 @@ class HabitRepositoryImpl(
                 }
 
                 queries.insert(habitWithId.toData())
+
+                categoryIds.forEach { categoryId ->
+                    habitCategoryQueries.insert(habitWithId.id, categoryId)
+                    categoryQueries.updateUsageCount(categoryId)
+                }
             }
 
             Result.success(habitWithId)
@@ -114,6 +119,19 @@ class HabitRepositoryImpl(
         }
     }
 
+    override suspend fun updateSortOrders(habitSortOrders: Map<String, Int>): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            database.transaction {
+                habitSortOrders.forEach { (habitId, sortOrder) ->
+                    queries.updateSortOrder(sortOrder.toLong(), habitId)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getHabitById(habitId: String): Result<Habit?> = withContext(Dispatchers.IO) {
         try {
             val habit = queries.selectById(habitId).executeAsOneOrNull()?.toDomain()
@@ -132,6 +150,13 @@ class HabitRepositoryImpl(
 
     override fun observeActiveHabits(): Flow<List<Habit>> {
         return queries.selectActive()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { list -> list.map { it.toDomain() } }
+    }
+
+    override fun observeArchivedHabits(): Flow<List<Habit>> {
+        return queries.selectArchived()
             .asFlow()
             .mapToList(Dispatchers.IO)
             .map { list -> list.map { it.toDomain() } }

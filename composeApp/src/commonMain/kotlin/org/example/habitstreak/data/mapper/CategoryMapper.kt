@@ -10,9 +10,11 @@ fun DataCategory.toDomain(): Category {
     return Category(
         id = id,
         name = name,
+        key = key,
         isCustom = isCustom == 1L,
         usageCount = usageCount.toInt(),
-        createdAt = Instant.parse(createdAt)
+        createdAt = Instant.parse(createdAt),
+        isDeleted = isDeleted == 1L
     )
 }
 
@@ -21,8 +23,10 @@ fun Category.toData(): DataCategory {
     return DataCategory(
         id = id,
         name = name,
+        key = key,
         isCustom = if (isCustom) 1L else 0L,
         usageCount = usageCount.toLong(),
-        createdAt = createdAt.toString()
+        createdAt = createdAt.toString(),
+        isDeleted = if (isDeleted) 1L else 0L
     )
 }

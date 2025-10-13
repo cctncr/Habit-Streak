@@ -220,7 +220,7 @@ fun CountableHabitInputPanel(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Bottom Action Buttons - daha köşeli
+        // Bottom Action Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)

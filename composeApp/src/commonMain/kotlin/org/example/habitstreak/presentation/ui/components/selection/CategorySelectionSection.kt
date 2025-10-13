@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.habitstreak.domain.model.Category
+import org.example.habitstreak.presentation.ui.components.category.getLocalizedCategoryName
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -192,7 +193,7 @@ private fun CategoryChip(
         onClick = onClick,
         label = {
             Text(
-                text = category.name,
+                text = getLocalizedCategoryName(category),
                 style = MaterialTheme.typography.bodyMedium
             )
         },

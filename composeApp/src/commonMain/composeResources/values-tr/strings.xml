@@ -22,8 +22,31 @@
     <string name="month_nov">Kas</string>
     <string name="month_dec">Ara</string>
 
+    <!-- Month Abbreviations (3 letters) -->
+    <string name="month_jan_abbr">Oca</string>
+    <string name="month_feb_abbr">Şub</string>
+    <string name="month_mar_abbr">Mar</string>
+    <string name="month_apr_abbr">Nis</string>
+    <string name="month_may_abbr">May</string>
+    <string name="month_jun_abbr">Haz</string>
+    <string name="month_jul_abbr">Tem</string>
+    <string name="month_aug_abbr">Ağu</string>
+    <string name="month_sep_abbr">Eyl</string>
+    <string name="month_oct_abbr">Eki</string>
+    <string name="month_nov_abbr">Kas</string>
+    <string name="month_dec_abbr">Ara</string>
+
     <string name="time_am">ÖÖ</string>
     <string name="time_pm">ÖS</string>
+
+    <!-- Day Names (3-letter abbreviation) -->
+    <string name="day_mon_abbr">Pzt</string>
+    <string name="day_tue_abbr">Sal</string>
+    <string name="day_wed_abbr">Çar</string>
+    <string name="day_thu_abbr">Per</string>
+    <string name="day_fri_abbr">Cum</string>
+    <string name="day_sat_abbr">Cmt</string>
+    <string name="day_sun_abbr">Paz</string>
 
     <string name="date_today">Bugün</string>
     <string name="date_tomorrow">Yarın</string>
@@ -277,6 +300,15 @@
     <string name="category_afternoon">Öğleden Sonra</string>
     <string name="category_other">Diğer</string>
     <string name="category_creativity">Yaratıcılık</string>
+
+    <!-- Category Deletion -->
+    <string name="delete_category_title">Kategori Silinsin mi?</string>
+    <string name="delete_category_message">Bu işlem kategoriyi tüm alışkanlıklardan kaldıracak.</string>
+    <string name="delete_category_affected_habits">Etkilenecek alışkanlıklar:</string>
+    <string name="delete_category_no_habits">Bu kategoriyi kullanan alışkanlık yok.</string>
+    <string name="delete_category_confirm">Kategoriyi Sil</string>
+    <string name="success_category_deleted">Kategori başarıyla silindi</string>
+    <string name="error_category_delete_failed">Kategori silinemedi</string>
 
     <!-- Archived habits -->
     <string name="archived_habits_title">Arşivlenmiş Alışkanlıklar</string>

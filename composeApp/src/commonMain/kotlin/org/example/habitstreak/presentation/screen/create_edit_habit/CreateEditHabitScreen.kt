@@ -15,6 +15,7 @@ import androidx.compose.animation.with
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,8 +48,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -67,7 +66,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -115,6 +113,10 @@ import habitstreak.composeapp.generated.resources.*
 import org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import org.example.habitstreak.presentation.ui.components.category.getLocalizedCategoryName
+import org.example.habitstreak.presentation.ui.components.common.DeleteCategoryDialog
+import org.example.habitstreak.domain.model.Habit
+import org.example.habitstreak.domain.usecase.category.GetHabitsUsingCategoryUseCase
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -148,7 +150,10 @@ fun CreateEditHabitScreen(
     var permissionDialogState by remember { mutableStateOf<PermissionFlowResult?>(null) }
     var showGlobalEnableDialog by remember { mutableStateOf<String?>(null) }
 
-    // Notification preferences state
+    var categoryToDelete by remember { mutableStateOf<org.example.habitstreak.domain.model.Category?>(null) }
+    var affectedHabits by remember { mutableStateOf<List<Habit>>(emptyList()) }
+    val getHabitsUsingCategoryUseCase: GetHabitsUsingCategoryUseCase = koinInject()
+
     var soundEnabled by remember { mutableStateOf(true) }
     var vibrationEnabled by remember { mutableStateOf(true) }
 
@@ -332,6 +337,19 @@ fun CreateEditHabitScreen(
                             2 -> CategorySelectionStep(
                                 uiState = uiState,
                                 viewModel = viewModel,
+                                onCategoryLongPress = { category ->
+                                    categoryToDelete = category
+                                    coroutineScope.launch {
+                                        getHabitsUsingCategoryUseCase(category.id).fold(
+                                            onSuccess = { habits ->
+                                                affectedHabits = habits
+                                            },
+                                            onFailure = {
+                                                affectedHabits = emptyList()
+                                            }
+                                        )
+                                    }
+                                }
                             )
 
                             3 -> GoalStep(
@@ -385,7 +403,7 @@ fun CreateEditHabitScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Column {
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = stringResource(Res.string.archive_habit),
                                                 style = MaterialTheme.typography.titleSmall
@@ -396,10 +414,18 @@ fun CreateEditHabitScreen(
                                                 color = MaterialTheme.colorScheme.onErrorContainer
                                             )
                                         }
-                                        Switch(
-                                            checked = uiState.isArchived,
-                                            onCheckedChange = { viewModel.updateArchived(it) }
-                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        OutlinedButton(
+                                            onClick = {
+                                                viewModel.updateArchived(true)
+                                                viewModel.saveHabit(onSuccess = {
+                                                    onNavigateBack()
+                                                })
+                                            },
+                                            enabled = !uiState.isLoading
+                                        ) {
+                                            Text(stringResource(Res.string.archive_habit))
+                                        }
                                     }
                                 }
                             }
@@ -572,6 +598,22 @@ fun CreateEditHabitScreen(
             onDismiss = { viewModel.hideCustomCategoryDialog() }
         )
     }
+
+    categoryToDelete?.let { category ->
+        DeleteCategoryDialog(
+            category = category,
+            affectedHabits = affectedHabits,
+            onConfirm = {
+                viewModel.deleteCategory(category.id)
+                categoryToDelete = null
+                affectedHabits = emptyList()
+            },
+            onDismiss = {
+                categoryToDelete = null
+                affectedHabits = emptyList()
+            }
+        )
+    }
 }
 
 @Composable
@@ -657,7 +699,7 @@ private fun StepCircle(
 
 @Composable
 private fun BasicInfoStep(
-    uiState: org.example.habitstreak.presentation.ui.state.CreateEditHabitUiState,
+    uiState: CreateEditHabitUiState,
     viewModel: CreateEditHabitViewModel,
     onShowIconSheet: () -> Unit,
     onShowColorSheet: () -> Unit
@@ -866,7 +908,8 @@ private fun FrequencyStep(
 @Composable
 private fun CategorySelectionStep(
     uiState: CreateEditHabitUiState,
-    viewModel: CreateEditHabitViewModel
+    viewModel: CreateEditHabitViewModel,
+    onCategoryLongPress: (org.example.habitstreak.domain.model.Category) -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -909,38 +952,49 @@ private fun CategorySelectionStep(
                     // Existing categories
                     uiState.availableCategories.forEach { category ->
                         val isSelected = uiState.selectedCategories.contains(category)
-                        FilterChip(
-                            modifier = Modifier.combinedClickable(
-                                onClick = { viewModel.toggleCategory(category) },
-                            ),
-                            selected = isSelected,
-                            onClick = { viewModel.toggleCategory(category) },
-                            label = {
-                                Text(
-                                    category.name,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            },
-                            leadingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
+                        val chipInteractionSource = remember { MutableInteractionSource() }
+                        Box {
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {},
+                                label = {
+                                    Text(
+                                        getLocalizedCategoryName(category),
+                                        style = MaterialTheme.typography.bodyMedium
                                     )
-                                }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = if (category.isCustom) {
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant
                                 },
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                        )
+                                leadingIcon = if (isSelected) {
+                                    {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = if (category.isCustom) {
+                                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    },
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                interactionSource = chipInteractionSource
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .combinedClickable(
+                                        onClick = { viewModel.toggleCategory(category) },
+                                        onLongClick = { onCategoryLongPress(category) },
+                                        interactionSource = chipInteractionSource,
+                                        indication = null
+                                    )
+                            )
+                        }
                     }
 
                     // Add custom category chip - FilterChip olarak değiştirildi
@@ -1006,7 +1060,7 @@ private fun CategorySelectionStep(
                                 onClick = { viewModel.toggleCategory(category) },
                                 label = {
                                     Text(
-                                        category.name,
+                                        getLocalizedCategoryName(category),
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 },

@@ -21,6 +21,9 @@ SELECT * FROM Habit ORDER BY sortOrder ASC;
 selectActive:
 SELECT * FROM Habit WHERE isArchived = 0 ORDER BY sortOrder ASC;
 
+selectArchived:
+SELECT * FROM Habit WHERE isArchived = 1 ORDER BY sortOrder ASC;
+
 selectById:
 SELECT * FROM Habit WHERE id = ?;
 
@@ -42,6 +45,9 @@ UPDATE Habit SET
     isArchived = ?,
     sortOrder = ?
 WHERE id = ?;
+
+updateSortOrder:
+UPDATE Habit SET sortOrder = ? WHERE id = ?;
 
 delete:
 DELETE FROM Habit WHERE id = ?;
