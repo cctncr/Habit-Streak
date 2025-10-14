@@ -22,7 +22,8 @@ import org.example.habitstreak.presentation.screen.statistics.StatisticsScreen
 fun AppNavigation(
     deepLinkHabitId: String? = null,
     shouldNavigateToHabit: Boolean = false,
-    onDeepLinkHandled: () -> Unit = {}
+    onDeepLinkHandled: () -> Unit = {},
+    onFirstFrameRendered: () -> Unit = {}
 ) {
     val navigationState = rememberNavigationState()
     var currentScreen by remember { mutableStateOf(navigationState.currentScreen) }
@@ -111,7 +112,8 @@ fun AppNavigation(
                     onNavigateToHabitDetail = { habitId ->
                         navigationState.navigateTo(Screen.HabitDetail(habitId))
                         currentScreen = navigationState.currentScreen
-                    }
+                    },
+                    onFirstFrameRendered = onFirstFrameRendered
                 )
             }
 

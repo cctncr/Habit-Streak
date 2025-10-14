@@ -59,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
@@ -90,6 +91,7 @@ fun HabitsScreen(
     onNavigateToStatistics: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToHabitDetail: (String) -> Unit,
+    onFirstFrameRendered: () -> Unit = {},
     viewModel: HabitsViewModel = koinViewModel(),
     habitFilterService: HabitFilterService = koinInject()
 ) {
@@ -198,6 +200,17 @@ fun HabitsScreen(
     val progressStats by remember(habitsWithCompletion, today) {
         derivedStateOf {
             habitFilterService.calculateProgressStats(habitsWithCompletion, today)
+        }
+    }
+
+    // Track first card rendering - this is the REAL indicator that UI is visible
+    var hasRenderedFirstCard by remember { mutableStateOf(false) }
+
+    // Handle empty state - if no habits, trigger callback immediately
+    LaunchedEffect(habitsWithCompletion) {
+        if (habitsWithCompletion.isEmpty() && !hasRenderedFirstCard) {
+            hasRenderedFirstCard = true
+            onFirstFrameRendered()
         }
     }
 
@@ -380,11 +393,25 @@ fun HabitsScreen(
                                 val todayProgress = habitWithCompletion.completedCount.toFloat() /
                                         habitWithCompletion.habit.targetCount.coerceAtLeast(1)
 
+                                // Check if this is the first card
+                                val isFirstCard = habitWithCompletion == filteredHabits.firstOrNull()
+
                                 val cardModifier = Modifier.animateItem()
                                 val finalModifier = if (canReorder) {
                                     cardModifier.longPressDraggableHandle()
                                 } else {
                                     cardModifier
+                                }
+
+                                // Add onGloballyPositioned to the FIRST card only
+                                val modifierWithCallback = if (isFirstCard && !hasRenderedFirstCard) {
+                                    finalModifier.onGloballyPositioned {
+                                        // First card is positioned = UI is actually rendered!
+                                        hasRenderedFirstCard = true
+                                        onFirstFrameRendered()
+                                    }
+                                } else {
+                                    finalModifier
                                 }
 
                                 HabitCardFactory.CreateCard(
@@ -402,7 +429,7 @@ fun HabitsScreen(
                                     onCardClick = {
                                         onNavigateToHabitDetail(habitId)
                                     },
-                                    modifier = finalModifier
+                                    modifier = modifierWithCallback
                                 )
                             }
                         }

@@ -18,7 +18,8 @@ import org.koin.compose.koinInject
 fun App(
     deepLinkHabitId: String? = null,
     shouldNavigateToHabit: Boolean = false,
-    onDeepLinkHandled: () -> Unit = {}
+    onDeepLinkHandled: () -> Unit = {},
+    onFirstFrameRendered: () -> Unit = {}
 ) {
     val initializeCategoriesUseCase: InitializeCategoriesUseCase = koinInject()
     val localeService: ILocaleService = koinInject()
@@ -26,11 +27,21 @@ fun App(
     val localeStateHolder: ILocaleStateHolder = koinInject()
     val currentLocale by localeStateHolder.currentLocale.collectAsState()
 
+    var isInitialized by remember { mutableStateOf(false) }
+
     // Initialize predefined categories, locale and theme when app starts
     LaunchedEffect(Unit) {
         initializeCategoriesUseCase()
         localeService.initializeLocale()
         themeService.initializeTheme()
+        // Mark as initialized after all initialization tasks complete
+        isInitialized = true
+    }
+
+    // Don't render anything until initialization is complete
+    // This keeps the native splash screen visible (iOS LaunchScreen / Android SplashScreen)
+    if (!isInitialized) {
+        return
     }
 
     // Use both AppEnvironment and AppThemeEnvironment to enable runtime changes
@@ -41,7 +52,8 @@ fun App(
                     AppNavigation(
                         deepLinkHabitId = deepLinkHabitId,
                         shouldNavigateToHabit = shouldNavigateToHabit,
-                        onDeepLinkHandled = onDeepLinkHandled
+                        onDeepLinkHandled = onDeepLinkHandled,
+                        onFirstFrameRendered = onFirstFrameRendered
                     )
                 }
             }

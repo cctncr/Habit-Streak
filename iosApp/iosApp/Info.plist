@@ -6,5 +6,7 @@
 	<true/>
 	<key>NSUserNotificationUsageDescription</key>
 	<string>We need permission to send daily reminders for your habits</string>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
 </dict>
 </plist>

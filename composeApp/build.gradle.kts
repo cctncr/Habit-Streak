@@ -56,6 +56,9 @@ kotlin {
             implementation(libs.sqldelight.android.driver)
             implementation(libs.androidx.datastore.preferences)
 
+            // Splash Screen
+            implementation(libs.androidx.core.splashscreen)
+
             // Notification dependencies
             implementation(libs.androidx.work.runtime.ktx)
             implementation(libs.androidx.core.ktx)
